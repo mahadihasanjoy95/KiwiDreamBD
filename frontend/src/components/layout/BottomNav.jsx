@@ -6,10 +6,10 @@ import { cn } from '@/utils/cn'
 import useStore from '@/store/useStore'
 
 const BASE_TABS = [
-  { to: '/',          key: 'home',      Icon: Home          },
-  { to: '/plan',      key: 'plan',      Icon: BarChart3     },
+  { to: '/', key: 'home', Icon: Home },
+  { to: '/plan', key: 'plan', Icon: BarChart3 },
   { to: '/dashboard', key: 'dashboard', Icon: LayoutDashboard },
-  { to: '/guide',     key: 'guide',     Icon: BookOpen      },
+  { to: '/guide', key: 'guide', Icon: BookOpen },
 ]
 
 export function BottomNav() {
@@ -25,8 +25,8 @@ export function BottomNav() {
   ]
 
   return (
-    <nav className="md:hidden fixed bottom-0 inset-x-0 z-50 bg-white border-t border-gray-100 shadow-lg pb-safe">
-      <div className="flex items-center h-16">
+    <nav className="md:hidden fixed bottom-0 inset-x-0 z-50 border-t border-[#e7dccf] bg-[#fbf7f1]/95 pb-safe backdrop-blur-xl shadow-[0_-10px_30px_rgba(58,42,24,0.08)]">
+      <div className="flex h-16 items-center">
         {tabs.map(({ to, key, label, Icon }) => {
           const isActive = location.pathname === to
           return (
@@ -34,15 +34,15 @@ export function BottomNav() {
               key={to}
               to={to}
               className={cn(
-                'flex-1 flex flex-col items-center justify-center gap-0.5 py-2 transition-colors duration-200',
-                isActive ? 'text-brand' : 'text-gray-400 hover:text-gray-600'
+                'flex flex-1 flex-col items-center justify-center gap-0.5 py-2 transition-colors duration-200',
+                isActive ? 'text-[#173526]' : 'text-[#8e8174] hover:text-[#173526]'
               )}
             >
               <div className="relative">
                 {isActive && (
                   <motion.span
                     layoutId="bottom-nav-dot"
-                    className="absolute -top-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-brand"
+                    className="absolute -top-1 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-[#b66a48]"
                     transition={{ type: 'spring', stiffness: 400, damping: 35 }}
                   />
                 )}

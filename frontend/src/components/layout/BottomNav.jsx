@@ -1,7 +1,7 @@
 import { Link, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { Home, BarChart3, LayoutDashboard, BookOpen, CircleUserRound, LogIn } from 'lucide-react'
+import { Home, BarChart3, LayoutDashboard, BookOpen, Menu } from 'lucide-react'
 import { cn } from '@/utils/cn'
 import useStore from '@/store/useStore'
 
@@ -15,13 +15,10 @@ const BASE_TABS = [
 export function BottomNav() {
   const { t } = useTranslation()
   const location = useLocation()
-  const isAuthenticated = useStore(s => s.isAuthenticated)
 
   const tabs = [
     ...BASE_TABS,
-    isAuthenticated
-      ? { to: '/profile', label: t('auth.profile_badge'), Icon: CircleUserRound }
-      : { to: '/signin', label: t('auth.signin_inline'), Icon: LogIn },
+    { to: '/profile', label: t('nav.more'), Icon: Menu },
   ]
 
   return (

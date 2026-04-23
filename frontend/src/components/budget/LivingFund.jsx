@@ -1,12 +1,11 @@
 import { useEffect } from 'react'
 import { motion, AnimatePresence, useMotionValue, useTransform, animate } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { Info } from 'lucide-react'
+import { BadgeInfo, Landmark, WalletCards } from 'lucide-react'
 import useStore from '@/store/useStore'
 import { useAffordability } from '@/hooks/useAffordability'
 import { AffordabilityMeter } from '@/components/common/AffordabilityMeter'
 import { WarningCard } from './WarningCard'
-import { formatBDT } from '@/utils/currency'
 import { cn } from '@/utils/cn'
 
 function OdometerNumber({ value }) {
@@ -18,9 +17,7 @@ function OdometerNumber({ value }) {
     return controls.stop
   }, [value])
 
-  return (
-    <motion.span>{rounded}</motion.span>
-  )
+  return <motion.span>{rounded}</motion.span>
 }
 
 export function LivingFund() {
@@ -36,95 +33,137 @@ export function LivingFund() {
 
   return (
     <div className="space-y-6">
-      {/* Fund input */}
-      <div className="bg-white rounded-2xl border border-brand-mid p-5 shadow-brand-sm space-y-4">
-        <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1">
-            {t('planner.fund_label')}
-            <span className="ml-1 text-gray-400 font-normal">{t('planner.fund_currency_hint')}</span>
-          </label>
-          <div className="relative">
-            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-lg font-bold text-gray-400">৳</span>
-            <input
-              type="number"
-              value={livingFundBDT}
-              onChange={e => setLivingFund(e.target.value)}
-              placeholder="e.g. 1500000"
-              className="w-full pl-9 pr-4 py-3.5 text-lg font-semibold border border-brand-mid rounded-xl outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 transition-all"
-              min="0"
-            />
+      <div className="rounded-[30px] border border-[#e7dccf] bg-[linear-gradient(135deg,#f5fff8_0%,#eef8f0_45%,#edf2ff_100%)] p-5 shadow-[0_20px_48px_rgba(57,42,22,0.08)]">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#2c8f74]">
+              {t('planner.fund_board_title')}
+            </p>
+            <h3 className="mt-2 font-serif text-2xl font-bold text-[#173526]">
+              {fundNZD !== null ? `≈ NZD ${fundNZD.toLocaleString()}` : t('planner.fund_board_empty')}
+            </h3>
+            <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[#5d6f67]">
+              {t('planner.fund_board_subtitle')}
+            </p>
           </div>
-          {fundNZD !== null && (
-            <motion.p
-              initial={{ opacity: 0, y: -4 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="text-xs text-gray-400 mt-1.5"
-            >
-              ≈ NZD {fundNZD.toLocaleString()} at current rate
-            </motion.p>
-          )}
-        </div>
 
-        {/* Disclaimer */}
-        <div className="flex gap-2.5 bg-amber-50 border border-amber-200 rounded-xl p-3">
-          <Info size={16} className="text-amber-500 shrink-0 mt-0.5" />
-          <p className="text-xs text-amber-700 leading-relaxed">
-            {language === 'BN'
-              ? 'শুধুমাত্র বাসস্থান ও জীবনযাত্রার সঞ্চয় লিখুন। টিউশন ফি বা অন্য উদ্দেশ্যে রাখা অর্থ অন্তর্ভুক্ত করবেন না।'
-              : t('planner.fund_disclaimer')}
-          </p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="rounded-[24px] border border-white/55 bg-white/55 px-4 py-3 shadow-[0_14px_34px_rgba(57,42,22,0.08)] backdrop-blur-sm">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#6f9485]">
+                {t('planner.fund_monthly_label')}
+              </p>
+              <p className="mt-1 text-xl font-bold text-[#173526]">
+                {monthlyTotal > 0 ? `NZD ${monthlyTotal.toLocaleString()}` : 'NZD 0'}
+              </p>
+            </div>
+            <div className="rounded-[24px] border border-white/55 bg-white/55 px-4 py-3 shadow-[0_14px_34px_rgba(57,42,22,0.08)] backdrop-blur-sm">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#6f9485]">
+                {t('planner.fund_rate_label')}
+              </p>
+              <p className="mt-1 text-xl font-bold text-[#173526]">1 NZD = {exchangeRate}</p>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Survival counter */}
-      <AnimatePresence>
-        {livingFundBDT && survivalMonths !== null ? (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-2xl border border-brand-mid p-6 shadow-brand-sm text-center"
-          >
-            <p className="text-sm text-gray-500 mb-2">Your living fund covers</p>
-            <div className="flex items-baseline justify-center gap-2">
-              <span className="text-6xl font-bold text-brand-deep tabular-nums">
-                <OdometerNumber value={survivalMonths} />
-              </span>
-              <span className="text-2xl font-semibold text-gray-400">
-                {language === 'BN' ? 'মাস' : t('planner.survival_months')}
-              </span>
+      <div className="grid gap-4 lg:grid-cols-[1.05fr_0.95fr]">
+        <div className="rounded-[28px] border border-[#dcebdd] bg-white p-5 shadow-[0_18px_42px_rgba(57,42,22,0.08)]">
+          <div className="flex items-start gap-4">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#2c8f74]/12 text-[#2c8f74]">
+              <WalletCards size={20} />
             </div>
-            <p className="text-sm text-gray-400 mt-1">
-              at NZD {monthlyTotal.toLocaleString()}/month
-            </p>
-          </motion.div>
-        ) : (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="bg-brand-light rounded-2xl border border-brand-mid p-6 text-center"
-          >
-            <p className="text-gray-400 text-sm">{t('planner.enter_fund_prompt')}</p>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            <div className="min-w-0 flex-1">
+              <label className="block text-[11px] font-semibold uppercase tracking-[0.16em] text-[#6f9485]">
+                {t('planner.fund_label')}
+                <span className="ml-1 font-normal text-[#90a79d]">{t('planner.fund_currency_hint')}</span>
+              </label>
 
-      {/* Affordability meter */}
-      {survivalMonths !== null && (
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-2xl border border-brand-mid p-5 shadow-brand-sm"
-        >
-          <p className="text-sm font-semibold text-gray-600 mb-4">Affordability Status</p>
-          <AffordabilityMeter
-            status={status}
-            survivalMonths={survivalMonths}
-            language={language}
-          />
-        </motion.div>
-      )}
+              <div className="relative mt-3">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-lg font-bold text-[#89a298]">৳</span>
+                <input
+                  type="number"
+                  value={livingFundBDT}
+                  onChange={e => setLivingFund(e.target.value)}
+                  placeholder="e.g. 1500000"
+                  className={cn(
+                    'w-full rounded-2xl border bg-[#f7fbf8] py-3.5 pl-9 pr-4 text-lg font-semibold outline-none transition-all',
+                    'border-[#dcebdd] text-[#173526] hover:border-[#bdd8c7] focus:border-[#2c8f74] focus:ring-2 focus:ring-[#2c8f74]/10'
+                  )}
+                  min="0"
+                />
+              </div>
 
-      {/* Warning cards */}
+              {fundNZD !== null && (
+                <motion.p
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mt-2 text-xs text-[#7d968c]"
+                >
+                  ≈ NZD {fundNZD.toLocaleString()} {t('planner.fund_rate_hint')}
+                </motion.p>
+              )}
+
+              <div className="mt-4 flex gap-2.5 rounded-2xl border border-[#f0d9a9] bg-[#fff8eb] p-3">
+                <BadgeInfo size={16} className="mt-0.5 shrink-0 text-[#d39b2e]" />
+                <p className="text-xs leading-relaxed text-[#8f6a1f]">
+                  {t('planner.fund_disclaimer')}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <AnimatePresence mode="wait">
+          {livingFundBDT && survivalMonths !== null ? (
+            <motion.div
+              key="fund-summary"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="rounded-[28px] border border-[#dcebdd] bg-white p-6 shadow-[0_18px_42px_rgba(57,42,22,0.08)]"
+            >
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#6f9485]">
+                {t('planner.fund_cover_title')}
+              </p>
+              <div className="mt-4 flex items-end gap-3">
+                <span className="text-6xl font-bold text-[#173526] tabular-nums">
+                  <OdometerNumber value={survivalMonths} />
+                </span>
+                <span className="pb-2 text-xl font-semibold text-[#8da198]">
+                  {language === 'BN' ? 'মাস' : t('planner.survival_months')}
+                </span>
+              </div>
+              <p className="mt-2 text-sm text-[#7d968c]">
+                {t('planner.fund_cover_subtitle', { monthly: monthlyTotal.toLocaleString() })}
+              </p>
+
+              <div className="mt-5 rounded-[24px] border border-[#e6f0e8] bg-[#f7fbf8] p-4">
+                <div className="mb-4 flex items-center gap-2 text-[#173526]">
+                  <Landmark size={16} className="text-[#2c8f74]" />
+                  <p className="text-sm font-semibold">{t('planner.fund_status_title')}</p>
+                </div>
+                <AffordabilityMeter
+                  status={status}
+                  survivalMonths={survivalMonths}
+                  language={language}
+                />
+              </div>
+            </motion.div>
+          ) : (
+            <motion.div
+              key="fund-empty"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="rounded-[28px] border border-dashed border-[#cfe0d3] bg-[linear-gradient(135deg,#fbfffc_0%,#f3f9f5_100%)] p-6 text-center shadow-[0_18px_42px_rgba(57,42,22,0.05)]"
+            >
+              <p className="text-sm font-semibold text-[#173526]">{t('planner.fund_empty_title')}</p>
+              <p className="mt-2 text-sm text-[#7d968c]">{t('planner.enter_fund_prompt')}</p>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
       <AnimatePresence>
         {warnings.length > 0 && (
           <div className="space-y-3">
@@ -134,6 +173,31 @@ export function LivingFund() {
           </div>
         )}
       </AnimatePresence>
+
+      {livingFundBDT && survivalMonths !== null ? (
+        <div className="sticky bottom-20 z-20 px-2 md:bottom-4">
+          <div className="mx-auto flex w-fit min-w-[280px] max-w-2xl items-center justify-between gap-5 rounded-[26px] border border-white/45 bg-[rgba(44,143,116,0.72)] px-5 py-3 text-white shadow-[0_18px_40px_rgba(21,90,71,0.18)] backdrop-blur-2xl">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white/75">
+                {t('planner.fund_status_title')}
+              </p>
+              <p className="mt-0.5 text-xs text-white/60">{t(`planner.affordability_${status.toLowerCase()}`)}</p>
+            </div>
+            <AnimatePresence mode="wait">
+              <motion.p
+                key={`${status}-${survivalMonths}`}
+                initial={{ opacity: 0, y: -6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 6 }}
+                transition={{ duration: 0.18 }}
+                className="text-2xl font-bold tracking-tight text-white md:text-3xl"
+              >
+                {survivalMonths.toFixed(1)} {language === 'BN' ? 'মাস' : t('planner.months_short')}
+              </motion.p>
+            </AnimatePresence>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }

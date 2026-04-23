@@ -26,6 +26,11 @@
   }
 }
 
+@keyframes cloudDrift {
+  from { transform: translateX(-560px); }
+  to   { transform: translateX(1900px); }
+}
+
 @layer utilities {
   .font-bengali {
     font-family: 'Noto Sans Bengali', 'Inter', sans-serif;

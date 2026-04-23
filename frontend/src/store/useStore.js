@@ -154,6 +154,14 @@ const useStore = create(
         }))
       },
 
+      renameMovingItem: (id, name) => {
+        set(state => ({
+          movingItems: state.movingItems.map(item =>
+            item.id === id ? { ...item, itemName: name, itemNameBN: name } : item
+          ),
+        }))
+      },
+
       removeMovingItem: (id) => {
         set(state => ({
           movingItems: state.movingItems.filter(item => item.id !== id),
@@ -192,11 +200,6 @@ const useStore = create(
           : 'Custom Plan'
 
         const monthlyTotalNZD = state.planCategories.reduce((sum, item) => sum + (item.estimatedAmountNZD || 0), 0)
-        const setupCostNZD = state.movingItems.reduce((sum, item) => {
-          const rentMonthly = state.planCategories.find(c => c.categoryName === 'Rent')?.estimatedAmountNZD ?? 0
-          const amount = item.autoCalc ? rentMonthly : (item.amountNZD || 0)
-          return sum + amount
-        }, 0)
         const survivalMonths = state.livingFundBDT
           ? calcSurvivalMonths(state.livingFundBDT, monthlyTotalNZD, state.exchangeRate)
           : null
@@ -208,7 +211,7 @@ const useStore = create(
           city: cityLabel,
           lifestyleLabel,
           monthlyTotalNZD,
-          setupCostNZD,
+          setupCostNZD: state.movingItems.reduce((sum, item) => sum + (item.amountNZD || 0), 0),
           survivalMonths: survivalMonths ?? 0,
           affordability,
           savedAt: new Date().toISOString(),

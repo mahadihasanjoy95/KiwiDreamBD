@@ -1,6 +1,5 @@
 import { Routes, Route } from 'react-router-dom'
 import { Navbar } from '@/components/layout/Navbar'
-import { FloatingPrefs } from '@/components/layout/FloatingPrefs'
 import { BottomNav } from '@/components/layout/BottomNav'
 import { Footer } from '@/components/layout/Footer'
 import Home from '@/pages/Home'
@@ -21,7 +20,6 @@ export default function App() {
   return (
     <div className="min-h-screen bg-brand-light font-sans">
       <Navbar />
-      <FloatingPrefs />
       <main className="pb-20 md:pb-0">
         <Routes>
           <Route path="/"          element={<Home />} />

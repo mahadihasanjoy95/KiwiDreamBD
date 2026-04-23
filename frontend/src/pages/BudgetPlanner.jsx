@@ -153,47 +153,70 @@ export default function BudgetPlanner() {
                 </motion.div>
               </AnimatePresence>
 
-              <div className="mt-6 bg-white rounded-2xl border border-brand-mid p-5 shadow-brand-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
-                    {t('auth.save_plan_label')}
-                  </p>
-                  <p className="text-sm text-gray-600 mt-2">
-                    {isAuthenticated
-                      ? t('auth.save_plan_signedin', { count: savedPlans.length })
-                      : t('auth.save_plan_signedout')}
-                  </p>
-                  {monthlyTotal > 0 ? (
-                    <p className="text-xs text-gray-400 mt-2">
-                      {t('auth.plan_snapshot', {
-                        monthly: monthlyTotal.toLocaleString(),
-                        runway: survivalMonths !== null ? survivalMonths.toFixed(1) : '0.0',
-                      })}
+              <div className="mt-6 rounded-[30px] border border-[#e0d5f0] bg-[linear-gradient(135deg,#fffaff_0%,#f5efff_48%,#efe9ff_100%)] p-5 shadow-[0_20px_48px_rgba(57,42,22,0.08)]">
+                <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8b5cf6]">
+                      {t('auth.save_plan_label')}
                     </p>
-                  ) : null}
+                    <h3 className="mt-2 font-serif text-2xl font-bold text-[#2f2150]">
+                      {t('auth.save_plan_title')}
+                    </h3>
+                    <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[#6f6484]">
+                      {isAuthenticated
+                        ? t('auth.save_plan_signedin', { count: savedPlans.length })
+                        : t('auth.save_plan_signedout')}
+                    </p>
+                  </div>
+
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="rounded-[24px] border border-white/60 bg-white/55 px-4 py-3 shadow-[0_14px_34px_rgba(57,42,22,0.08)] backdrop-blur-sm">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#8f80aa]">
+                        {t('auth.snapshot_monthly')}
+                      </p>
+                      <p className="mt-1 text-xl font-bold text-[#2f2150]">NZD {monthlyTotal.toLocaleString()}</p>
+                    </div>
+                    <div className="rounded-[24px] border border-white/60 bg-white/55 px-4 py-3 shadow-[0_14px_34px_rgba(57,42,22,0.08)] backdrop-blur-sm">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#8f80aa]">
+                        {t('auth.snapshot_runway')}
+                      </p>
+                      <p className="mt-1 text-xl font-bold text-[#2f2150]">
+                        {survivalMonths !== null ? survivalMonths.toFixed(1) : '0.0'} {t('planner.months_short')}
+                      </p>
+                    </div>
+                  </div>
                 </div>
 
-                {isAuthenticated ? (
-                  <button
-                    onClick={() => {
-                      const result = saveCurrentPlan()
-                      if (result.ok) navigate('/dashboard')
-                    }}
-                    className="inline-flex items-center justify-center gap-2 rounded-2xl bg-brand text-white px-5 py-3 font-semibold hover:bg-brand-deep transition-colors"
-                  >
-                    <BookmarkPlus size={18} />
-                    {t('auth.save_plan_cta')}
-                  </button>
-                ) : (
-                  <Link
-                    to="/signin"
-                    state={{ next: '/plan' }}
-                    className="inline-flex items-center justify-center gap-2 rounded-2xl bg-brand-deep text-white px-5 py-3 font-semibold hover:bg-[#26134d] transition-colors"
-                  >
-                    <LockKeyhole size={18} />
-                    {t('auth.signin_to_save')}
-                  </Link>
-                )}
+                <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-xs text-[#8f80aa]">
+                    {t('auth.plan_snapshot', {
+                      monthly: monthlyTotal.toLocaleString(),
+                      runway: survivalMonths !== null ? survivalMonths.toFixed(1) : '0.0',
+                    })}
+                  </p>
+
+                  {isAuthenticated ? (
+                    <button
+                      onClick={() => {
+                        const result = saveCurrentPlan()
+                        if (result.ok) navigate('/dashboard')
+                      }}
+                      className="inline-flex items-center justify-center gap-2 rounded-[20px] bg-[#6f35e5] px-5 py-3 font-semibold text-white shadow-[0_16px_34px_rgba(111,53,229,0.22)] transition-transform hover:-translate-y-0.5 hover:bg-[#5c28cb]"
+                    >
+                      <BookmarkPlus size={18} />
+                      {t('auth.save_plan_cta')}
+                    </button>
+                  ) : (
+                    <Link
+                      to="/signin"
+                      state={{ next: '/plan' }}
+                      className="inline-flex items-center justify-center gap-2 rounded-[20px] bg-[#2f2150] px-5 py-3 font-semibold text-white shadow-[0_16px_34px_rgba(47,33,80,0.20)] transition-transform hover:-translate-y-0.5 hover:bg-[#24193d]"
+                    >
+                      <LockKeyhole size={18} />
+                      {t('auth.signin_to_save')}
+                    </Link>
+                  )}
+                </div>
               </div>
             </motion.div>
           )}

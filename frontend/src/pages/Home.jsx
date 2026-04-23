@@ -6,38 +6,73 @@ import useStore from '@/store/useStore'
 import { useCurrency } from '@/hooks/useCurrency'
 import { NZFernIcon } from '@/components/common/NZFernIcon'
 import { CITIES } from '@/data/cities'
+import { HowItWorks } from '@/components/home/HowItWorks'
 
 function MountainSilhouette() {
   return (
     <svg
       className="absolute bottom-0 left-0 w-full"
-      viewBox="0 0 1440 200"
+      viewBox="0 0 1440 240"
       preserveAspectRatio="none"
-      fill="rgba(255,255,255,0.06)"
     >
-      <path d="M0,200 L0,120 L80,80 L160,100 L240,60 L320,90 L400,40 L480,70 L560,30 L640,55 L720,20 L800,50 L880,15 L960,45 L1040,25 L1120,60 L1200,35 L1280,70 L1360,50 L1440,80 L1440,200 Z" />
-      <path d="M0,200 L0,150 L120,110 L240,130 L360,90 L480,120 L600,80 L720,105 L840,70 L960,100 L1080,75 L1200,110 L1320,85 L1440,120 L1440,200 Z" fill="rgba(255,255,255,0.04)" />
+      <motion.path
+        d="M0,240 L0,140 L80,100 L160,120 L240,75 L320,108 L400,55 L480,88 L560,42 L640,70 L720,30 L800,62 L880,22 L960,56 L1040,35 L1120,72 L1200,44 L1280,82 L1360,60 L1440,95 L1440,240 Z"
+        fill="rgba(255,255,255,0.05)"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 1.4, delay: 0.3 }}
+      />
+      <motion.path
+        d="M0,240 L0,165 L100,132 L200,152 L320,108 L440,138 L560,98 L680,124 L800,88 L920,116 L1040,90 L1160,128 L1280,100 L1400,136 L1440,142 L1440,240 Z"
+        fill="rgba(255,255,255,0.07)"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 1.4, delay: 0.5 }}
+      />
+      <motion.path
+        d="M0,240 L0,185 L160,158 L280,172 L400,148 L520,165 L640,138 L760,158 L880,130 L1000,154 L1120,132 L1240,162 L1360,140 L1440,168 L1440,240 Z"
+        fill="rgba(255,255,255,0.10)"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 1.4, delay: 0.7 }}
+      />
     </svg>
   )
 }
 
-const STEPS = [
-  {
-    icon: '🎒',
-    key: 'step1',
-    color: 'from-violet-500 to-brand',
-  },
-  {
-    icon: '🏙️',
-    key: 'step2',
-    color: 'from-emerald-500 to-nz',
-  },
-  {
-    icon: '📊',
-    key: 'step3',
-    color: 'from-amber-400 to-orange-500',
-  },
+/* Cloud data — Aotearoa: Land of the Long White Cloud */
+const CLOUDS = [
+  { top: '6%',  w: 440, h: 48, op: 0.10, dur: 52, delay: '0s',    blur: 20 },
+  { top: '13%', w: 620, h: 58, op: 0.07, dur: 68, delay: '-22s',  blur: 26 },
+  { top: '3%',  w: 300, h: 38, op: 0.09, dur: 40, delay: '-12s',  blur: 14 },
+  { top: '20%', w: 500, h: 65, op: 0.06, dur: 60, delay: '-38s',  blur: 28 },
+  { top: '10%', w: 360, h: 44, op: 0.08, dur: 48, delay: '-48s',  blur: 16 },
+  { top: '17%', w: 260, h: 36, op: 0.07, dur: 44, delay: '-30s',  blur: 18 },
 ]
+
+function CloudDrift() {
+  return (
+    <div className="absolute top-0 left-0 w-full h-2/3 pointer-events-none overflow-hidden">
+      {CLOUDS.map((c, i) => (
+        <div
+          key={i}
+          style={{
+            position: 'absolute',
+            top: c.top,
+            left: 0,
+            width: c.w,
+            height: c.h,
+            borderRadius: '50%',
+            background: `rgba(255,255,255,${c.op})`,
+            filter: `blur(${c.blur}px)`,
+            animation: `cloudDrift ${c.dur}s linear ${c.delay} infinite`,
+          }}
+        />
+      ))}
+    </div>
+  )
+}
+
 
 export default function Home() {
   const { t } = useTranslation()
@@ -53,134 +88,117 @@ export default function Home() {
         <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-bd via-transparent to-nz" />
 
         <MountainSilhouette />
+        <CloudDrift />
 
         {/* Decorative circles */}
-        <div className="absolute top-20 right-10 w-64 h-64 rounded-full bg-white/5 blur-3xl" />
-        <div className="absolute bottom-20 left-10 w-48 h-48 rounded-full bg-nz/10 blur-2xl" />
+        <div className="absolute top-20 right-10 w-64 h-64 rounded-full bg-white/5 blur-3xl pointer-events-none" />
+        <div className="absolute bottom-20 left-10 w-48 h-48 rounded-full bg-nz/10 blur-2xl pointer-events-none" />
 
         <div className="relative z-10 max-w-6xl mx-auto px-6 py-20 md:py-28 w-full">
           <div className="max-w-3xl">
-            {/* Flag badge */}
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.1 }}
-              className="inline-flex items-center gap-2.5 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full px-4 py-2 mb-8"
-            >
-              <span className="text-lg">🇧🇩</span>
-              <span className="text-white/60 text-sm">→</span>
-              <span className="text-lg">🇳🇿</span>
-              <span className="text-white/80 text-sm font-medium ml-1">
-                {language === 'BN' ? t('home.flag_badge') : t('home.flag_badge')}
-              </span>
-            </motion.div>
-
-            {/* Bengali tagline (always shown as design element) */}
-            <motion.p
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="font-bengali text-brand-soft text-lg mb-3 font-medium"
-            >
-              আপনার নতুন জীবন পরিকল্পনা করুন
-            </motion.p>
-
-            <motion.h1
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-              className="font-serif text-4xl md:text-5xl lg:text-6xl font-bold text-white leading-tight text-balance"
-            >
-              {t('home.hero_title')}
-            </motion.h1>
-
-            <motion.p
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.45 }}
-              className="text-white/70 text-lg md:text-xl mt-5 leading-relaxed max-w-xl"
-            >
-              {t('home.hero_subtitle')}
-            </motion.p>
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.6 }}
-              className="flex flex-col sm:flex-row gap-3 mt-8"
-            >
-              <Link
-                to="/plan"
-                className="inline-flex items-center gap-2 px-7 py-3.5 bg-white text-brand font-bold rounded-xl hover:bg-brand-light transition-colors shadow-brand-lg text-base"
+            <div>
+              {/* Flag badge */}
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.1 }}
+                className="inline-flex items-center gap-2.5 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full px-4 py-2 mb-8"
               >
-                {t('home.cta_start')}
-                <ArrowRight size={18} />
-              </Link>
-              <Link
-                to="/essentials"
-                className="inline-flex items-center gap-2 px-7 py-3.5 bg-white/10 text-white font-semibold rounded-xl hover:bg-white/20 border border-white/20 transition-colors text-base"
-              >
-                {t('home.explore_guide')}
-              </Link>
-            </motion.div>
+                <span className="text-lg">🇧🇩</span>
+                <span className="text-white/60 text-sm">→</span>
+                <span className="text-lg">🇳🇿</span>
+                <span className="text-white/80 text-sm font-medium ml-1">
+                  {t('home.flag_badge')}
+                </span>
+              </motion.div>
 
-            {/* Quick trust signals */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.8 }}
-              className="flex flex-wrap gap-x-6 gap-y-2 mt-8"
-            >
-              {[t('home.signal_free'), t('home.signal_currency'), t('home.signal_language')].map(s => (
-                <div key={s} className="flex items-center gap-1.5 text-white/60 text-sm">
-                  <CheckCircle size={14} className="text-nz" />
-                  <span>{s}</span>
-                </div>
-              ))}
-            </motion.div>
+              {/* Bengali-forward headline */}
+              {language === 'BN' ? (
+                <>
+                  <motion.h1
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.25 }}
+                    className="font-bengali text-4xl md:text-5xl lg:text-[3.25rem] font-bold text-white leading-tight"
+                  >
+                    {t('home.hero_title_bn_primary')}
+                  </motion.h1>
+                  <motion.p
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.4 }}
+                    className="font-bengali text-white/65 text-base md:text-lg mt-5 leading-relaxed max-w-lg"
+                  >
+                    {t('home.hero_subtitle_bn')}
+                  </motion.p>
+                </>
+              ) : (
+                <>
+                  {/* EN: decorative Bengali sub-tagline + punchy English headline */}
+                  <motion.p
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2 }}
+                    className="font-bengali text-brand-soft text-base mb-3 font-medium"
+                  >
+                    শুরুটা হোক পরিষ্কার, গভীরে যান পরে।
+                  </motion.p>
+                  <motion.h1
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.3 }}
+                    className="font-serif text-4xl md:text-5xl lg:text-[3.25rem] font-bold text-white leading-tight text-balance"
+                  >
+                    {t('home.hero_title')}
+                  </motion.h1>
+                  <motion.p
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.45 }}
+                    className="text-white/70 text-lg mt-5 leading-relaxed max-w-lg"
+                  >
+                    {t('home.hero_subtitle')}
+                  </motion.p>
+                </>
+              )}
+
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.6 }}
+                className="flex flex-col sm:flex-row gap-3 mt-8"
+              >
+                <Link
+                  to="/plan"
+                  className="inline-flex items-center gap-2 px-8 py-4 bg-white text-brand font-bold rounded-xl hover:bg-brand-light transition-colors shadow-brand-lg text-base"
+                >
+                  {t('home.cta_start')}
+                  <ArrowRight size={18} />
+                </Link>
+              </motion.div>
+
+              {/* Trust signals */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.8 }}
+                className="flex flex-wrap gap-x-6 gap-y-2 mt-8"
+              >
+                {[t('home.signal_free'), t('home.signal_currency'), t('home.signal_language')].map(s => (
+                  <div key={s} className="flex items-center gap-1.5 text-white/60 text-sm">
+                    <CheckCircle size={14} className="text-nz" />
+                    <span>{s}</span>
+                  </div>
+                ))}
+              </motion.div>
+            </div>
+
           </div>
         </div>
       </section>
 
-      {/* ── 3 Steps ──────────────────────────────────────────────── */}
-      <section className="py-16 md:py-20 max-w-6xl mx-auto px-6">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="text-center mb-12"
-        >
-          <h2 className="font-serif text-3xl md:text-4xl font-bold text-brand-deep">
-            How it works
-          </h2>
-          <p className="text-gray-500 mt-3">Three steps. No login required.</p>
-        </motion.div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 relative">
-          {/* Connector line (desktop) */}
-          <div className="hidden md:block absolute top-10 left-1/6 right-1/6 h-0.5 bg-gradient-to-r from-brand-mid via-brand-soft to-brand-mid" />
-
-          {STEPS.map((step, i) => (
-            <motion.div
-              key={step.key}
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: i * 0.15 }}
-              className="relative bg-white rounded-2xl border border-brand-mid p-6 shadow-brand-sm text-center"
-            >
-              <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${step.color} flex items-center justify-center text-2xl mx-auto mb-4 shadow-brand-sm`}>
-                {step.icon}
-              </div>
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-6 h-6 bg-white border-2 border-brand-mid rounded-full flex items-center justify-center text-xs font-bold text-brand">
-                {i + 1}
-              </div>
-              <h3 className="font-bold text-gray-900 text-base mb-2">{t(`home.${step.key}_title`)}</h3>
-              <p className="text-gray-500 text-sm leading-relaxed">{t(`home.${step.key}_desc`)}</p>
-            </motion.div>
-          ))}
-        </div>
-      </section>
+      {/* ── How it works (animated steps) ────────────────────────── */}
+      <HowItWorks />
 
       {/* ── City strip ───────────────────────────────────────────── */}
       <section className="py-12 bg-white border-y border-brand-mid">

@@ -1,0 +1,42 @@
+# OS / editor
+.DS_Store
+.idea/
+*.iml
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+*.local
+
+# Logs
+*.log
+logs/
+
+# Backend (Spring Boot / Maven)
+backend/target/
+backend/.mvn/
+backend/**/*.class
+
+# Frontend (Vite / React)
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# Admin frontend
+admin-frontend/node_modules/
+admin-frontend/dist/
+admin-frontend/.vite/
+
+# Mobile / Flutter
+mobile/.dart_tool/
+mobile/.flutter-plugins
+mobile/.flutter-plugins-dependencies
+mobile/.packages
+mobile/build/
+mobile/.idea/
+
+# Coverage / reports
+coverage/
+reports/
+

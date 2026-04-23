@@ -1,0 +1,86 @@
+{
+  "nav": {
+    "home": "Home",
+    "plan": "Plan",
+    "dashboard": "Dashboard",
+    "guide": "Guide"
+  },
+  "home": {
+    "hero_title": "Plan Your New Life in New Zealand",
+    "hero_subtitle": "The complete settlement planner for Bangladeshi students — budgets, cities, and step-by-step guidance in BDT and NZD.",
+    "cta_start": "Start Planning",
+    "step1_title": "Pick Your Lifestyle",
+    "step1_desc": "Choose who you're planning for — Solo, Couple, or Family.",
+    "step2_title": "Choose Your City",
+    "step2_desc": "Auckland, Wellington, Christchurch, Hamilton, or Dunedin.",
+    "step3_title": "Know Your Budget",
+    "step3_desc": "See exactly how long your savings will last — in BDT and NZD.",
+    "city_strip_title": "Weekly Rent by City",
+    "city_strip_subtitle": "Estimated shared accommodation, per person",
+    "flag_badge": "Helping Bangladeshis settle in New Zealand",
+    "explore_guide": "Explore NZ Guide",
+    "view_dashboard": "View Dashboard"
+  },
+  "planner": {
+    "lifestyle_prompt": "Who are you planning for?",
+    "lifestyle_subprompt": "Pick your situation — we'll load the right cost template automatically.",
+    "city_prompt": "Which city are you moving to?",
+    "city_subprompt": "Select a city to see suburb-level cost estimates.",
+    "back": "Back",
+    "tabs": {
+      "monthly": "Monthly Living",
+      "moving": "Moving Cost",
+      "fund": "Living Fund"
+    },
+    "add_category": "+ Add Category",
+    "monthly_total": "Monthly Total",
+    "edit_hint": "Click any amount to edit",
+    "bond_auto": "Auto (4× weekly rent)",
+    "day1_title": "You need on Day 1",
+    "day1_subtitle": "Liquid cash needed before you can move in",
+    "fund_label": "Your Living Fund",
+    "fund_currency_hint": "(enter in BDT)",
+    "fund_disclaimer": "Enter your savings for accommodation and living costs only. Do not include tuition fees or money reserved for other purposes.",
+    "survival_months": "months of runway",
+    "affordability_safe": "SAFE",
+    "affordability_tight": "TIGHT",
+    "affordability_risky": "RISKY",
+    "enter_fund_prompt": "Enter your living fund above to see your survival window",
+    "add_category_placeholder": "Category name",
+    "amount_placeholder": "Amount (NZD)"
+  },
+  "dashboard": {
+    "preview_banner": "This is a preview dashboard.",
+    "preview_cta": "Sign in to build your real plan",
+    "create_cta": "Create My Dashboard",
+    "readiness_title": "Readiness Score",
+    "readiness_subtitle": "Based on your saved plans",
+    "plans_title": "Saved Plans",
+    "stats_monthly": "Monthly Cost",
+    "stats_survival": "Survival Window",
+    "stats_setup": "Day 1 Setup",
+    "stats_target": "Savings Target",
+    "timeline_title": "Post-Arrival Timeline",
+    "timeline_subtitle": "When to buy what after you land",
+    "donut_title": "Monthly Breakdown",
+    "week1": "Week 1",
+    "month1": "Month 1",
+    "month3": "Month 3+",
+    "demo_label": "Demo data"
+  },
+  "guide": {
+    "title": "NZ Essentials for BD Students",
+    "subtitle": "Everything you need to know before and after you land — written for Bangladeshis.",
+    "read_more": "Read more",
+    "collapse": "Collapse"
+  },
+  "common": {
+    "per_month": "/month",
+    "per_week": "/week",
+    "nzd": "NZD",
+    "bdt": "BDT",
+    "months": "months",
+    "loading": "Loading...",
+    "rate_note": "Rate: 1 NZD = 83.2 BDT (indicative)"
+  }
+}

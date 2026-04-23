@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <title>Your KiwiDream BD Admin Account</title>
+</head>
+<body style="font-family: Arial, sans-serif; background-color: #f4f7fb; margin: 0; padding: 0;">
+<table width="100%" cellpadding="0" cellspacing="0">
+    <tr>
+        <td align="center" style="padding: 40px 16px;">
+            <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 10px; overflow: hidden;">
+                <tr>
+                    <td style="background-color: #173b34; padding: 28px; text-align: center;">
+                        <h1 style="color: #ffffff; margin: 0; font-size: 24px;">KiwiDream BD Admin</h1>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="padding: 36px 32px;">
+                        <h2 style="color: #173b34; margin-top: 0;">Your admin account is ready</h2>
+                        <p style="color: #4b5563; font-size: 16px;">Hi <span th:text="${name}">there</span>,</p>
+                        <p style="color: #4b5563; font-size: 16px;">An admin account has been created for you in KiwiDream BD. Use the temporary credentials below and change your password after your first sign-in.</p>
+                        <table style="background-color: #f7faf9; border-radius: 6px; padding: 18px 20px; margin: 24px 0; width: 100%;">
+                            <tr>
+                                <td style="color: #4b5563; font-size: 15px; padding: 6px 0;"><strong>Email:</strong> <span th:text="${email}">admin@example.com</span></td>
+                            </tr>
+                            <tr>
+                                <td style="color: #4b5563; font-size: 15px; padding: 6px 0;"><strong>Temporary Password:</strong> <span th:text="${temporaryPassword}">TempPassword123</span></td>
+                            </tr>
+                        </table>
+                        <div style="text-align: center; margin: 32px 0;">
+                            <a th:href="${loginUrl}" style="background-color: #173b34; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-size: 16px; display: inline-block;">Open Admin Panel</a>
+                        </div>
+                        <p style="color: #b45309; font-size: 14px; font-weight: bold;">For security, change the temporary password immediately after signing in.</p>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="background-color: #eef5f3; padding: 20px 32px; text-align: center;">
+                        <p style="color: #6b7280; font-size: 13px; margin: 0;">KiwiDream BD helps Bangladeshi students plan their New Zealand move with confidence.</p>
+                    </td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+</table>
+</body>
+</html>

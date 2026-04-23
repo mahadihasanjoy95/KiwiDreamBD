@@ -134,6 +134,9 @@ export default function Guide() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
           >
+            <div className="inline-flex items-center rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-semibold text-white/80 mb-4">
+              {language === 'BN' ? 'NZ Essentials' : 'NZ Essentials'}
+            </div>
             <h1 className="font-serif text-3xl md:text-4xl font-bold text-white mb-3">
               {t('guide.title')}
             </h1>

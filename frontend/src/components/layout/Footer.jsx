@@ -1,9 +1,11 @@
 import { Link } from 'react-router-dom'
 import { NZFernIcon } from '@/components/common/NZFernIcon'
 import useStore from '@/store/useStore'
+import { useTranslation } from 'react-i18next'
 
 export function Footer() {
-  const { t } = { t: (k) => k }
+  const { t } = useTranslation()
+  const rate = useStore(s => s.exchangeRate)
 
   return (
     <footer className="hidden md:block bg-brand-deep text-white/60 mt-20">
@@ -18,22 +20,25 @@ export function Footer() {
           </div>
 
           <div className="flex flex-wrap gap-x-8 gap-y-2 text-sm">
-            <Link to="/plan" className="hover:text-white transition-colors">Budget Planner</Link>
-            <Link to="/dashboard" className="hover:text-white transition-colors">Dashboard</Link>
-            <Link to="/guide" className="hover:text-white transition-colors">NZ Guide</Link>
+            <Link to="/plan" className="hover:text-white transition-colors">{t('footer.planner')}</Link>
+            <Link to="/compare" className="hover:text-white transition-colors">{t('footer.compare')}</Link>
+            <Link to="/jobs" className="hover:text-white transition-colors">{t('footer.jobs')}</Link>
+            <Link to="/checklist" className="hover:text-white transition-colors">{t('footer.checklist')}</Link>
+            <Link to="/essentials" className="hover:text-white transition-colors">{t('footer.essentials')}</Link>
+            <Link to="/converter" className="hover:text-white transition-colors">{t('footer.converter')}</Link>
           </div>
 
           <div className="flex items-center gap-3 text-xs">
             <span>🇧🇩</span>
             <span className="text-white/30">→</span>
             <span>🇳🇿</span>
-            <span className="ml-2">Rate: 1 NZD ≈ 83.2 BDT</span>
+            <span className="ml-2">{t('footer.rate', { rate })}</span>
           </div>
         </div>
 
         <div className="mt-8 pt-6 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs">
-          <p>© 2026 KiwiDream BD. Built for Bangladeshi students moving to New Zealand.</p>
-          <p>Phase 1 · Data updated April 2026</p>
+          <p>{t('footer.copyright')}</p>
+          <p>{t('footer.phase')}</p>
         </div>
       </div>
     </footer>

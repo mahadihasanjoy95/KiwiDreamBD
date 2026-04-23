@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { ArrowRight, CheckCircle, MapPin, Briefcase, Heart } from 'lucide-react'
+import { ArrowRight, CheckCircle, MapPin, Briefcase, Heart, ListChecks, Landmark, Coins } from 'lucide-react'
 import useStore from '@/store/useStore'
 import { useCurrency } from '@/hooks/useCurrency'
 import { NZFernIcon } from '@/components/common/NZFernIcon'
@@ -117,7 +117,7 @@ export default function Home() {
                 <ArrowRight size={18} />
               </Link>
               <Link
-                to="/guide"
+                to="/essentials"
                 className="inline-flex items-center gap-2 px-7 py-3.5 bg-white/10 text-white font-semibold rounded-xl hover:bg-white/20 border border-white/20 transition-colors text-base"
               >
                 {t('home.explore_guide')}
@@ -131,7 +131,7 @@ export default function Home() {
               transition={{ delay: 0.8 }}
               className="flex flex-wrap gap-x-6 gap-y-2 mt-8"
             >
-              {['Free to use', 'BDT & NZD', 'EN + বাংলা'].map(s => (
+              {[t('home.signal_free'), t('home.signal_currency'), t('home.signal_language')].map(s => (
                 <div key={s} className="flex items-center gap-1.5 text-white/60 text-sm">
                   <CheckCircle size={14} className="text-nz" />
                   <span>{s}</span>
@@ -190,8 +190,8 @@ export default function Home() {
               <h2 className="font-serif text-2xl font-bold text-brand-deep">{t('home.city_strip_title')}</h2>
               <p className="text-gray-400 text-sm mt-1">{t('home.city_strip_subtitle')}</p>
             </div>
-            <Link to="/plan" className="text-brand text-sm font-semibold hover:text-brand-deep flex items-center gap-1 shrink-0">
-              Compare cities <ArrowRight size={14} />
+            <Link to="/compare" className="text-brand text-sm font-semibold hover:text-brand-deep flex items-center gap-1 shrink-0">
+              {t('home.compare_cities')} <ArrowRight size={14} />
             </Link>
           </div>
 
@@ -216,10 +216,50 @@ export default function Home() {
                     animate={{ opacity: 1 }}
                     className="text-xs font-bold text-brand"
                   >
-                    From {format(city.weeklyRentHint)}/wk
+                    {t('home.from_label')} {format(city.weeklyRentHint)}/wk
                   </motion.p>
-                  <p className="text-[10px] text-gray-400">shared room</p>
+                  <p className="text-[10px] text-gray-400">{t('home.shared_room')}</p>
                 </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="py-16 md:py-20 bg-white border-y border-brand-mid">
+        <div className="max-w-6xl mx-auto px-6">
+          <div className="mb-10">
+            <h2 className="font-serif text-3xl md:text-4xl font-bold text-brand-deep">
+              {t('home.tools_title')}
+            </h2>
+            <p className="text-gray-500 mt-3 max-w-2xl">{t('home.tools_subtitle')}</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
+            {[
+              { to: '/checklist', icon: <ListChecks size={22} className="text-brand" />, title: t('tools.checklist_title'), desc: t('tools.checklist_desc') },
+              { to: '/compare', icon: <MapPin size={22} className="text-sky-600" />, title: t('tools.compare_title'), desc: t('tools.compare_desc') },
+              { to: '/jobs', icon: <Briefcase size={22} className="text-emerald-600" />, title: t('tools.jobs_title'), desc: t('tools.jobs_desc') },
+              { to: '/essentials', icon: <Landmark size={22} className="text-amber-600" />, title: t('tools.essentials_title'), desc: t('tools.essentials_desc') },
+              { to: '/converter', icon: <Coins size={22} className="text-rose-600" />, title: t('tools.converter_title'), desc: t('tools.converter_desc') },
+            ].map((tool, i) => (
+              <motion.div
+                key={tool.to}
+                initial={{ opacity: 0, y: 16 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.06 }}
+              >
+                <Link
+                  to={tool.to}
+                  className="block h-full bg-brand-light rounded-2xl border border-brand-mid p-5 shadow-brand-sm hover:-translate-y-1 transition-transform"
+                >
+                  <div className="w-11 h-11 rounded-2xl bg-white flex items-center justify-center shadow-sm">
+                    {tool.icon}
+                  </div>
+                  <h3 className="font-bold text-gray-900 mt-4">{tool.title}</h3>
+                  <p className="text-sm text-gray-500 mt-2 leading-relaxed">{tool.desc}</p>
+                </Link>
               </motion.div>
             ))}
           </div>

@@ -147,7 +147,6 @@ export function FloatingPrefs() {
         drag
         dragMomentum={false}
         dragElastic={0.06}
-        style={{ x, y }}
         dragConstraints={dragBounds}
         onDragEnd={handleDragEnd}
         onTap={() => setOpen(v => !v)}

@@ -5,6 +5,7 @@ import { NZFernIcon } from '@/components/common/NZFernIcon'
 import { CurrencyToggle } from '@/components/common/CurrencyToggle'
 import { LanguageToggle } from '@/components/common/LanguageToggle'
 import { cn } from '@/utils/cn'
+import useStore from '@/store/useStore'
 
 const NAV_LINKS = [
   { to: '/',          key: 'home' },
@@ -16,6 +17,8 @@ const NAV_LINKS = [
 export function Navbar() {
   const { t } = useTranslation()
   const location = useLocation()
+  const isAuthenticated = useStore(s => s.isAuthenticated)
+  const user = useStore(s => s.user)
 
   return (
     <motion.nav
@@ -62,12 +65,24 @@ export function Navbar() {
       <div className="flex items-center gap-3 shrink-0">
         <LanguageToggle />
         <CurrencyToggle />
-        <Link
-          to="/plan"
-          className="ml-2 px-4 py-2 bg-brand text-white text-sm font-semibold rounded-lg hover:bg-brand-deep transition-colors"
-        >
-          {t('home.cta_start')} →
-        </Link>
+        {isAuthenticated ? (
+          <Link
+            to="/profile"
+            className="ml-2 inline-flex items-center gap-2 px-4 py-2 bg-white/10 text-white text-sm font-semibold rounded-lg hover:bg-white/20 transition-colors"
+          >
+            <span className="w-7 h-7 rounded-full bg-white text-brand text-xs font-bold flex items-center justify-center">
+              {(user?.name || 'G').slice(0, 1).toUpperCase()}
+            </span>
+            <span>{user?.name || t('auth.guest_user')}</span>
+          </Link>
+        ) : (
+          <Link
+            to="/signin"
+            className="ml-2 inline-flex items-center px-4 py-2 bg-brand text-white text-sm font-semibold rounded-lg hover:bg-brand-deep transition-colors"
+          >
+            {t('auth.signin_inline')}
+          </Link>
+        )}
       </div>
     </motion.nav>
   )

@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware'
 import { getTemplate } from '@/data/templates'
 import { DEFAULT_MOVING_ITEMS } from '@/data/movingCosts'
 import i18n from 'i18next'
+import { calcSurvivalMonths, getAffordabilityStatus } from '@/utils/affordability'
 
 const useStore = create(
   persist(
@@ -18,6 +19,51 @@ const useStore = create(
         set({ language: l })
         i18n.changeLanguage(l.toLowerCase())
       },
+
+      // ── Demo auth state ───────────────────────────────────────
+      isAuthenticated: false,
+      user: null,
+      savedPlans: [],
+
+      loginDemo: ({ name, email, provider = 'LOCAL' } = {}) => {
+        const displayName = name?.trim() || 'Guest User'
+        const displayEmail = email?.trim() || 'guest@kiwidreambd.demo'
+        set({
+          isAuthenticated: true,
+          user: {
+            name: displayName,
+            email: displayEmail,
+            provider,
+            city: null,
+            phone: '',
+            preferredLanguage: get().language,
+            preferredCurrency: get().currency,
+            bio: 'Planning my New Zealand move with KiwiDream BD.',
+          },
+        })
+      },
+
+      socialLoginDemo: (provider) => {
+        const labelMap = {
+          GOOGLE: 'Google Guest',
+          APPLE: 'Apple Guest',
+          FACEBOOK: 'Facebook Guest',
+        }
+        get().loginDemo({
+          name: labelMap[provider] || 'Guest User',
+          email: `guest.${String(provider || 'local').toLowerCase()}@kiwidreambd.demo`,
+          provider,
+        })
+      },
+
+      logoutDemo: () => set({
+        isAuthenticated: false,
+        user: null,
+      }),
+
+      updateProfileDemo: (payload) => set((state) => ({
+        user: state.user ? { ...state.user, ...payload } : state.user,
+      })),
 
       // ── Plan wizard state ────────────────────────────────────
       selectedLifestyle: null,
@@ -135,12 +181,54 @@ const useStore = create(
         movingItems: DEFAULT_MOVING_ITEMS.map(item => ({ ...item })),
         livingFundBDT: '',
       }),
+
+      saveCurrentPlan: () => {
+        const state = get()
+        if (!state.isAuthenticated) return { ok: false, reason: 'AUTH_REQUIRED' }
+
+        const cityLabel = state.selectedCity?.replace(/_/g, ' ') || 'Custom'
+        const lifestyleLabel = state.selectedLifestyle
+          ? state.selectedLifestyle.replaceAll('_', ' ').toLowerCase().replace(/\b\w/g, c => c.toUpperCase())
+          : 'Custom Plan'
+
+        const monthlyTotalNZD = state.planCategories.reduce((sum, item) => sum + (item.estimatedAmountNZD || 0), 0)
+        const setupCostNZD = state.movingItems.reduce((sum, item) => {
+          const rentMonthly = state.planCategories.find(c => c.categoryName === 'Rent')?.estimatedAmountNZD ?? 0
+          const amount = item.autoCalc ? rentMonthly : (item.amountNZD || 0)
+          return sum + amount
+        }, 0)
+        const survivalMonths = state.livingFundBDT
+          ? calcSurvivalMonths(state.livingFundBDT, monthlyTotalNZD, state.exchangeRate)
+          : null
+        const affordability = getAffordabilityStatus(survivalMonths) || 'TIGHT'
+
+        const savedPlan = {
+          id: `plan-${Date.now()}`,
+          planName: `${cityLabel} ${lifestyleLabel}`.trim(),
+          city: cityLabel,
+          lifestyleLabel,
+          monthlyTotalNZD,
+          setupCostNZD,
+          survivalMonths: survivalMonths ?? 0,
+          affordability,
+          savedAt: new Date().toISOString(),
+        }
+
+        set((current) => ({
+          savedPlans: [savedPlan, ...current.savedPlans],
+        }))
+
+        return { ok: true, plan: savedPlan }
+      },
     }),
     {
       name: 'kiwi-dream-plan-v1',
       partialize: (state) => ({
         currency: state.currency,
         language: state.language,
+        isAuthenticated: state.isAuthenticated,
+        user: state.user,
+        savedPlans: state.savedPlans,
         selectedLifestyle: state.selectedLifestyle,
         selectedCity: state.selectedCity,
         planCategories: state.planCategories,

@@ -52,34 +52,58 @@ export default function Dashboard() {
   const { t } = useTranslation()
   const language = useStore(s => s.language)
   const { format } = useCurrency()
+  const isAuthenticated = useStore(s => s.isAuthenticated)
+  const user = useStore(s => s.user)
+  const savedPlans = useStore(s => s.savedPlans)
+
+  const plans = isAuthenticated && savedPlans.length > 0 ? savedPlans : DEMO_PLANS
 
   return (
     <div className="min-h-screen bg-brand-light">
       {/* Preview banner */}
-      <motion.div
-        initial={{ y: -40, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        className="bg-amber-50 border-b border-amber-200 px-4 py-3"
-      >
-        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div className="flex items-center gap-2 text-sm text-amber-800">
-            <span>👁️</span>
-            <span className="font-medium">{t('dashboard.preview_banner')}</span>
-            <span className="text-amber-600">{t('dashboard.preview_cta')}</span>
-          </div>
-          <motion.div
-            animate={{ scale: [1, 1.04, 1] }}
-            transition={{ repeat: Infinity, duration: 2.5, ease: 'easeInOut' }}
-          >
-            <Link
-              to="/plan"
-              className="px-4 py-2 bg-brand text-white text-sm font-bold rounded-xl hover:bg-brand-deep transition-colors shrink-0"
+      {!isAuthenticated ? (
+        <motion.div
+          initial={{ y: -40, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          className="bg-amber-50 border-b border-amber-200 px-4 py-3"
+        >
+          <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="flex items-center gap-2 text-sm text-amber-800">
+              <span>👁️</span>
+              <span className="font-medium">{t('dashboard.preview_banner')}</span>
+              <span className="text-amber-600">{t('dashboard.preview_cta')}</span>
+            </div>
+            <motion.div
+              animate={{ scale: [1, 1.04, 1] }}
+              transition={{ repeat: Infinity, duration: 2.5, ease: 'easeInOut' }}
             >
-              {t('dashboard.create_cta')} →
+              <Link
+                to="/signin"
+                state={{ next: '/dashboard' }}
+                className="px-4 py-2 bg-brand text-white text-sm font-bold rounded-xl hover:bg-brand-deep transition-colors shrink-0"
+              >
+                {t('dashboard.create_cta')} →
+              </Link>
+            </motion.div>
+          </div>
+        </motion.div>
+      ) : (
+        <motion.div
+          initial={{ y: -40, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          className="bg-emerald-50 border-b border-emerald-200 px-4 py-3"
+        >
+          <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="flex items-center gap-2 text-sm text-emerald-800">
+              <span>✨</span>
+              <span className="font-medium">{t('dashboard.welcome_back', { name: user?.name || t('auth.guest_user') })}</span>
+            </div>
+            <Link to="/profile" className="px-4 py-2 bg-white text-emerald-700 text-sm font-bold rounded-xl hover:bg-emerald-100 transition-colors shrink-0">
+              {t('dashboard.profile_cta')}
             </Link>
-          </motion.div>
-        </div>
-      </motion.div>
+          </div>
+        </motion.div>
+      )}
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-8">
         {/* Top row: Readiness ring + Stats */}
@@ -128,7 +152,7 @@ export default function Dashboard() {
         <div>
           <h2 className="font-serif text-xl font-bold text-brand-deep mb-4">{t('dashboard.plans_title')}</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {DEMO_PLANS.map((plan, i) => (
+            {plans.map((plan, i) => (
               <PlanCard key={plan.id} plan={plan} delay={i * 0.1} />
             ))}
           </div>

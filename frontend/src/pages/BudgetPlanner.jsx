@@ -1,5 +1,7 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
+import { Link, useNavigate } from 'react-router-dom'
+import { BookmarkPlus, LockKeyhole } from 'lucide-react'
 import useStore from '@/store/useStore'
 import { LifestyleCards } from '@/components/budget/LifestyleCards'
 import { CitySelector } from '@/components/budget/CitySelector'
@@ -9,6 +11,7 @@ import { LivingFund } from '@/components/budget/LivingFund'
 import { LIFESTYLE_TYPES } from '@/data/templates'
 import { CITIES } from '@/data/cities'
 import { cn } from '@/utils/cn'
+import { useAffordability } from '@/hooks/useAffordability'
 
 const TABS = ['monthly', 'moving', 'fund']
 
@@ -20,12 +23,17 @@ const slideVariants = {
 
 export default function BudgetPlanner() {
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const wizardStep = useStore(s => s.wizardStep)
   const activeTab = useStore(s => s.activeTab)
   const setActiveTab = useStore(s => s.setActiveTab)
   const selectedLifestyle = useStore(s => s.selectedLifestyle)
   const selectedCity = useStore(s => s.selectedCity)
   const language = useStore(s => s.language)
+  const isAuthenticated = useStore(s => s.isAuthenticated)
+  const saveCurrentPlan = useStore(s => s.saveCurrentPlan)
+  const savedPlans = useStore(s => s.savedPlans)
+  const { monthlyTotal, survivalMonths } = useAffordability()
 
   const lifestyle = selectedLifestyle ? LIFESTYLE_TYPES[selectedLifestyle] : null
   const city = selectedCity ? CITIES.find(c => c.id === selectedCity) : null
@@ -144,6 +152,49 @@ export default function BudgetPlanner() {
                   {activeTab === 2 && <LivingFund />}
                 </motion.div>
               </AnimatePresence>
+
+              <div className="mt-6 bg-white rounded-2xl border border-brand-mid p-5 shadow-brand-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
+                    {t('auth.save_plan_label')}
+                  </p>
+                  <p className="text-sm text-gray-600 mt-2">
+                    {isAuthenticated
+                      ? t('auth.save_plan_signedin', { count: savedPlans.length })
+                      : t('auth.save_plan_signedout')}
+                  </p>
+                  {monthlyTotal > 0 ? (
+                    <p className="text-xs text-gray-400 mt-2">
+                      {t('auth.plan_snapshot', {
+                        monthly: monthlyTotal.toLocaleString(),
+                        runway: survivalMonths !== null ? survivalMonths.toFixed(1) : '0.0',
+                      })}
+                    </p>
+                  ) : null}
+                </div>
+
+                {isAuthenticated ? (
+                  <button
+                    onClick={() => {
+                      const result = saveCurrentPlan()
+                      if (result.ok) navigate('/dashboard')
+                    }}
+                    className="inline-flex items-center justify-center gap-2 rounded-2xl bg-brand text-white px-5 py-3 font-semibold hover:bg-brand-deep transition-colors"
+                  >
+                    <BookmarkPlus size={18} />
+                    {t('auth.save_plan_cta')}
+                  </button>
+                ) : (
+                  <Link
+                    to="/signin"
+                    state={{ next: '/plan' }}
+                    className="inline-flex items-center justify-center gap-2 rounded-2xl bg-brand-deep text-white px-5 py-3 font-semibold hover:bg-[#26134d] transition-colors"
+                  >
+                    <LockKeyhole size={18} />
+                    {t('auth.signin_to_save')}
+                  </Link>
+                )}
+              </div>
             </motion.div>
           )}
         </AnimatePresence>

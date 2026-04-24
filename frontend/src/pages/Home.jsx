@@ -6,6 +6,9 @@ import useStore from '@/store/useStore'
 import { useCurrency } from '@/hooks/useCurrency'
 import { NZFernIcon } from '@/components/common/NZFernIcon'
 import { CITIES } from '@/data/cities'
+import cloud1 from '@/assets/images/cloud_1.png'
+import cloud3 from '@/assets/images/cloud_3.png'
+import cloud4 from '@/assets/images/cloud_4.png'
 import { HowItWorks } from '@/components/home/HowItWorks'
 
 function MountainSilhouette() {
@@ -40,32 +43,34 @@ function MountainSilhouette() {
   )
 }
 
-/* Cloud data — Aotearoa: Land of the Long White Cloud */
+/* ── PNG clouds — Aotearoa: Land of the Long White Cloud ── */
 const CLOUDS = [
-  { top: '6%',  w: 440, h: 48, op: 0.10, dur: 52, delay: '0s',    blur: 20 },
-  { top: '13%', w: 620, h: 58, op: 0.07, dur: 68, delay: '-22s',  blur: 26 },
-  { top: '3%',  w: 300, h: 38, op: 0.09, dur: 40, delay: '-12s',  blur: 14 },
-  { top: '20%', w: 500, h: 65, op: 0.06, dur: 60, delay: '-38s',  blur: 28 },
-  { top: '10%', w: 360, h: 44, op: 0.08, dur: 48, delay: '-48s',  blur: 16 },
-  { top: '17%', w: 260, h: 36, op: 0.07, dur: 44, delay: '-30s',  blur: 18 },
+  { src: cloud1, top: '3%',  w: 580, op: 0.22, dur: 58, delay: '0s'   },
+  { src: cloud3, top: '15%', w: 760, op: 0.16, dur: 78, delay: '-28s' },
+  { src: cloud4, top: '1%',  w: 420, op: 0.20, dur: 45, delay: '-15s' },
+  { src: cloud1, top: '26%', w: 660, op: 0.13, dur: 70, delay: '-44s' },
+  { src: cloud3, top: '10%', w: 500, op: 0.18, dur: 54, delay: '-54s' },
+  { src: cloud4, top: '21%', w: 360, op: 0.15, dur: 48, delay: '-35s' },
+  { src: cloud1, top: '7%',  w: 300, op: 0.12, dur: 62, delay: '-20s' },
 ]
 
 function CloudDrift() {
   return (
-    <div className="absolute top-0 left-0 w-full h-2/3 pointer-events-none overflow-hidden">
+    <div className="absolute top-0 left-0 w-full h-[70%] pointer-events-none overflow-hidden">
       {CLOUDS.map((c, i) => (
-        <div
+        <img
           key={i}
+          src={c.src}
+          alt=""
           style={{
             position: 'absolute',
             top: c.top,
             left: 0,
             width: c.w,
-            height: c.h,
-            borderRadius: '50%',
-            background: `rgba(255,255,255,${c.op})`,
-            filter: `blur(${c.blur}px)`,
+            opacity: c.op,
             animation: `cloudDrift ${c.dur}s linear ${c.delay} infinite`,
+            userSelect: 'none',
+            mixBlendMode: 'screen',
           }}
         />
       ))}

@@ -27,8 +27,17 @@
 }
 
 @keyframes cloudDrift {
-  from { transform: translateX(-560px); }
-  to   { transform: translateX(1900px); }
+  0% {
+    transform: translate3d(-620px, 0, 0) scale(1);
+  }
+
+  50% {
+    transform: translate3d(520px, -10px, 0) scale(1.015);
+  }
+
+  100% {
+    transform: translate3d(1840px, 0, 0) scale(1);
+  }
 }
 
 @layer utilities {

@@ -2,6 +2,7 @@ import { Routes, Route } from 'react-router-dom'
 import { Navbar } from '@/components/layout/Navbar'
 import { BottomNav } from '@/components/layout/BottomNav'
 import { Footer } from '@/components/layout/Footer'
+import { FloatingPrefs } from '@/components/layout/FloatingPrefs'
 import Home from '@/pages/Home'
 import BudgetPlanner from '@/pages/BudgetPlanner'
 import Dashboard from '@/pages/Dashboard'
@@ -38,6 +39,7 @@ export default function App() {
           <Route path="/profile" element={<Profile />} />
         </Routes>
       </main>
+      <FloatingPrefs />
       <BottomNav />
       <Footer />
     </div>

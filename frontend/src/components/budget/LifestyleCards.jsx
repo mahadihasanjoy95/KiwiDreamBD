@@ -44,11 +44,11 @@ const CARD_META = {
 
 const containerV = {
   hidden: {},
-  show: { transition: { staggerChildren: 0.09 } },
+  show: { transition: { staggerChildren: 0.05 } },
 }
 const cardV = {
-  hidden: { opacity: 0, y: 40, scale: 0.95 },
-  show:   { opacity: 1, y: 0,  scale: 1, transition: { type: 'spring', stiffness: 260, damping: 22 } },
+  hidden: { opacity: 0, y: 24, scale: 0.96 },
+  show:   { opacity: 1, y: 0,  scale: 1, transition: { type: 'spring', stiffness: 320, damping: 24 } },
 }
 
 export function LifestyleCards() {
@@ -63,10 +63,7 @@ export function LifestyleCards() {
   const handleSelect = (id) => {
     setConfirmingId(id)
     setLifestyle(id)
-    setTimeout(() => {
-      setConfirmingId(null)
-      setWizardStep(1)
-    }, 520)
+    setWizardStep(1)
   }
 
   const cards = Object.values(LIFESTYLE_TYPES)
@@ -140,7 +137,7 @@ export function LifestyleCards() {
                 onHoverStart={() => setHoveredId(type.id)}
                 onHoverEnd={() => setHoveredId(null)}
                 whileTap={{ scale: 0.97 }}
-                animate={isConfirming ? { scale: [1, 1.04, 1] } : {}}
+                animate={isConfirming ? { scale: [1, 1.04, 1] } : undefined}
                 transition={{ duration: 0.3 }}
                 className="relative flex flex-col text-left rounded-[28px] overflow-hidden cursor-pointer focus:outline-none"
                 style={{

@@ -18,7 +18,7 @@ import {
   X,
 } from 'lucide-react'
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts'
-import useStore from '@/store/useStore'
+import useStore, { MONEY_LIMITS } from '@/store/useStore'
 import { useCurrency } from '@/hooks/useCurrency'
 import { cn } from '@/utils/cn'
 
@@ -157,7 +157,7 @@ export function MonthlyPlan() {
               const Icon = findIcon(category.categoryName)
               const share = total > 0 ? Math.round((category.estimatedAmountNZD / total) * 100) : 0
               const accent = CHART_COLORS[index % CHART_COLORS.length]
-              const sliderMax = Math.max(1200, Math.ceil((category.estimatedAmountNZD || 0) * 2 / 50) * 50)
+              const sliderMax = MONEY_LIMITS.monthlyCategoryNZD
 
               return (
                 <motion.div
@@ -225,6 +225,8 @@ export function MonthlyPlan() {
                                 : 'border-[#ede2d3] text-[#173526] hover:border-[#d8c8b5]'
                             )}
                             min="0"
+                            max={MONEY_LIMITS.monthlyCategoryNZD}
+                            step="50"
                           />
                         </div>
 
@@ -252,7 +254,7 @@ export function MonthlyPlan() {
                         <div className="mt-2 flex items-center justify-between text-[11px] text-[#9c8f83]">
                           <span>0</span>
                           <span>{t('planner.adjust_hint')}</span>
-                          <span>{sliderMax}</span>
+                          <span>{format(sliderMax)}</span>
                         </div>
                       </div>
                     </div>
@@ -289,6 +291,8 @@ export function MonthlyPlan() {
                   onChange={e => setNewAmount(e.target.value)}
                   className="rounded-2xl border border-[#eadfce] bg-white px-4 py-3 text-sm outline-none focus:border-[#1f5c46] focus:ring-2 focus:ring-[#1f5c46]/10"
                   min="0"
+                  max={MONEY_LIMITS.monthlyCategoryNZD}
+                  step="50"
                 />
                 <button
                   onClick={handleAdd}

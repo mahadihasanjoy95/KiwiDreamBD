@@ -14,7 +14,7 @@ import {
   Trash2,
   Plus,
 } from 'lucide-react'
-import useStore from '@/store/useStore'
+import useStore, { MONEY_LIMITS } from '@/store/useStore'
 import { useCurrency } from '@/hooks/useCurrency'
 import { cn } from '@/utils/cn'
 
@@ -163,6 +163,8 @@ export function MovingCost() {
                               : 'border-[#ede2d3] text-[#173526] hover:border-[#d8c8b5]'
                           )}
                           min="0"
+                          max={MONEY_LIMITS.movingItemNZD}
+                          step="50"
                         />
                       </div>
 
@@ -174,18 +176,27 @@ export function MovingCost() {
                       </div>
                     </div>
 
-                    <div className="mt-4 h-2 overflow-hidden rounded-full bg-[#efe4d5]">
-                      <motion.div
-                        className="h-full rounded-full"
-                        initial={{ width: 0 }}
-                        animate={{ width: `${total > 0 ? (amount / total) * 100 : 0}%` }}
-                        transition={{ duration: 0.35, ease: 'easeOut' }}
-                        style={{ backgroundColor: accent }}
+                    <div className="mt-4">
+                      <input
+                        type="range"
+                        min="0"
+                        max={MONEY_LIMITS.movingItemNZD}
+                        step="50"
+                        value={amount}
+                        onChange={(e) => updateMovingItem(item.id, e.target.value)}
+                        className="h-2 w-full cursor-pointer appearance-none rounded-full"
+                        style={{
+                          background: `linear-gradient(90deg, ${accent} 0%, ${accent} ${(amount / MONEY_LIMITS.movingItemNZD) * 100}%, #efe4d5 ${(amount / MONEY_LIMITS.movingItemNZD) * 100}%, #efe4d5 100%)`,
+                        }}
                       />
-                    </div>
-                    <div className="mt-2 flex items-center justify-between text-[11px] text-[#9c8f83]">
-                      <span>{t('planner.of_total')}</span>
-                      <span>{total > 0 ? Math.round((amount / total) * 100) : 0}%</span>
+                      <div className="mt-2 flex items-center justify-between text-[11px] text-[#9c8f83]">
+                        <span>0</span>
+                        <span>{t('planner.adjust_hint')}</span>
+                        <span>{format(MONEY_LIMITS.movingItemNZD)}</span>
+                      </div>
+                      <div className="mt-1 text-right text-[11px] text-[#b5a99d]">
+                        {total > 0 ? Math.round((amount / total) * 100) : 0}% {t('planner.of_total')}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -220,6 +231,8 @@ export function MovingCost() {
                 onChange={e => setNewAmount(e.target.value)}
                 className="rounded-2xl border border-[#eadfce] bg-white px-4 py-3 text-sm outline-none focus:border-[#1f5c46] focus:ring-2 focus:ring-[#1f5c46]/10"
                 min="0"
+                max={MONEY_LIMITS.movingItemNZD}
+                step="50"
               />
               <button
                 onClick={handleAdd}

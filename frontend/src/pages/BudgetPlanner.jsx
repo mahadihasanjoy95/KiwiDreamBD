@@ -1,6 +1,7 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router-dom'
+import { useEffect, useRef } from 'react'
 import { BookmarkPlus, LockKeyhole } from 'lucide-react'
 import useStore from '@/store/useStore'
 import { LifestyleCards } from '@/components/budget/LifestyleCards'
@@ -16,9 +17,9 @@ import { useAffordability } from '@/hooks/useAffordability'
 const TABS = ['monthly', 'moving', 'fund']
 
 const slideVariants = {
-  enter: (dir) => ({ x: dir > 0 ? 80 : -80, opacity: 0 }),
+  enter:  (dir) => ({ x: dir > 0 ? 60 : -60, opacity: 0 }),
   center: { x: 0, opacity: 1 },
-  exit:  (dir) => ({ x: dir > 0 ? -80 : 80, opacity: 0 }),
+  exit:   (dir) => ({ x: dir > 0 ? -60 : 60, opacity: 0 }),
 }
 
 export default function BudgetPlanner() {
@@ -33,10 +34,40 @@ export default function BudgetPlanner() {
   const isAuthenticated = useStore(s => s.isAuthenticated)
   const saveCurrentPlan = useStore(s => s.saveCurrentPlan)
   const savedPlans = useStore(s => s.savedPlans)
+  const setWizardStep = useStore(s => s.setWizardStep)
   const { monthlyTotal, survivalMonths } = useAffordability()
+
+  // Track slide direction: +1 = forward (higher step), -1 = back (lower step)
+  const prevStepRef = useRef(wizardStep)
+  const dirRef = useRef(1)
+  if (prevStepRef.current !== wizardStep) {
+    dirRef.current = wizardStep > prevStepRef.current ? 1 : -1
+    prevStepRef.current = wizardStep
+  }
+  const slideDir = dirRef.current
 
   const lifestyle = selectedLifestyle ? LIFESTYLE_TYPES[selectedLifestyle] : null
   const city = selectedCity ? CITIES.find(c => c.id === selectedCity) : null
+
+  useEffect(() => {
+    if (wizardStep === 1 && !selectedLifestyle) {
+      setWizardStep(0)
+      return
+    }
+
+    if (wizardStep === 2 && !selectedLifestyle) {
+      setWizardStep(0)
+      return
+    }
+
+    if (wizardStep === 2 && !selectedCity) {
+      setWizardStep(1)
+    }
+  }, [selectedCity, selectedLifestyle, setWizardStep, wizardStep])
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
+  }, [wizardStep])
 
   return (
     <div className="min-h-screen bg-brand-light">
@@ -49,7 +80,7 @@ export default function BudgetPlanner() {
         />
       </div>
 
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-8 pb-28 md:pb-8">
         {/* Breadcrumb (shown on step 2) */}
         {wizardStep === 2 && lifestyle && city && (
           <motion.div
@@ -76,16 +107,18 @@ export default function BudgetPlanner() {
         )}
 
         {/* Wizard steps */}
-        <AnimatePresence mode="wait" custom={wizardStep}>
+        {/* mode="popLayout" removes exiting element from flow immediately —
+            no blank gap between steps. Direction-aware slide. */}
+        <AnimatePresence mode="popLayout" custom={slideDir}>
           {wizardStep === 0 && (
             <motion.div
               key="lifestyle"
-              custom={1}
+              custom={slideDir}
               variants={slideVariants}
               initial="enter"
               animate="center"
               exit="exit"
-              transition={{ duration: 0.25, ease: 'easeInOut' }}
+              transition={{ duration: 0.2, ease: 'easeInOut' }}
             >
               <LifestyleCards />
             </motion.div>
@@ -94,12 +127,12 @@ export default function BudgetPlanner() {
           {wizardStep === 1 && (
             <motion.div
               key="city"
-              custom={1}
+              custom={slideDir}
               variants={slideVariants}
               initial="enter"
               animate="center"
               exit="exit"
-              transition={{ duration: 0.25, ease: 'easeInOut' }}
+              transition={{ duration: 0.2, ease: 'easeInOut' }}
             >
               <CitySelector />
             </motion.div>
@@ -108,12 +141,12 @@ export default function BudgetPlanner() {
           {wizardStep === 2 && (
             <motion.div
               key="planner"
-              custom={1}
+              custom={slideDir}
               variants={slideVariants}
               initial="enter"
               animate="center"
               exit="exit"
-              transition={{ duration: 0.25, ease: 'easeInOut' }}
+              transition={{ duration: 0.2, ease: 'easeInOut' }}
             >
               {/* Tab bar */}
               <div className="bg-white rounded-2xl border border-brand-mid p-1 flex gap-1 mb-6 shadow-brand-sm">

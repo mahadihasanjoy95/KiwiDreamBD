@@ -2,7 +2,7 @@ import { motion } from 'framer-motion'
 import useStore from '@/store/useStore'
 import { cn } from '@/utils/cn'
 
-export function CurrencyToggle({ className = '' }) {
+export function CurrencyToggle({ className = '', layoutIdPrefix = 'nav' }) {
   const currency = useStore(s => s.currency)
   const setCurrency = useStore(s => s.setCurrency)
 
@@ -19,7 +19,7 @@ export function CurrencyToggle({ className = '' }) {
         >
           {currency === c && (
             <motion.span
-              layoutId="currency-pill"
+              layoutId={`${layoutIdPrefix}-currency-pill`}
               className="absolute inset-0 bg-white rounded-full"
               transition={{ type: 'spring', stiffness: 400, damping: 35 }}
             />

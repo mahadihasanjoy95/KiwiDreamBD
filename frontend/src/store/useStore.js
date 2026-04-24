@@ -5,6 +5,19 @@ import { DEFAULT_MOVING_ITEMS } from '@/data/movingCosts'
 import i18n from 'i18next'
 import { calcSurvivalMonths, getAffordabilityStatus } from '@/utils/affordability'
 
+export const MONEY_LIMITS = {
+  monthlyCategoryNZD: 10000,
+  movingItemNZD: 50000,
+  livingFundBDT: 20000000,
+}
+
+function clampMoney(value, max) {
+  if (value === '') return ''
+  const parsed = Number.parseFloat(value)
+  if (!Number.isFinite(parsed)) return 0
+  return Math.min(Math.max(parsed, 0), max)
+}
+
 const useStore = create(
   persist(
     (set, get) => ({
@@ -81,15 +94,14 @@ const useStore = create(
       setActiveTab: (tab) => set({ activeTab: tab }),
 
       setLifestyle: (lifestyleType) => {
-        const { selectedCity, planCategories } = get()
+        const { planCategories } = get()
         const customCategories = planCategories.filter(c => c.isCustom)
-        let newCategories = []
-        if (selectedCity) {
-          newCategories = getTemplate(selectedCity, lifestyleType)
-        }
         set({
           selectedLifestyle: lifestyleType,
-          planCategories: [...newCategories, ...customCategories],
+          selectedCity: null,
+          wizardStep: 1,
+          activeTab: 0,
+          planCategories: customCategories,
         })
       },
 
@@ -102,6 +114,8 @@ const useStore = create(
         }
         set({
           selectedCity: cityId,
+          wizardStep: 2,
+          activeTab: 0,
           planCategories: [...newCategories, ...customCategories],
         })
       },
@@ -110,7 +124,7 @@ const useStore = create(
       updateCategory: (id, amount) => {
         set(state => ({
           planCategories: state.planCategories.map(c =>
-            c.id === id ? { ...c, estimatedAmountNZD: parseFloat(amount) || 0 } : c
+            c.id === id ? { ...c, estimatedAmountNZD: clampMoney(amount, MONEY_LIMITS.monthlyCategoryNZD) || 0 } : c
           ),
         }))
       },
@@ -137,7 +151,7 @@ const useStore = create(
             {
               id,
               categoryName: name,
-              estimatedAmountNZD: parseFloat(amount) || 0,
+              estimatedAmountNZD: clampMoney(amount, MONEY_LIMITS.monthlyCategoryNZD) || 0,
               isCustom: true,
               displayOrder: state.planCategories.length + 1,
             },
@@ -149,7 +163,7 @@ const useStore = create(
       updateMovingItem: (id, amount) => {
         set(state => ({
           movingItems: state.movingItems.map(item =>
-            item.id === id ? { ...item, amountNZD: parseFloat(amount) || 0 } : item
+            item.id === id ? { ...item, amountNZD: clampMoney(amount, MONEY_LIMITS.movingItemNZD) || 0 } : item
           ),
         }))
       },
@@ -173,13 +187,13 @@ const useStore = create(
         set(state => ({
           movingItems: [
             ...state.movingItems,
-            { id, itemName, itemNameBN: itemName, amountNZD: parseFloat(amount) || 0, isCustom: true, autoCalc: false },
+            { id, itemName, itemNameBN: itemName, amountNZD: clampMoney(amount, MONEY_LIMITS.movingItemNZD) || 0, isCustom: true, autoCalc: false },
           ],
         }))
       },
 
       // ── Living fund ──────────────────────────────────────────
-      setLivingFund: (bdt) => set({ livingFundBDT: bdt }),
+      setLivingFund: (bdt) => set({ livingFundBDT: clampMoney(bdt, MONEY_LIMITS.livingFundBDT) }),
 
       // ── Reset ─────────────────────────────────────────────────
       resetPlan: () => set({
@@ -188,6 +202,8 @@ const useStore = create(
         planCategories: [],
         movingItems: DEFAULT_MOVING_ITEMS.map(item => ({ ...item })),
         livingFundBDT: '',
+        wizardStep: 0,
+        activeTab: 0,
       }),
 
       saveCurrentPlan: () => {
@@ -226,6 +242,12 @@ const useStore = create(
     }),
     {
       name: 'kiwi-dream-plan-v1',
+      onRehydrateStorage: () => (state) => {
+        const language = state?.language === 'BN' ? 'bn' : 'en'
+        if (i18n.isInitialized && i18n.language !== language) {
+          i18n.changeLanguage(language)
+        }
+      },
       partialize: (state) => ({
         currency: state.currency,
         language: state.language,
@@ -234,6 +256,8 @@ const useStore = create(
         savedPlans: state.savedPlans,
         selectedLifestyle: state.selectedLifestyle,
         selectedCity: state.selectedCity,
+        wizardStep: state.wizardStep,
+        activeTab: state.activeTab,
         planCategories: state.planCategories,
         movingItems: state.movingItems,
         livingFundBDT: state.livingFundBDT,

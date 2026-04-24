@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { motion, AnimatePresence, useMotionValue, useTransform, animate } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { BadgeInfo, Landmark, WalletCards } from 'lucide-react'
-import useStore from '@/store/useStore'
+import useStore, { MONEY_LIMITS } from '@/store/useStore'
 import { useAffordability } from '@/hooks/useAffordability'
 import { AffordabilityMeter } from '@/components/common/AffordabilityMeter'
 import { WarningCard } from './WarningCard'
@@ -30,6 +30,8 @@ export function LivingFund() {
   const { monthlyTotal, survivalMonths, status, warnings } = useAffordability()
 
   const fundNZD = livingFundBDT ? +(Number(livingFundBDT) / exchangeRate).toFixed(0) : null
+  const fundBDTValue = Number(livingFundBDT) || 0
+  const fundProgress = (fundBDTValue / MONEY_LIMITS.livingFundBDT) * 100
 
   return (
     <div className="space-y-6">
@@ -90,7 +92,29 @@ export function LivingFund() {
                     'border-[#dcebdd] text-[#173526] hover:border-[#bdd8c7] focus:border-[#2c8f74] focus:ring-2 focus:ring-[#2c8f74]/10'
                   )}
                   min="0"
+                  max={MONEY_LIMITS.livingFundBDT}
+                  step="50000"
                 />
+              </div>
+
+              <div className="mt-4">
+                <input
+                  type="range"
+                  min="0"
+                  max={MONEY_LIMITS.livingFundBDT}
+                  step="50000"
+                  value={fundBDTValue}
+                  onChange={e => setLivingFund(e.target.value)}
+                  className="h-2 w-full cursor-pointer appearance-none rounded-full"
+                  style={{
+                    background: `linear-gradient(90deg, #2c8f74 0%, #2c8f74 ${fundProgress}%, #dcebdd ${fundProgress}%, #dcebdd 100%)`,
+                  }}
+                />
+                <div className="mt-2 flex items-center justify-between text-[11px] text-[#7d968c]">
+                  <span>৳0</span>
+                  <span>{t('planner.adjust_hint')}</span>
+                  <span>৳{MONEY_LIMITS.livingFundBDT.toLocaleString()}</span>
+                </div>
               </div>
 
               {fundNZD !== null && (

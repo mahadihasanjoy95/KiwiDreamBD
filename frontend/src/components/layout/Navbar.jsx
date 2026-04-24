@@ -2,7 +2,8 @@ import { Link, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { Settings2 } from 'lucide-react'
-import { NZFernIcon } from '@/components/common/NZFernIcon'
+import logoText    from '@/assets/images/logo_text.png'
+import { TigerBlinkLogo } from '@/components/common/TigerBlinkLogo'
 import { CurrencyToggle } from '@/components/common/CurrencyToggle'
 import { LanguageToggle } from '@/components/common/LanguageToggle'
 import { cn } from '@/utils/cn'
@@ -23,17 +24,22 @@ export function Navbar() {
       initial={{ y: -80 }}
       animate={{ y: 0 }}
       transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-      className="hidden md:flex sticky top-0 z-50 w-full items-center justify-between px-6 lg:px-10 h-16 bg-brand-deep/95 backdrop-blur-md shadow-brand-md"
+      className="hidden md:flex sticky top-0 z-50 w-full items-center justify-between px-6 lg:px-10 h-[76px] bg-brand-deep/95 backdrop-blur-md shadow-brand-md"
     >
-      {/* Logo */}
-      <Link to="/" className="flex items-center gap-2.5 shrink-0">
-        <NZFernIcon className="w-7 h-7 text-nz" color="#16A34A" />
-        <span className="font-serif text-xl font-bold text-white tracking-tight">
-          KiwiDream <span className="text-brand-soft">BD</span>
-        </span>
+      {/* ── Logo ── */}
+      <Link
+        to="/"
+        className="flex items-center gap-3 shrink-0 transition-opacity hover:opacity-85"
+      >
+        <TigerBlinkLogo />
+        <img
+          src={logoText}
+          alt="KiwiDream BD"
+          style={{ height: 100, width: 'auto', maxWidth: 'none', display: 'block' }}
+        />
       </Link>
 
-      {/* Nav links */}
+      {/* ── Nav links ── */}
       <div className="flex items-center gap-1">
         {NAV_LINKS.map(link => {
           const isActive = location.pathname === link.to
@@ -59,7 +65,7 @@ export function Navbar() {
         })}
       </div>
 
-      {/* Controls */}
+      {/* ── Controls ── */}
       <div className="flex items-center gap-3 shrink-0">
         <LanguageToggle />
         <CurrencyToggle />

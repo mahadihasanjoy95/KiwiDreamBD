@@ -45,11 +45,15 @@
 
 @layer utilities {
   .font-bengali {
-    font-family: 'Noto Sans Bengali', 'Inter', sans-serif;
+    font-family: 'Noto Sans Bengali', 'DM Sans', sans-serif;
   }
 
   .font-hand {
     font-family: 'Caveat', 'Noto Sans Bengali', cursive;
+  }
+
+  .font-logo {
+    font-family: 'Cinzel', Georgia, serif;
   }
 
   .hand-strike-text {

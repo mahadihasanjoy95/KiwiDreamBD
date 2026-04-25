@@ -2,7 +2,6 @@ import { Link } from 'react-router-dom'
 import useStore from '@/store/useStore'
 import { useTranslation } from 'react-i18next'
 import logoTigerNew from '@/assets/images/logo_tiger_new.png'
-import logoTextNew  from '@/assets/images/logo_text_new.png'
 
 export function Footer() {
   const { t } = useTranslation()
@@ -25,12 +24,8 @@ export function Footer() {
                 className="absolute left-1/2 top-1/2 h-[65px] w-auto max-w-none -translate-x-1/2 -translate-y-1/2 opacity-90 group-hover:opacity-100 transition-opacity"
               />
             </span>
-            <span className="relative -ml-1 block h-[42px] w-[175px] overflow-hidden">
-              <img
-                src={logoTextNew}
-                alt="KiwiDream BD"
-                className="absolute left-1/2 top-1/2 h-[88px] w-auto max-w-none -translate-x-1/2 -translate-y-1/2 opacity-80 group-hover:opacity-95 transition-opacity brightness-0 invert"
-              />
+            <span className="font-logo text-[1.25rem] font-semibold tracking-[0.25em] text-white/80 group-hover:text-white leading-none transition-colors ml-1">
+              B K W I
             </span>
           </Link>
 

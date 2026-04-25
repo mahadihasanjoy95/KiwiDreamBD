@@ -247,11 +247,8 @@ function PlannerChecklistPanel() {
                   return (
                     <div
                       key={item.id}
-                      className="grid grid-cols-[auto_auto_1fr] items-start gap-2 py-3 sm:gap-3"
+                      className="grid grid-cols-[auto_1fr] items-start gap-2 py-3 sm:gap-3"
                     >
-                      <div className="flex h-8 min-w-10 items-center justify-center rounded-full bg-white/70 px-2 text-sm font-bold text-brand-deep ring-1 ring-brand-mid">
-                        {item.quantity}x
-                      </div>
                       <button
                         type="button"
                         onClick={() => updateItem(item.id, { completed: !checked })}
@@ -261,16 +258,23 @@ function PlannerChecklistPanel() {
                         {checked ? <CheckCircle2 size={18} /> : <Circle size={18} />}
                       </button>
                       <div className="min-w-0">
-                        <textarea
-                          value={item.draftText ?? item.text ?? ''}
-                          onChange={e => updateItem(item.id, { draftText: e.target.value })}
-                          rows={Math.max(1, Math.ceil(String(item.draftText ?? item.text ?? '').length / 34))}
-                          className={cn(
-                            'block w-full min-w-0 resize-none overflow-hidden bg-transparent text-[1.28rem] font-semibold leading-7 outline-none sm:text-[1.42rem]',
-                            language === 'BN' ? 'font-bengali text-base sm:text-lg' : 'font-hand',
-                            checked ? 'hand-strike-text text-brand-deep/86' : 'text-brand-deep/86'
-                          )}
-                        />
+                        <div className="flex items-start gap-2">
+                          {item.quantity > 1 ? (
+                            <span className="mt-1 shrink-0 rounded-full bg-brand-light px-2 py-0.5 text-xs font-bold text-brand-deep ring-1 ring-brand-mid">
+                              ({item.quantity})
+                            </span>
+                          ) : null}
+                          <textarea
+                            value={item.draftText ?? item.text ?? ''}
+                            onChange={e => updateItem(item.id, { draftText: e.target.value })}
+                            rows={Math.max(1, Math.ceil(String(item.draftText ?? item.text ?? '').length / 38))}
+                            className={cn(
+                              'block w-full min-w-0 resize-none overflow-hidden bg-transparent text-base font-medium leading-6 outline-none sm:text-lg',
+                              language === 'BN' ? 'font-bengali' : 'font-sans',
+                              checked ? 'text-brand-deep/45 line-through' : 'text-brand-deep/86'
+                            )}
+                          />
+                        </div>
                         <div className="mt-2 flex flex-wrap gap-2">
                           <button
                             type="button"

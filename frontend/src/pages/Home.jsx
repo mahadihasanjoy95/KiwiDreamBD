@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
@@ -12,6 +12,7 @@ import devTeamImg from '@/assets/images/dev_team.png'
 import fernBushSvg from '@/assets/svg/fern-bush.svg'
 import smallFlowersSvg from '@/assets/svg/small-flowers.svg'
 import { HowItWorks } from '@/components/home/HowItWorks'
+import { JourneyAnimation, MobileJourneyAnimation } from '@/components/home/JourneyAnimation'
 
 function MountainSilhouette() {
   return (
@@ -183,18 +184,48 @@ export default function Home() {
   const { t } = useTranslation()
   const language = useStore(s => s.language)
   const [modalType, setModalType] = useState(null)
+  const [heroInView, setHeroInView] = useState(true)
+  const [triangleHiddenByClick, setTriangleHiddenByClick] = useState(false)
+  const heroRef = useRef(null)
+
+  useEffect(() => {
+    const el = heroRef.current
+    if (!el) return
+    const obs = new IntersectionObserver(
+      ([entry]) => setHeroInView(entry.isIntersecting),
+      { threshold: 0.05 }
+    )
+    obs.observe(el)
+    return () => obs.disconnect()
+  }, [])
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.scrollY < 80) setTriangleHiddenByClick(false)
+    }
+
+    handleScroll()
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
+
+  const scrollToHowItWorks = () => {
+    setTriangleHiddenByClick(true)
+    document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
 
   return (
     <div className="min-h-screen">
       {/* ── Hero ─────────────────────────────────────────────────── */}
-      <section className="relative min-h-[88vh] md:min-h-[86vh] flex items-center overflow-hidden bg-[linear-gradient(180deg,#c7e5e8_0%,#d8eeee_42%,#f8f2e8_68%,#b6dadd_100%)]">
+      <section ref={heroRef} className="relative min-h-[88vh] md:min-h-[86vh] flex items-center overflow-hidden bg-[linear-gradient(180deg,#c7e5e8_0%,#d8eeee_42%,#f8f2e8_68%,#b6dadd_100%)]">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_20%,rgba(255,255,255,0.88),transparent_30%),radial-gradient(circle_at_74%_34%,rgba(255,255,255,0.36),transparent_28%)]" />
 
         <MountainSilhouette />
         <CloudDrift />
 
-        <div className="relative z-10 max-w-6xl mx-auto px-6 pb-24 pt-36 md:pb-28 md:pt-48 w-full">
-          <div className="max-w-3xl">
+        <div className="relative z-10 max-w-6xl mx-auto px-6 pb-24 pt-36 md:pb-16 md:pt-28 w-full">
+          <div className="grid md:grid-cols-[1.05fr_0.95fr] gap-4 md:gap-8 items-center">
+            <div className="max-w-xl">
             <div>
               {/* Flag badge */}
               <motion.div
@@ -290,19 +321,38 @@ export default function Home() {
                 ))}
               </motion.div>
             </div>
+            </div>
+
+            {/* Journey animation — desktop right column */}
+            <div className="hidden md:flex justify-center items-center">
+              <JourneyAnimation />
+            </div>
 
           </div>
         </div>
 
+        {/* ── Curved wave: hero → how it works ── */}
+        <div className="absolute bottom-0 left-0 w-full overflow-hidden leading-[0] z-[15] pointer-events-none">
+          <svg viewBox="0 0 1440 72" preserveAspectRatio="none" className="block w-full h-[22px] md:h-[72px]">
+            <path d="M0,72 L0,52 C360,8 720,40 1080,18 C1200,10 1320,28 1440,20 L1440,72 Z" fill="white" />
+          </svg>
+        </div>
+      </section>
+
+      {/* ── Triangle scroll button — desktop disabled because hero journey now serves this purpose.
+      {heroInView && !triangleHiddenByClick ? (
+        <div
+          className="relative hidden justify-center transition-opacity duration-500 md:flex"
+          style={{ marginTop: '-40px', zIndex: 25 }}
+        >
         <motion.button
           type="button"
-          initial={{ opacity: 0, y: 18, scale: 0.94 }}
+          initial={{ opacity: 0, y: 12, scale: 0.94 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
-          whileHover={{ y: -4, scale: 1.03 }}
           whileTap={{ scale: 0.97 }}
           transition={{ delay: 0.95, type: 'spring', stiffness: 260, damping: 20 }}
-          onClick={() => document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-          className="group absolute bottom-4 left-1/2 z-20 flex -translate-x-1/2 flex-col items-center gap-2 outline-none md:bottom-6"
+          onClick={scrollToHowItWorks}
+          className="group flex flex-col items-center outline-none"
           aria-label={t('home.see_how_it_works')}
         >
           <span className="relative flex h-16 w-20 items-center justify-center sm:h-[4.6rem] sm:w-24">
@@ -331,14 +381,26 @@ export default function Home() {
               <ChevronDown size={22} strokeWidth={3} />
             </motion.span>
           </span>
-          <span className="rounded-full border border-white/55 bg-white/50 px-3 py-1 text-[11px] font-extrabold uppercase tracking-[0.12em] text-brand-deep/75 shadow-[0_10px_28px_rgba(0,89,96,0.12)] backdrop-blur-xl transition-colors group-hover:bg-white/75">
-            {t('home.see_how_it_works')}
-          </span>
         </motion.button>
-      </section>
+        </div>
+      ) : (
+        <div className="relative hidden h-0 md:block" style={{ marginTop: '-40px' }} />
+      )}
+      */}
 
-      {/* ── How it works (animated steps) ────────────────────────── */}
+      {/* ── Mobile journey animation ─────────────────────────────── */}
+      <MobileJourneyAnimation />
+
+      {/* ── Old How it works section — desktop disabled, retained for reference.
       <HowItWorks />
+      */}
+
+      {/* ── Wave divider: how it works → about ── */}
+      <div className="relative overflow-hidden bg-white h-[52px] md:h-[72px]">
+        <svg viewBox="0 0 1440 72" preserveAspectRatio="none" className="absolute bottom-0 block w-full h-full">
+          <path d="M0,30 C360,72 900,20 1200,52 C1300,60 1380,42 1440,48 L1440,72 L0,72 Z" fill="#eaf6f5" />
+        </svg>
+      </div>
 
       {/* ── About ───────────────────────────────────────────────── */}
       <section id="about" className="relative overflow-hidden bg-[linear-gradient(180deg,#eaf6f5_0%,#d8eeee_100%)] py-16 md:py-24">
@@ -383,15 +445,17 @@ export default function Home() {
               viewport={{ once: true }}
               transition={{ duration: 0.45, delay: 0.08 }}
             >
-              <div className="flex items-center gap-3">
-                <img
-                  src={logoTigerNew}
-                  alt="KiwiDream BD"
-                  className="h-10 w-auto shrink-0 drop-shadow-[0_8px_18px_rgba(0,89,96,0.14)] sm:h-12"
-                />
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand/65">
-                  {t('home.mascot_badge')}
-                </p>
+              <div className="flex items-center gap-2">
+                <span className="relative block h-[44px] w-[44px] overflow-hidden shrink-0">
+                  <img
+                    src={logoTigerNew}
+                    alt="KiwiDream BD"
+                    className="absolute left-1/2 top-1/2 h-[55px] w-auto max-w-none -translate-x-1/2 -translate-y-1/2 drop-shadow-[0_6px_14px_rgba(0,89,96,0.14)]"
+                  />
+                </span>
+                <span className="font-logo text-xl font-semibold tracking-[0.22em] text-brand-deep leading-none">
+                  B K W I
+                </span>
               </div>
               <h2 className="mt-3 font-serif text-3xl font-bold text-brand-deep md:text-4xl">
                 {t('home.mascot_title')}
@@ -427,7 +491,7 @@ export default function Home() {
       </section>
 
       {/* ── Ready to plan CTA — bottom of page ────────────────── */}
-      <section className="bg-brand-deep py-16 md:py-20">
+      <section className="bg-[#9DC2C2] py-16 md:py-20">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -435,15 +499,15 @@ export default function Home() {
           transition={{ duration: 0.5 }}
           className="mx-auto max-w-3xl px-6 text-center"
         >
-          <h2 className="font-serif text-3xl font-bold text-white md:text-4xl lg:text-5xl">
+          <h2 className="font-serif text-3xl font-bold text-brand-deep md:text-4xl lg:text-5xl">
             Ready to plan your move?
           </h2>
-          <p className="mt-4 text-base text-white/65 md:text-lg">
+          <p className="mt-4 text-base text-brand-deep/68 md:text-lg">
             It takes 2 minutes. No account required.
           </p>
           <Link
             to="/plan"
-            className="mt-8 inline-flex items-center gap-2 rounded-full bg-white px-8 py-4 text-base font-bold text-brand-deep shadow-[0_18px_42px_rgba(0,0,0,0.18)] transition-colors hover:bg-brand-light"
+            className="mt-8 inline-flex items-center gap-2 rounded-full bg-white px-8 py-4 text-base font-bold text-brand-deep shadow-[0_18px_42px_rgba(0,89,96,0.14)] transition-colors hover:bg-brand-light"
           >
             {t('home.cta_start')}
             <ArrowRight size={18} />

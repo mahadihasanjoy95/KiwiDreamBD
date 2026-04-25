@@ -19,9 +19,10 @@ export default {
         risky: '#EF4444',
       },
       fontFamily: {
-        serif: ['Playfair Display', 'Georgia', 'serif'],
-        sans:  ['Inter', 'system-ui', 'sans-serif'],
-        bengali: ['Noto Sans Bengali', 'Inter', 'sans-serif'],
+        serif:   ['Playfair Display', 'Georgia', 'serif'],
+        sans:    ['DM Sans', 'system-ui', 'sans-serif'],
+        logo:    ['Cinzel', 'Georgia', 'serif'],
+        bengali: ['Noto Sans Bengali', 'DM Sans', 'sans-serif'],
       },
       keyframes: {
         'slide-in-right': {

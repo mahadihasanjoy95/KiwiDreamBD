@@ -200,7 +200,21 @@ export function LivingFund() {
 
       {livingFundBDT && survivalMonths !== null ? (
         <div className="sticky bottom-20 z-20 px-2 md:bottom-4">
-          <div className="mx-auto flex w-fit min-w-[280px] max-w-2xl items-center justify-between gap-5 rounded-[26px] border border-white/45 bg-[rgba(44,143,116,0.72)] px-5 py-3 text-white shadow-[0_18px_40px_rgba(21,90,71,0.18)] backdrop-blur-2xl">
+          <div
+            className="mx-auto flex w-fit min-w-[280px] max-w-2xl items-center justify-between gap-5 rounded-[26px] border border-white/45 px-5 py-3 text-white backdrop-blur-2xl transition-all duration-500"
+            style={{
+              background: status === 'RISKY'
+                ? 'rgba(220,38,38,0.78)'
+                : status === 'TIGHT'
+                  ? 'rgba(202,138,4,0.80)'
+                  : 'rgba(22,163,74,0.78)',
+              boxShadow: status === 'RISKY'
+                ? '0 18px 40px rgba(180,28,28,0.22)'
+                : status === 'TIGHT'
+                  ? '0 18px 40px rgba(160,110,0,0.22)'
+                  : '0 18px 40px rgba(21,90,71,0.18)',
+            }}
+          >
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white/75">
                 {t('planner.fund_status_title')}

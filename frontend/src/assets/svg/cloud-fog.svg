@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 200" width="600" height="200">
+  <defs>
+  <filter id="sketch" x="-5%" y="-5%" width="110%" height="110%">
+    <feTurbulence type="turbulence" baseFrequency="0.035" numOctaves="4" seed="12" result="noise"></feTurbulence>
+    <feDisplacementMap in="SourceGraphic" in2="noise" scale="2.2" xChannelSelector="R" yChannelSelector="G"></feDisplacementMap>
+  </filter>
+  <filter id="wc" x="-8%" y="-8%" width="116%" height="116%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.055 0.09" numOctaves="5" seed="7" result="n"></feTurbulence>
+    <feColorMatrix type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -2 2.2" in="n" result="mask"></feColorMatrix>
+    <feComposite in="SourceGraphic" in2="mask" operator="in" result="wc"></feComposite>
+    <feComposite in="wc" in2="SourceGraphic" operator="over"></feComposite>
+  </filter>
+  <filter id="softblur"><feGaussianBlur stdDeviation="1.2"></feGaussianBlur></filter>
+    <filter id="cfBlur"><feGaussianBlur stdDeviation="8"></feGaussianBlur></filter>
+  </defs>
+  
+  <ellipse cx="300" cy="150" rx="290" ry="60" fill="#B6DADE" opacity="0.25" filter="url(#cfBlur)"></ellipse>
+  
+  <g filter="url(#sketch)">
+    <ellipse cx="130" cy="90" rx="95" ry="38" fill="white" opacity="0.82"></ellipse>
+    <ellipse cx="90" cy="100" rx="55" ry="30" fill="white" opacity="0.78"></ellipse>
+    <ellipse cx="175" cy="98" rx="62" ry="28" fill="white" opacity="0.75"></ellipse>
+    <ellipse cx="145" cy="78" rx="48" ry="34" fill="white" opacity="0.8"></ellipse>
+    
+    <path d="M50,100 C55,75 75,62 95,68 C100,56 118,48 135,52 C142,42 162,40 175,50 C188,44 210,50 215,66 C228,68 238,80 232,92 C220,100 60,108 50,100 Z" fill="none" stroke="#B6DADE" stroke-width="1.2" opacity="0.6"></path>
+  </g>
+  
+  <g filter="url(#sketch)">
+    <ellipse cx="440" cy="75" rx="120" ry="42" fill="white" opacity="0.78"></ellipse>
+    <ellipse cx="390" cy="86" rx="65" ry="32" fill="white" opacity="0.72"></ellipse>
+    <ellipse cx="500" cy="82" rx="70" ry="30" fill="white" opacity="0.7"></ellipse>
+    <ellipse cx="450" cy="62" rx="55" ry="38" fill="white" opacity="0.76"></ellipse>
+    <path d="M340,86 C345,60 368,48 388,55 C395,44 415,40 432,46 C438,34 462,33 478,44 C492,37 516,44 522,60 C535,63 545,76 540,90 C528,98 356,96 340,86 Z" fill="none" stroke="#B6DADE" stroke-width="1.2" opacity="0.55"></path>
+  </g>
+  
+  <path d="M0,175 C100,160 200,178 300,168 C400,158 500,172 600,162" stroke="#C7E5E8" stroke-width="12" fill="none" opacity="0.4" stroke-linecap="round"></path>
+  <path d="M0,188 C120,175 240,190 360,182 C480,174 570,186 600,180" stroke="#B6DADE" stroke-width="8" fill="none" opacity="0.3" stroke-linecap="round"></path>
+</svg>

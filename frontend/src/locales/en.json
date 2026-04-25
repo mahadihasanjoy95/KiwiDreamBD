@@ -2,6 +2,8 @@
   "nav": {
     "home": "Home",
     "plan": "Plan",
+    "compare": "City comparison",
+    "compare_mobile": "Compare",
     "dashboard": "Dashboard",
     "guide": "Essentials",
     "more": "More"
@@ -31,9 +33,19 @@
     "shared_room": "shared room",
     "tools_title": "More planning tools",
     "tools_subtitle": "These pages extend the current planner with the missing Phase 1 guidance surface — practical, browsable, and shaped to the same design system.",
-    "mascot_badge": "Brand mark",
-    "mascot_title": "Built for the Bangladesh to New Zealand journey.",
-    "mascot_copy": "KiwiDream BD is designed as a student-side planning space for Bangladeshi students moving to New Zealand. Keep the mobile shell simple, and keep the important preferences in one predictable place.",
+    "mascot_badge": "About",
+    "mascot_title": "What this app is built for.",
+    "mascot_copy": "KiwiDream BD is built by Joy & Priota — two Bangladeshi students who lived the exact uncertainty this platform solves. Phase 1 focuses on budget clarity, city comparison, and move readiness for students heading to New Zealand.",
+    "lets_talk": "Let's Talk",
+    "buy_coffee": "Support this project",
+    "modal_close": "Close dialog",
+    "talk_badge": "Let's talk",
+    "talk_title": "App details and contact",
+    "talk_copy": "KiwiDream BD is a self-service journey OS for Bangladeshi students planning New Zealand study life. It focuses on budget clarity, city comparison, living fund readiness, essentials, and practical pre-departure decisions.",
+    "contact_email_label": "Contact email",
+    "coffee_badge": "Support",
+    "coffee_title": "Buy us a coffee",
+    "coffee_copy": "Donation support is being prepared. This will help keep student guides, cost data, and planning tools updated for the community.",
     "contact_badge": "Contact",
     "contact_title": "Contact with us",
     "contact_copy": "Have a suggestion, correction, or student-life question? This message space is being prepared so KiwiDream BD can listen and improve from real student needs.",
@@ -72,7 +84,14 @@
     "tabs": {
       "monthly": "Monthly Living",
       "moving": "Moving Cost",
+      "checklist": "Pre-departure",
       "fund": "Living Fund"
+    },
+    "tabs_short": {
+      "monthly": "Monthly",
+      "moving": "Move",
+      "checklist": "Checklist",
+      "fund": "Fund"
     },
     "add_category": "+ Add Category",
     "monthly_total": "Monthly Total",

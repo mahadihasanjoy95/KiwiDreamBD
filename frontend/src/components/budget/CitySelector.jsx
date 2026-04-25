@@ -5,6 +5,19 @@ import { ArrowLeft, Check, Sparkles } from 'lucide-react'
 import useStore from '@/store/useStore'
 import { useCurrency } from '@/hooks/useCurrency'
 import { CITIES } from '@/data/cities'
+import aucklandSvg from '@/assets/svg/auckland.svg'
+import wellingtonSvg from '@/assets/svg/wellington.svg'
+import christchurchSvg from '@/assets/svg/christchurch.svg'
+import hamiltonSvg from '@/assets/svg/hamilton.svg'
+import dunedinSvg from '@/assets/svg/dunedin.svg'
+
+const CITY_SVG = {
+  AUCKLAND:     aucklandSvg,
+  WELLINGTON:   wellingtonSvg,
+  CHRISTCHURCH: christchurchSvg,
+  HAMILTON:     hamiltonSvg,
+  DUNEDIN:      dunedinSvg,
+}
 
 /* ── Per-city visual identity ─────────────────────────────────── */
 const CITY_META = {
@@ -63,16 +76,13 @@ export function CitySelector() {
   const { t } = useTranslation()
   const language   = useStore(s => s.language)
   const selectedCity = useStore(s => s.selectedCity)
-  const { setCity, setWizardStep } = useStore()
+  const { setCity, rechooseLifestyle } = useStore()
   const { format } = useCurrency()
 
   const [hoveredId,   setHoveredId]   = useState(null)
-  const [confirmingId, setConfirmingId] = useState(null)
 
   const handleSelect = (id) => {
-    setConfirmingId(id)
     setCity(id)
-    setWizardStep(2)
   }
 
   return (
@@ -106,7 +116,7 @@ export function CitySelector() {
         >
           {/* Back button */}
           <button
-            onClick={() => setWizardStep(0)}
+            onClick={rechooseLifestyle}
             className="flex items-center gap-1.5 text-brand hover:text-brand-deep transition-colors text-sm font-semibold mb-6"
           >
             <ArrowLeft size={15} />
@@ -146,7 +156,6 @@ export function CitySelector() {
             const meta         = CITY_META[city.id]
             const isSelected   = selectedCity === city.id
             const isHovered    = hoveredId === city.id
-            const isConfirming = confirmingId === city.id
 
             return (
               <motion.button
@@ -156,7 +165,6 @@ export function CitySelector() {
                 onHoverStart={() => setHoveredId(city.id)}
                 onHoverEnd={() => setHoveredId(null)}
                 whileTap={{ scale: 0.97 }}
-                animate={isConfirming ? { scale: [1, 1.04, 1] } : undefined}
                 transition={{ duration: 0.3 }}
                 className="relative flex flex-col text-left rounded-[28px] overflow-hidden cursor-pointer focus:outline-none"
                 style={{
@@ -181,14 +189,14 @@ export function CitySelector() {
                     }}
                   />
 
-                  {/* Emoji */}
+                  {/* SVG illustration */}
                   <motion.div
                     animate={isHovered ? { y: -6, scale: 1.12 } : { y: 0, scale: 1 }}
                     transition={{ type: 'spring', stiffness: 300, damping: 18 }}
-                    className="text-4xl md:text-5xl mb-3 relative z-10 drop-shadow-lg"
-                    style={{ filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.3))' }}
+                    className="mb-3 relative z-10"
+                    style={{ filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.25))' }}
                   >
-                    {city.emoji}
+                    <img src={CITY_SVG[city.id]} alt="" className="w-14 h-14 md:w-16 md:h-16 object-contain" />
                   </motion.div>
 
                   {/* City name */}
@@ -215,19 +223,6 @@ export function CitySelector() {
                     )}
                   </AnimatePresence>
 
-                  {/* Confirming ripple */}
-                  <AnimatePresence>
-                    {isConfirming && (
-                      <motion.div
-                        initial={{ scale: 0.5, opacity: 0.6 }}
-                        animate={{ scale: 2.5, opacity: 0 }}
-                        exit={{}}
-                        transition={{ duration: 0.5, ease: 'easeOut' }}
-                        className="absolute inset-0 rounded-full"
-                        style={{ background: 'rgba(255,255,255,0.25)', transformOrigin: 'center' }}
-                      />
-                    )}
-                  </AnimatePresence>
                 </div>
 
                 {/* ── White detail zone ── */}

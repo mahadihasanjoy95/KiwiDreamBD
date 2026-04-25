@@ -19,7 +19,7 @@ import Profile from '@/pages/Profile'
 
 export default function App() {
   return (
-    <div className="min-h-screen bg-brand-light font-sans">
+    <div className="min-h-screen bg-[#eaf6f5] font-sans">
       <Navbar />
       <main className="pb-20 md:pb-0">
         <Routes>

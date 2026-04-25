@@ -5,6 +5,17 @@ import { Check, Sparkles } from 'lucide-react'
 import useStore from '@/store/useStore'
 import { useCurrency } from '@/hooks/useCurrency'
 import { LIFESTYLE_TYPES } from '@/data/templates'
+import birdSvg from '@/assets/svg/bird.svg'
+import heroCharactersSvg from '@/assets/svg/hero-characters.svg'
+import comfortableSoloSvg from '@/assets/svg/comfortable-solo.svg'
+import familyPlanningSvg from '@/assets/svg/family-planning.svg'
+
+const LIFESTYLE_SVG = {
+  SOLO_MODEST:       birdSvg,
+  COUPLE_STANDARD:   heroCharactersSvg,
+  SOLO_COMFORTABLE:  comfortableSoloSvg,
+  FAMILY_PLANNING:   familyPlanningSvg,
+}
 
 /* ── Per-card visual identity ─────────────────────────────────── */
 const CARD_META = {
@@ -55,15 +66,12 @@ export function LifestyleCards() {
   const { t } = useTranslation()
   const language = useStore(s => s.language)
   const selectedLifestyle = useStore(s => s.selectedLifestyle)
-  const { setLifestyle, setWizardStep } = useStore()
+  const { setLifestyle } = useStore()
   const { format } = useCurrency()
   const [hoveredId, setHoveredId] = useState(null)
-  const [confirmingId, setConfirmingId] = useState(null)
 
   const handleSelect = (id) => {
-    setConfirmingId(id)
     setLifestyle(id)
-    setWizardStep(1)
   }
 
   const cards = Object.values(LIFESTYLE_TYPES)
@@ -126,7 +134,6 @@ export function LifestyleCards() {
             const meta = CARD_META[type.id]
             const isSelected = selectedLifestyle === type.id
             const isHovered = hoveredId === type.id
-            const isConfirming = confirmingId === type.id
             const [minNZD, maxNZD] = type.monthlyRangeNZD
 
             return (
@@ -137,7 +144,6 @@ export function LifestyleCards() {
                 onHoverStart={() => setHoveredId(type.id)}
                 onHoverEnd={() => setHoveredId(null)}
                 whileTap={{ scale: 0.97 }}
-                animate={isConfirming ? { scale: [1, 1.04, 1] } : undefined}
                 transition={{ duration: 0.3 }}
                 className="relative flex flex-col text-left rounded-[28px] overflow-hidden cursor-pointer focus:outline-none"
                 style={{
@@ -162,14 +168,14 @@ export function LifestyleCards() {
                     }}
                   />
 
-                  {/* Emoji */}
+                  {/* SVG illustration */}
                   <motion.div
                     animate={isHovered ? { y: -6, scale: 1.12 } : { y: 0, scale: 1 }}
                     transition={{ type: 'spring', stiffness: 300, damping: 18 }}
-                    className="text-5xl md:text-6xl mb-3 relative z-10 drop-shadow-lg"
-                    style={{ filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.3))' }}
+                    className="mb-3 relative z-10"
+                    style={{ filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.25))' }}
                   >
-                    {type.icon}
+                    <img src={LIFESTYLE_SVG[type.id]} alt="" className="w-16 h-16 md:w-20 md:h-20 object-contain" />
                   </motion.div>
 
                   {/* Name on gradient */}
@@ -196,19 +202,6 @@ export function LifestyleCards() {
                     )}
                   </AnimatePresence>
 
-                  {/* Confirming ripple */}
-                  <AnimatePresence>
-                    {isConfirming && (
-                      <motion.div
-                        initial={{ scale: 0.5, opacity: 0.6 }}
-                        animate={{ scale: 2.5, opacity: 0 }}
-                        exit={{}}
-                        transition={{ duration: 0.5, ease: 'easeOut' }}
-                        className="absolute inset-0 rounded-full"
-                        style={{ background: 'rgba(255,255,255,0.25)', transformOrigin: 'center' }}
-                      />
-                    )}
-                  </AnimatePresence>
                 </div>
 
                 {/* ── White detail zone ── */}

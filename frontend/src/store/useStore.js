@@ -90,8 +90,29 @@ const useStore = create(
       livingFundBDT: '',
 
       // ── Wizard actions ───────────────────────────────────────
-      setWizardStep: (step) => set({ wizardStep: step }),
-      setActiveTab: (tab) => set({ activeTab: tab }),
+      setWizardStep: (step) => {
+        const nextStep = Math.min(Math.max(Number(step) || 0, 0), 2)
+        set(state => ({
+          wizardStep: nextStep,
+          activeTab: nextStep === 2 ? Math.min(Math.max(Number(state.activeTab) || 0, 0), 3) : 0,
+        }))
+      },
+      setActiveTab: (tab) => set({ activeTab: Math.min(Math.max(Number(tab) || 0, 0), 3) }),
+
+      rechooseLifestyle: () => set(state => ({
+        selectedLifestyle: null,
+        selectedCity: null,
+        wizardStep: 0,
+        activeTab: 0,
+        planCategories: state.planCategories.filter(c => c.isCustom),
+      })),
+
+      rechooseCity: () => set(state => ({
+        selectedCity: null,
+        wizardStep: state.selectedLifestyle ? 1 : 0,
+        activeTab: 0,
+        planCategories: state.planCategories.filter(c => c.isCustom),
+      })),
 
       setLifestyle: (lifestyleType) => {
         const { planCategories } = get()

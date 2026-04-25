@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 90" width="1440" height="90" preserveAspectRatio="none">
+  <defs>
+  <filter id="sketch" x="-5%" y="-5%" width="110%" height="110%">
+    <feTurbulence type="turbulence" baseFrequency="0.035" numOctaves="4" seed="12" result="noise"></feTurbulence>
+    <feDisplacementMap in="SourceGraphic" in2="noise" scale="2.2" xChannelSelector="R" yChannelSelector="G"></feDisplacementMap>
+  </filter>
+  <filter id="wc" x="-8%" y="-8%" width="116%" height="116%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.055 0.09" numOctaves="5" seed="7" result="n"></feTurbulence>
+    <feColorMatrix type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -2 2.2" in="n" result="mask"></feColorMatrix>
+    <feComposite in="SourceGraphic" in2="mask" operator="in" result="wc"></feComposite>
+    <feComposite in="wc" in2="SourceGraphic" operator="over"></feComposite>
+  </filter>
+  <filter id="softblur"><feGaussianBlur stdDeviation="1.2"></feGaussianBlur></filter>
+    <linearGradient id="waveGrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#B6DADE"></stop>
+      <stop offset="40%" stop-color="#00D4BB"></stop>
+      <stop offset="100%" stop-color="#0095A1"></stop>
+    </linearGradient>
+  </defs>
+  
+  <path d="M0,55 C180,20 360,70 540,45 C720,20 900,60 1080,38 C1260,16 1380,48 1440,35 L1440,90 L0,90 Z" fill="#B6DADE" opacity="0.35"></path>
+  
+  <path d="M0,68 C200,38 400,72 600,50 C800,28 1000,64 1200,45 C1320,33 1400,50 1440,44 L1440,90 L0,90 Z" fill="#00D4BB" opacity="0.45"></path>
+  
+  <path d="M0,78 C240,55 480,82 720,65 C960,48 1200,78 1440,62 L1440,90 L0,90 Z" fill="#0095A1" opacity="0.3"></path>
+  
+  <path d="M0,68 C200,38 400,72 600,50 C800,28 1000,64 1200,45 C1320,33 1400,50 1440,44" stroke="#0095A1" stroke-width="1.5" fill="none" opacity="0.5"></path>
+</svg>

@@ -18,7 +18,7 @@ import useStore, { MONEY_LIMITS } from '@/store/useStore'
 import { useCurrency } from '@/hooks/useCurrency'
 import { cn } from '@/utils/cn'
 
-const CARD_COLORS = ['#c06b47', '#8b5cf6', '#d89a3d', '#2c8f74', '#3983a8', '#d95d83', '#7d746a', '#1f5c46']
+const CARD_COLORS = ['#c06b47', '#0095A1', '#d89a3d', '#2c8f74', '#3983a8', '#d95d83', '#7d746a', '#1f5c46']
 
 const MOVING_ITEM_ICONS = [
   { match: /flight|air/i, Icon: Plane },
@@ -141,7 +141,7 @@ export function MovingCost() {
 
                       <button
                         onClick={() => removeMovingItem(item.id)}
-                        className="rounded-xl p-2 text-[#c1b3a3] transition-colors hover:bg-[#fff3ee] hover:text-[#c95f4a]"
+                        className="rounded-xl p-2 text-gray-300 transition-colors hover:bg-red-50 hover:text-red-500"
                       >
                         <Trash2 size={15} />
                       </button>

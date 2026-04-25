@@ -109,10 +109,12 @@ export function MonthlyPlan() {
 
             <button
               onClick={() => setShowChartModal(true)}
-              className="group self-start rounded-[26px] border border-white/50 bg-white/35 p-3 text-left shadow-[0_18px_42px_rgba(57,42,22,0.12)] backdrop-blur-xl transition-transform hover:-translate-y-0.5"
+              type="button"
+              aria-label={t('planner.view_breakdown')}
+              className="group w-full self-start rounded-[26px] border border-white/50 bg-white/35 p-3 text-left shadow-[0_18px_42px_rgba(57,42,22,0.12)] backdrop-blur-xl transition-transform hover:-translate-y-0.5 sm:w-auto"
             >
               <div className="flex items-center gap-4">
-                <div className="h-24 w-24 overflow-hidden rounded-full bg-white/55 p-2 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.35)]">
+                <div className="h-24 w-24 shrink-0 overflow-hidden rounded-full bg-white/55 p-2 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.35)]">
                   {chartData.length > 0 ? (
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
@@ -138,12 +140,12 @@ export function MonthlyPlan() {
                   )}
                 </div>
 
-                <div>
+                <div className="min-w-0">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#8c6f58]">
                     {t('planner.chart_preview')}
                   </p>
                   <p className="mt-1 text-sm font-semibold text-[#173526]">{t('planner.view_breakdown')}</p>
-                  <p className="mt-1 text-xs text-[#7b6f63]">{format(total)}</p>
+                  <p className="mt-1 truncate text-xs text-[#7b6f63]">{format(total)}</p>
                 </div>
               </div>
             </button>
@@ -203,7 +205,7 @@ export function MonthlyPlan() {
 
                         <button
                           onClick={() => removeCategory(category.id)}
-                          className="rounded-xl p-2 text-[#c1b3a3] transition-colors hover:bg-[#fff3ee] hover:text-[#c95f4a]"
+                          className="rounded-xl p-2 text-gray-300 transition-colors hover:bg-red-50 hover:text-red-500"
                         >
                           <Trash2 size={15} />
                         </button>
@@ -319,14 +321,16 @@ export function MonthlyPlan() {
           )}
         </AnimatePresence>
 
-        {/* ── Sticky total bar (no chart, clean & compact) ── */}
-        <div className="sticky bottom-20 z-20 px-2 md:bottom-4">
-          <div className="mx-auto flex w-fit min-w-[280px] max-w-2xl items-center justify-between gap-5 rounded-[26px] border border-white/45 bg-[rgba(23,53,38,0.58)] px-5 py-3 text-white shadow-[0_18px_40px_rgba(23,53,38,0.16)] backdrop-blur-2xl">
+        <div className="h-24 md:h-20" />
+
+        {/* ── Fixed glass total bar ─────────────────────── */}
+        <div className="pointer-events-none fixed inset-x-0 bottom-20 z-50 px-4 pb-safe md:bottom-5">
+          <div className="pointer-events-auto mx-auto flex w-fit min-w-[280px] max-w-2xl items-center justify-between gap-5 rounded-[26px] border border-white/45 bg-[rgba(0,149,161,0.82)] px-5 py-3 text-white shadow-[0_18px_40px_rgba(0,89,96,0.22)] backdrop-blur-2xl">
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white/75">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/80 sm:text-[11px]">
                 {t('planner.monthly_total')}
               </p>
-              <p className="mt-0.5 text-xs text-white/60">
+              <p className="mt-0.5 text-[11px] text-white/65 sm:text-xs">
                 {planCategories.length} {t('planner.category_count')}
               </p>
             </div>
@@ -354,7 +358,7 @@ export function MonthlyPlan() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[70] flex items-center justify-center bg-[#0b1d15]/40 px-4 backdrop-blur-md"
+            className="fixed inset-0 z-[70] flex items-center justify-center bg-[#0b1d15]/46 px-4 py-6 backdrop-blur-md"
             onClick={() => setShowChartModal(false)}
           >
             <motion.div
@@ -363,40 +367,31 @@ export function MonthlyPlan() {
               exit={{ opacity: 0, scale: 0.96, y: 20 }}
               transition={{ type: 'spring', stiffness: 260, damping: 24 }}
               onClick={(e) => e.stopPropagation()}
-              className="max-h-[88vh] w-full max-w-4xl overflow-auto rounded-[34px] border border-[#eadfce] bg-[#fffaf3] p-6 shadow-[0_34px_80px_rgba(23,53,38,0.25)] md:p-8"
+              className="relative flex max-h-[88vh] w-full max-w-[34rem] flex-col items-center overflow-hidden rounded-[34px] border border-white/55 bg-[#fffaf3]/72 p-5 shadow-[0_34px_80px_rgba(23,53,38,0.28),inset_0_1px_0_rgba(255,255,255,0.70)] backdrop-blur-2xl md:p-7"
             >
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#b66a48]">
-                    {t('planner.chart_preview')}
-                  </p>
-                  <h3 className="mt-2 font-serif text-3xl font-bold text-[#173526]">
-                    {t('planner.chart_modal_title')}
-                  </h3>
-                  <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[#6d6257]">
-                    {t('planner.chart_modal_subtitle')}
-                  </p>
-                </div>
-
-                <button
-                  onClick={() => setShowChartModal(false)}
-                  className="rounded-2xl bg-white p-3 text-[#7f7265] shadow-sm transition-colors hover:text-[#173526]"
-                >
-                  <X size={18} />
-                </button>
-              </div>
+              <button
+                onClick={() => setShowChartModal(false)}
+                type="button"
+                aria-label={t('home.modal_close')}
+                className="absolute right-4 top-4 z-10 rounded-2xl bg-white/75 p-3 text-[#7f7265] shadow-sm backdrop-blur-xl transition-colors hover:text-[#173526]"
+              >
+                <X size={18} />
+              </button>
 
               {chartData.length > 0 ? (
-                <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_0.9fr]">
-                  <div className="h-[320px] rounded-[28px] bg-white p-4 shadow-[0_14px_34px_rgba(57,42,22,0.06)]">
+                <div className="flex w-full flex-col items-center pt-8">
+                  <p className="text-center text-[11px] font-semibold uppercase tracking-[0.18em] text-[#b66a48]">
+                    {t('planner.chart_preview')}
+                  </p>
+                  <div className="relative mt-5 h-[min(72vw,22rem)] w-full max-w-[22rem] rounded-full bg-white/50 p-4 shadow-[0_18px_45px_rgba(57,42,22,0.10),inset_0_1px_0_rgba(255,255,255,0.76)] backdrop-blur-xl">
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
                         <Pie
                           data={chartData}
                           dataKey="value"
                           nameKey="categoryName"
-                          innerRadius={70}
-                          outerRadius={108}
+                          innerRadius="54%"
+                          outerRadius="82%"
                           paddingAngle={3}
                           stroke="none"
                         >
@@ -407,31 +402,24 @@ export function MonthlyPlan() {
                         <Tooltip content={<BreakdownTooltip format={format} />} />
                       </PieChart>
                     </ResponsiveContainer>
-                  </div>
 
-                  <div className="space-y-3">
-                    {chartData.map((item, index) => (
-                      <div key={item.id} className="rounded-[24px] bg-white p-4 shadow-[0_14px_34px_rgba(57,42,22,0.06)]">
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="flex items-center gap-3 min-w-0">
-                            <span
-                              className="h-3 w-3 shrink-0 rounded-full"
-                              style={{ backgroundColor: item.color || CHART_COLORS[index % CHART_COLORS.length] }}
-                            />
-                            <p className="truncate text-sm font-semibold text-[#173526]">{item.categoryName}</p>
-                          </div>
-                          <span className="text-xs font-semibold text-[#b66a48]">{item.share}%</span>
-                        </div>
-                        <div className="mt-2 flex items-center justify-between text-sm text-[#6d6257]">
-                          <span>{format(item.value)}</span>
-                          <span>{t('planner.month_suffix')}</span>
-                        </div>
+                    <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                      <div className="max-w-[9.5rem] rounded-full bg-[#fffaf3]/72 px-4 py-3 text-center shadow-[0_10px_28px_rgba(57,42,22,0.10)] backdrop-blur-xl">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#8c6f58]">
+                          {t('planner.monthly_total')}
+                        </p>
+                        <p className="mt-1 break-words text-lg font-extrabold leading-tight text-[#173526]">
+                          {format(total)}
+                        </p>
                       </div>
-                    ))}
+                    </div>
                   </div>
+                  <p className="mt-5 text-center text-xs font-semibold text-[#7b6f63]">
+                    {planCategories.length} {t('planner.category_count')} · {t('planner.month_suffix')}
+                  </p>
                 </div>
               ) : (
-                <div className="mt-8 rounded-[28px] border border-dashed border-[#d8c8b5] bg-white p-10 text-center">
+                <div className="mt-10 w-full rounded-[28px] border border-dashed border-[#d8c8b5] bg-white/70 p-10 text-center">
                   <p className="font-semibold text-[#173526]">{t('planner.chart_empty')}</p>
                   <p className="mt-2 text-sm text-[#7b6f63]">{t('planner.chart_empty_subtitle')}</p>
                 </div>

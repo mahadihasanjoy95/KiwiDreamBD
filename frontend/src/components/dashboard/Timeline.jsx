@@ -4,9 +4,9 @@ import { useTranslation } from 'react-i18next'
 const PHASES = [
   {
     key: 'week1',
-    color: '#7C3AED',
-    bgColor: 'bg-violet-50',
-    borderColor: 'border-violet-200',
+    color: '#0095A1',
+    bgColor: 'bg-cyan-50',
+    borderColor: 'border-cyan-200',
     items: [
       { en: 'Bond payment', bn: 'বন্ড পেমেন্ট', nzd: '4× rent' },
       { en: 'Bedding set', bn: 'বিছানার সেট', nzd: '~NZD 180' },

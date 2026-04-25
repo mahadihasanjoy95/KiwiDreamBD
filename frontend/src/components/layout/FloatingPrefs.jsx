@@ -36,11 +36,11 @@ export function FloatingPrefs() {
             className="mb-2"
             style={{
               borderRadius: 16,
-              background: 'rgba(52, 25, 92, 0.50)',
+              background: 'rgba(0, 89, 96, 0.54)',
               backdropFilter: 'blur(24px)',
               WebkitBackdropFilter: 'blur(24px)',
               border: '1px solid rgba(255,255,255,0.24)',
-              boxShadow: '0 18px 46px rgba(52,25,92,0.26)',
+              boxShadow: '0 18px 46px rgba(0,89,96,0.22)',
             }}
           >
             <div className="min-w-[168px] space-y-3 px-4 py-3">
@@ -115,13 +115,13 @@ export function FloatingPrefs() {
         aria-label="Open language and currency settings"
         className="flex h-12 w-12 items-center justify-center rounded-full"
         style={{
-          background: open ? 'rgba(124,58,237,0.72)' : 'rgba(255,255,255,0.16)',
+          background: open ? 'rgba(0,149,161,0.78)' : 'rgba(255,255,255,0.26)',
           backdropFilter: 'blur(22px)',
           WebkitBackdropFilter: 'blur(22px)',
           border: '1px solid rgba(255,255,255,0.28)',
           boxShadow: open
-            ? '0 14px 34px rgba(124,58,237,0.34)'
-            : '0 14px 34px rgba(48,31,86,0.22)',
+            ? '0 14px 34px rgba(0,149,161,0.30)'
+            : '0 14px 34px rgba(0,89,96,0.18)',
         }}
       >
         <motion.span

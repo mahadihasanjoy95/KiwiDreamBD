@@ -1,15 +1,15 @@
 import { Link, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { Home, BarChart3, LayoutDashboard, BookOpen, Menu } from 'lucide-react'
+import { Home, BarChart3, LayoutDashboard, Map, Menu } from 'lucide-react'
 import { cn } from '@/utils/cn'
 import useStore from '@/store/useStore'
 
 const BASE_TABS = [
-  { to: '/',          key: 'home',      Icon: Home          },
-  { to: '/plan',      key: 'plan',      Icon: BarChart3     },
-  { to: '/dashboard', key: 'dashboard', Icon: LayoutDashboard },
-  { to: '/guide',     key: 'guide',     Icon: BookOpen      },
+  { to: '/',          key: 'home',           Icon: Home            },
+  { to: '/plan',      key: 'plan',           Icon: BarChart3       },
+  { to: '/dashboard', key: 'dashboard',      Icon: LayoutDashboard },
+  { to: '/compare',   key: 'compare_mobile', Icon: Map             },
 ]
 
 export function BottomNav() {

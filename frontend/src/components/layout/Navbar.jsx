@@ -1,40 +1,61 @@
 import { Link, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { NZFernIcon } from '@/components/common/NZFernIcon'
+import { Settings2 } from 'lucide-react'
+import logoTigerNew from '@/assets/images/logo_tiger_new.png'
+import logoTextNew  from '@/assets/images/logo_text_new.png'
 import { CurrencyToggle } from '@/components/common/CurrencyToggle'
 import { LanguageToggle } from '@/components/common/LanguageToggle'
 import { cn } from '@/utils/cn'
-import useStore from '@/store/useStore'
 
 const NAV_LINKS = [
-  { to: '/', key: 'home' },
-  { to: '/plan', key: 'plan' },
+  { to: '/',          key: 'home' },
+  { to: '/plan',      key: 'plan' },
+  { to: '/compare',   key: 'compare' },
   { to: '/dashboard', key: 'dashboard' },
-  { to: '/guide', key: 'guide' },
+  { to: '/guide',     key: 'guide' },
 ]
 
 export function Navbar() {
   const { t } = useTranslation()
   const location = useLocation()
-  const isAuthenticated = useStore(s => s.isAuthenticated)
-  const user = useStore(s => s.user)
+  const isHome = location.pathname === '/'
 
   return (
     <motion.nav
-      initial={{ y: -80 }}
-      animate={{ y: 0 }}
-      transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-      className="hidden md:flex sticky top-0 z-50 h-16 w-full items-center justify-between border-b border-[#e8ddd0] bg-[#f8f3eb]/88 px-6 backdrop-blur-xl shadow-[0_10px_35px_rgba(58,42,24,0.08)] lg:px-10"
+      initial={{ y: -80, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      transition={{ type: 'spring', stiffness: 280, damping: 28 }}
+      className={cn(
+        'pointer-events-none z-50 hidden w-full items-center justify-between px-7 py-3 md:flex lg:px-14 xl:px-20',
+        isHome
+          ? 'absolute left-0 right-0 top-0 bg-transparent'
+          : 'border-b border-[#0095A1]/12 bg-white/70 backdrop-blur-xl'
+      )}
     >
-      <Link to="/" className="flex shrink-0 items-center gap-2.5">
-        <NZFernIcon className="h-7 w-7 text-nz" color="#166534" />
-        <span className="font-serif text-xl font-bold tracking-tight text-[#1f3a2d]">
-          KiwiDream <span className="text-[#b66a48]">BD</span>
+      {/* ── Logo ── */}
+      <Link
+        to="/"
+        className="pointer-events-auto flex items-center gap-0 shrink-0"
+      >
+        <span className="relative block h-[56px] w-[56px] overflow-hidden">
+          <img
+            src={logoTigerNew}
+            alt="KiwiDream BD"
+            className="absolute left-1/2 top-1/2 h-[70px] w-auto max-w-none -translate-x-1/2 -translate-y-1/2"
+          />
+        </span>
+        <span className="relative -ml-1 block h-[46px] w-[190px] overflow-hidden">
+          <img
+            src={logoTextNew}
+            alt="KiwiDream BD"
+            className="absolute left-1/2 top-1/2 h-[96px] w-auto max-w-none -translate-x-1/2 -translate-y-1/2 opacity-95"
+          />
         </span>
       </Link>
 
-      <div className="flex items-center gap-1">
+      {/* ── Nav links ── */}
+      <div className="pointer-events-auto flex items-center gap-4 xl:gap-7">
         {NAV_LINKS.map(link => {
           const isActive = location.pathname === link.to
           return (
@@ -42,14 +63,21 @@ export function Navbar() {
               key={link.to}
               to={link.to}
               className={cn(
-                'relative rounded-lg px-4 py-2 text-sm font-semibold transition-colors duration-200',
-                isActive ? 'text-[#173526]' : 'text-[#6d6257] hover:bg-white/60 hover:text-[#173526]'
+                'relative px-4 py-2 text-sm font-extrabold rounded-full tracking-[0.01em] transition-colors duration-200 glass-pill-hover',
+                isActive
+                  ? 'text-brand-deep'
+                  : 'text-brand-deep/75 hover:text-brand-deep'
               )}
             >
               {isActive && (
                 <motion.span
                   layoutId="nav-active"
-                  className="absolute inset-0 rounded-lg bg-white shadow-sm"
+                  className="absolute inset-0 rounded-full"
+                  style={{
+                    background: 'rgba(255,255,255,0.24)',
+                    backdropFilter: 'blur(14px)',
+                    WebkitBackdropFilter: 'blur(14px)',
+                  }}
                   transition={{ type: 'spring', stiffness: 400, damping: 35 }}
                 />
               )}
@@ -59,27 +87,22 @@ export function Navbar() {
         })}
       </div>
 
-      <div className="flex shrink-0 items-center gap-3">
-        <LanguageToggle dark={false} />
-        <CurrencyToggle dark={false} />
-        {isAuthenticated ? (
-          <Link
-            to="/profile"
-            className="ml-2 inline-flex items-center gap-2 rounded-lg border border-[#eadfce] bg-white px-4 py-2 text-sm font-semibold text-[#173526] transition-colors hover:bg-[#fffaf3]"
-          >
-            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#e9f1ea] text-xs font-bold text-[#173526]">
-              {(user?.name || 'G').slice(0, 1).toUpperCase()}
-            </span>
-            <span>{user?.name || t('auth.guest_user')}</span>
-          </Link>
-        ) : (
-          <Link
-            to="/signin"
-            className="ml-2 inline-flex items-center rounded-lg bg-[#173526] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#0f281c]"
-          >
-            {t('auth.signin_inline')}
-          </Link>
-        )}
+      {/* ── Controls ── */}
+      <div className="pointer-events-auto flex items-center gap-2.5 shrink-0">
+        <LanguageToggle dark={false} layoutIdPrefix="nav" />
+        <CurrencyToggle dark={false} layoutIdPrefix="nav" />
+
+        <Link
+          to="/profile"
+          aria-label={t('auth.settings_title')}
+          title={t('auth.settings_title')}
+          className={cn(
+            'inline-flex h-11 w-11 items-center justify-center rounded-full text-sm font-bold transition-all duration-200 glass-pill-hover',
+            'bg-white/20 text-brand-deep hover:text-brand-deep'
+          )}
+        >
+          <Settings2 size={18} strokeWidth={2.2} />
+        </Link>
       </div>
     </motion.nav>
   )

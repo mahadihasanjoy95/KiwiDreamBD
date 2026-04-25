@@ -2,7 +2,7 @@ import { motion } from 'framer-motion'
 import useStore from '@/store/useStore'
 import { cn } from '@/utils/cn'
 
-export function LanguageToggle({ className = '', dark = true }) {
+export function LanguageToggle({ className = '', dark = true, layoutIdPrefix = 'nav' }) {
   const language = useStore(s => s.language)
   const setLanguage = useStore(s => s.setLanguage)
 
@@ -30,7 +30,7 @@ export function LanguageToggle({ className = '', dark = true }) {
         >
           {language === opt.id && (
             <motion.span
-              layoutId="lang-pill"
+              layoutId={`${layoutIdPrefix}-lang-pill`}
               className={cn('absolute inset-0 rounded-full', dark ? 'bg-white' : 'bg-brand')}
               transition={{ type: 'spring', stiffness: 400, damping: 35 }}
             />

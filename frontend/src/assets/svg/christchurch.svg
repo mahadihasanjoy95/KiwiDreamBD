@@ -1,0 +1,90 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+<defs>
+  <linearGradient id="cc-petal1" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0%" stop-color="#FCE7F3"></stop>
+    <stop offset="100%" stop-color="#E11D48"></stop>
+  </linearGradient>
+  <linearGradient id="cc-petal2" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0%" stop-color="#FBCFE8"></stop>
+    <stop offset="100%" stop-color="#BE185D"></stop>
+  </linearGradient>
+  <linearGradient id="cc-center" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0%" stop-color="#FDE68A"></stop>
+    <stop offset="100%" stop-color="#EA580C"></stop>
+  </linearGradient>
+  <linearGradient id="cc-leaf" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0%" stop-color="#86EFAC"></stop>
+    <stop offset="100%" stop-color="#047857"></stop>
+  </linearGradient>
+  <linearGradient id="cc-stem" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0%" stop-color="#16A34A"></stop>
+    <stop offset="100%" stop-color="#047857"></stop>
+  </linearGradient>
+  <filter id="cc-shadow">
+    <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#10233A" flood-opacity="0.2"></feDropShadow>
+  </filter>
+  <filter id="cc-glow">
+    <feGaussianBlur stdDeviation="6" result="b"></feGaussianBlur>
+    <feMerge><feMergeNode in="b"></feMergeNode><feMergeNode in="SourceGraphic"></feMergeNode></feMerge>
+  </filter>
+</defs>
+
+<g filter="url(#cc-shadow)">
+
+<path d="M256,460 C254,420 252,390 256,360 C258,340 256,320 256,304" stroke="url(#cc-stem)" stroke-width="12" fill="none" stroke-linecap="round"></path>
+
+
+
+<path d="M248,380 C220,360 192,340 180,308 C196,316 216,330 240,348 C248,354 252,366 248,380 Z" fill="url(#cc-leaf)"></path>
+<path d="M248,380 C220,360 192,340 180,308" stroke="#16A34A" stroke-width="2.5" fill="none" stroke-linecap="round" opacity="0.6"></path>
+
+<path d="M244,374 C226,358 206,344 190,320" stroke="white" stroke-width="1.5" fill="none" opacity="0.3" stroke-linecap="round"></path>
+<path d="M238,366 C224,354 210,342 198,325" stroke="white" stroke-width="1" fill="none" opacity="0.25"></path>
+
+
+<path d="M264,360 C292,340 320,320 332,288 C316,296 296,310 272,328 C264,334 260,346 264,360 Z" fill="url(#cc-leaf)"></path>
+<path d="M264,360 C292,340 320,320 332,288" stroke="#16A34A" stroke-width="2.5" fill="none" stroke-linecap="round" opacity="0.6"></path>
+<path d="M268,354 C290,338 314,322 326,300" stroke="white" stroke-width="1.5" fill="none" opacity="0.3" stroke-linecap="round"></path>
+
+
+<path d="M253,420 C232,408 218,392 214,372 C226,380 240,394 252,410 Z" fill="#86EFAC" opacity="0.7"></path>
+
+
+
+<path d="M256,168 C240,144 228,108 256,80 C284,108 272,144 256,168 Z" fill="url(#cc-petal1)"></path>
+<path d="M256,168 C246,150 240,120 256,96" stroke="rgba(255,255,255,0.4)" stroke-width="2" fill="none"></path>
+
+
+<path d="M256,168 C286,152 316,132 328,100 C322,130 300,158 256,168 Z" fill="url(#cc-petal2)"></path>
+
+<path d="M256,200 C290,188 326,176 348,152 C332,176 308,200 256,200 Z" fill="url(#cc-petal1)"></path>
+
+<path d="M256,200 C278,226 292,260 278,288 C258,264 248,232 256,200 Z" fill="url(#cc-petal2)"></path>
+
+<path d="M256,200 C240,228 228,262 244,290 C260,264 272,230 256,200 Z" fill="url(#cc-petal1)"></path>
+
+<path d="M256,200 C228,222 196,228 172,214 C194,200 228,196 256,200 Z" fill="url(#cc-petal2)"></path>
+
+<path d="M256,168 C224,178 190,176 168,156 C188,144 224,152 256,168 Z" fill="url(#cc-petal1)"></path>
+
+<path d="M256,168 C240,144 220,128 190,124 C210,148 232,160 256,168 Z" fill="url(#cc-petal2)"></path>
+
+
+<path d="M256,168 C248,148 244,122 254,98" stroke="white" stroke-width="3" fill="none" opacity="0.25" stroke-linecap="round"></path>
+<path d="M256,200 C272,220 280,248 272,272" stroke="white" stroke-width="2.5" fill="none" opacity="0.2" stroke-linecap="round"></path>
+
+
+<circle cx="256" cy="184" r="42" fill="url(#cc-center)" filter="url(#cc-glow)"></circle>
+<circle cx="256" cy="184" r="34" fill="#FDE68A"></circle>
+
+<circle cx="256" cy="172" r="5" fill="#EA580C" opacity="0.8"></circle>
+<circle cx="268" cy="178" r="4" fill="#EA580C" opacity="0.7"></circle>
+<circle cx="264" cy="192" r="5" fill="#EA580C" opacity="0.75"></circle>
+<circle cx="252" cy="196" r="4" fill="#EA580C" opacity="0.8"></circle>
+<circle cx="242" cy="188" r="4.5" fill="#EA580C" opacity="0.7"></circle>
+<circle cx="244" cy="176" r="4" fill="#EA580C" opacity="0.75"></circle>
+<circle cx="256" cy="184" r="12" fill="#FCD34D" opacity="0.8"></circle>
+
+<ellipse cx="250" cy="178" rx="6" ry="4" fill="white" opacity="0.4"></ellipse>
+</g>
+</svg>

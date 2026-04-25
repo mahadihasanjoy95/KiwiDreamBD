@@ -1,26 +1,55 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { Trash2, Plus } from 'lucide-react'
 import {
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
-} from 'recharts'
-import useStore from '@/store/useStore'
+  Trash2,
+  Plus,
+  Home,
+  ShoppingBasket,
+  Bus,
+  Zap,
+  Wifi,
+  Smartphone,
+  Dumbbell,
+  UtensilsCrossed,
+  Sparkles,
+  Coins,
+  PieChart as PieChartIcon,
+  X,
+} from 'lucide-react'
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts'
+import useStore, { MONEY_LIMITS } from '@/store/useStore'
 import { useCurrency } from '@/hooks/useCurrency'
 import { cn } from '@/utils/cn'
 
-const CHART_COLORS = ['#7C3AED','#16A34A','#F59E0B','#0EA5E9','#EC4899','#10B981','#F97316','#64748B','#A78BFA']
+const CHART_COLORS = ['#1f5c46', '#c06b47', '#d89a3d', '#3983a8', '#8357c5', '#d95d83', '#2c8f74', '#7d746a']
 
-const CustomTooltip = ({ active, payload, format }) => {
-  if (active && payload && payload.length) {
-    return (
-      <div className="bg-white border border-brand-mid rounded-xl px-3 py-2 shadow-brand-md text-sm">
-        <p className="font-semibold text-gray-800">{payload[0].payload.categoryName}</p>
-        <p className="text-brand">{format(payload[0].value)}</p>
-      </div>
-    )
-  }
-  return null
+const CATEGORY_ICONS = [
+  { match: /rent|room|accommodation|flat/i, Icon: Home },
+  { match: /grocery|food|market/i, Icon: ShoppingBasket },
+  { match: /transport|bus|train|uber/i, Icon: Bus },
+  { match: /utility|power|electric|water/i, Icon: Zap },
+  { match: /internet|wifi/i, Icon: Wifi },
+  { match: /phone|sim|mobile/i, Icon: Smartphone },
+  { match: /gym|fitness/i, Icon: Dumbbell },
+  { match: /eat|dining|restaurant|coffee/i, Icon: UtensilsCrossed },
+  { match: /fun|misc|other|extra|entertain/i, Icon: Sparkles },
+]
+
+function findIcon(name) {
+  return CATEGORY_ICONS.find(item => item.match.test(name))?.Icon || Coins
+}
+
+function BreakdownTooltip({ active, payload, format }) {
+  if (!active || !payload?.length) return null
+  const item = payload[0].payload
+  return (
+    <div className="rounded-2xl border border-[#eadfce] bg-white px-3 py-2 shadow-[0_14px_34px_rgba(57,42,22,0.10)]">
+      <p className="text-sm font-semibold text-[#173526]">{item.categoryName}</p>
+      <p className="mt-1 text-sm text-[#6d6257]">{format(item.value)}</p>
+      <p className="text-xs text-[#b66a48]">{item.share}%</p>
+    </div>
+  )
 }
 
 export function MonthlyPlan() {
@@ -31,11 +60,26 @@ export function MonthlyPlan() {
   const currency = useStore(s => s.currency)
 
   const [showAddForm, setShowAddForm] = useState(false)
+  const [showChartModal, setShowChartModal] = useState(false)
   const [newName, setNewName] = useState('')
   const [newAmount, setNewAmount] = useState('')
   const [editingId, setEditingId] = useState(null)
 
-  const total = planCategories.reduce((s, c) => s + (c.estimatedAmountNZD || 0), 0)
+  const total = planCategories.reduce((sum, c) => sum + (c.estimatedAmountNZD || 0), 0)
+
+  const chartData = useMemo(
+    () =>
+      planCategories
+        .filter(c => c.estimatedAmountNZD > 0)
+        .map((c, index) => ({
+          ...c,
+          value: c.estimatedAmountNZD,
+          share: total > 0 ? Math.round((c.estimatedAmountNZD / total) * 100) : 0,
+          color: CHART_COLORS[index % CHART_COLORS.length],
+        }))
+        .sort((a, b) => b.value - a.value),
+    [planCategories, total]
+  )
 
   const handleAdd = () => {
     if (!newName.trim()) return
@@ -46,168 +90,344 @@ export function MonthlyPlan() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Chart */}
-      {planCategories.length > 0 && (
-        <div className="bg-white rounded-2xl border border-brand-mid p-4 shadow-brand-sm">
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Breakdown</p>
-          <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={planCategories} layout="vertical" margin={{ left: 0, right: 20, top: 0, bottom: 0 }}>
-              <XAxis type="number" hide />
-              <YAxis
-                dataKey="categoryName"
-                type="category"
-                width={90}
-                tick={{ fontSize: 11, fill: '#6B7280' }}
-                axisLine={false}
-                tickLine={false}
-              />
-              <Tooltip content={<CustomTooltip format={format} />} />
-              <Bar dataKey="estimatedAmountNZD" radius={[0, 6, 6, 0]}>
-                {planCategories.map((_, idx) => (
-                  <Cell key={idx} fill={CHART_COLORS[idx % CHART_COLORS.length]} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      )}
+    <>
+      <div className="space-y-6">
+        {/* ── Board header ──────────────────────────────── */}
+        <div className="rounded-[30px] border border-[#e7dccf] bg-[linear-gradient(135deg,#fffaf3_0%,#f3eadb_100%)] p-5 shadow-[0_20px_48px_rgba(57,42,22,0.08)]">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#b66a48]">
+                {t('planner.monthly_board_title')}
+              </p>
+              <h3 className="mt-2 font-serif text-2xl font-bold text-[#173526]">
+                {format(total)}
+              </h3>
+              <p className="mt-2 max-w-xl text-sm leading-relaxed text-[#6d6257]">
+                {t('planner.monthly_board_subtitle')}
+              </p>
+            </div>
 
-      {/* Expense rows */}
-      <div className="space-y-2">
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
-          {t('planner.edit_hint')}
-        </p>
-        <AnimatePresence>
-          {planCategories.map((cat) => (
-            <motion.div
-              key={cat.id}
-              layout
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -10 }}
-              className="flex items-center gap-3 bg-white rounded-xl border border-brand-mid px-4 py-3 group shadow-brand-sm hover:border-brand-soft transition-colors"
+            <button
+              onClick={() => setShowChartModal(true)}
+              type="button"
+              aria-label={t('planner.view_breakdown')}
+              className="group w-full self-start rounded-[26px] border border-white/50 bg-white/35 p-3 text-left shadow-[0_18px_42px_rgba(57,42,22,0.12)] backdrop-blur-xl transition-transform hover:-translate-y-0.5 sm:w-auto"
             >
-              <div className="flex-1 min-w-0">
-                <span className="text-sm font-medium text-gray-700">{cat.categoryName}</span>
-                {cat.isCustom && (
-                  <span className="ml-2 text-[10px] bg-brand-mid text-brand px-1.5 py-0.5 rounded-full">custom</span>
-                )}
-              </div>
-
-              <div className="flex items-center gap-1">
-                <span className="text-xs text-gray-400 shrink-0">NZD</span>
-                <input
-                  type="number"
-                  value={cat.estimatedAmountNZD}
-                  onChange={e => updateCategory(cat.id, e.target.value)}
-                  onFocus={() => setEditingId(cat.id)}
-                  onBlur={() => setEditingId(null)}
-                  className={cn(
-                    'w-24 text-right text-sm font-semibold border rounded-lg px-2 py-1 outline-none transition-all',
-                    editingId === cat.id
-                      ? 'border-brand ring-2 ring-brand/20 text-brand'
-                      : 'border-transparent bg-brand-light text-gray-700 hover:border-brand-mid'
+              <div className="flex items-center gap-4">
+                <div className="h-24 w-24 shrink-0 overflow-hidden rounded-full bg-white/55 p-2 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.35)]">
+                  {chartData.length > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={chartData}
+                          dataKey="value"
+                          nameKey="categoryName"
+                          innerRadius={22}
+                          outerRadius={36}
+                          paddingAngle={3}
+                          stroke="none"
+                        >
+                          {chartData.map((entry, index) => (
+                            <Cell key={entry.id} fill={entry.color || CHART_COLORS[index % CHART_COLORS.length]} />
+                          ))}
+                        </Pie>
+                      </PieChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="flex h-full items-center justify-center rounded-full border border-dashed border-[#d8c8b5] text-[#b66a48]">
+                      <PieChartIcon size={24} />
+                    </div>
                   )}
-                  min="0"
-                />
+                </div>
+
+                <div className="min-w-0">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#8c6f58]">
+                    {t('planner.chart_preview')}
+                  </p>
+                  <p className="mt-1 text-sm font-semibold text-[#173526]">{t('planner.view_breakdown')}</p>
+                  <p className="mt-1 truncate text-xs text-[#7b6f63]">{format(total)}</p>
+                </div>
               </div>
+            </button>
+          </div>
+        </div>
 
-              <AnimatePresence>
+        {/* ── Category cards ────────────────────────────── */}
+        <div className="grid gap-4 md:grid-cols-2">
+          <AnimatePresence>
+            {planCategories.map((category, index) => {
+              const Icon = findIcon(category.categoryName)
+              const share = total > 0 ? Math.round((category.estimatedAmountNZD / total) * 100) : 0
+              const accent = CHART_COLORS[index % CHART_COLORS.length]
+              const sliderMax = MONEY_LIMITS.monthlyCategoryNZD
+
+              return (
                 <motion.div
-                  key={`${currency}-${cat.estimatedAmountNZD}`}
-                  initial={{ opacity: 0, y: -4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 4 }}
-                  transition={{ duration: 0.15 }}
-                  className="w-28 text-right text-xs text-gray-400 shrink-0"
+                  key={category.id}
+                  layout
+                  initial={{ opacity: 0, y: 14, scale: 0.98 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -10, scale: 0.98 }}
+                  whileHover={{ y: -3 }}
+                  className="relative overflow-hidden rounded-[28px] border border-[#eadfce] bg-white p-5 shadow-[0_18px_42px_rgba(57,42,22,0.08)]"
                 >
-                  ≈ {format(cat.estimatedAmountNZD)}
+                  <div
+                    className="absolute inset-x-0 top-0 h-1.5"
+                    style={{ background: `linear-gradient(90deg, ${accent}, rgba(255,255,255,0))` }}
+                  />
+
+                  <div className="flex items-start gap-4">
+                    <div
+                      className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl"
+                      style={{ backgroundColor: `${accent}18`, color: accent }}
+                    >
+                      <Icon size={20} />
+                    </div>
+
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-base font-semibold text-[#173526]">{category.categoryName}</p>
+                          <div className="mt-1 flex items-center gap-2">
+                            <span
+                              className="inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold"
+                              style={{ backgroundColor: `${accent}14`, color: accent }}
+                            >
+                              {share}% {t('planner.of_total')}
+                            </span>
+                            {category.isCustom && (
+                              <span className="inline-flex rounded-full bg-[#f4ecdf] px-2.5 py-1 text-[11px] font-semibold text-[#8a7666]">
+                                {t('planner.custom_tag')}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        <button
+                          onClick={() => removeCategory(category.id)}
+                          className="rounded-xl p-2 text-gray-300 transition-colors hover:bg-red-50 hover:text-red-500"
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
+
+                      <div className="mt-5 flex items-end gap-3">
+                        <div className="flex-1">
+                          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#9c8f83]">NZD</p>
+                          <input
+                            type="number"
+                            value={category.estimatedAmountNZD}
+                            onChange={(e) => updateCategory(category.id, e.target.value)}
+                            onFocus={() => setEditingId(category.id)}
+                            onBlur={() => setEditingId(null)}
+                            className={cn(
+                              'mt-2 w-full rounded-2xl border bg-[#fbf7f1] px-4 py-3 text-lg font-semibold outline-none transition-all',
+                              editingId === category.id
+                                ? 'border-[#1f5c46] ring-2 ring-[#1f5c46]/10 text-[#173526]'
+                                : 'border-[#ede2d3] text-[#173526] hover:border-[#d8c8b5]'
+                            )}
+                            min="0"
+                            max={MONEY_LIMITS.monthlyCategoryNZD}
+                            step="50"
+                          />
+                        </div>
+
+                        <div className="min-w-[110px] rounded-2xl bg-[#f8f3eb] px-4 py-3">
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#a29387]">
+                            {t('planner.converted_value')}
+                          </p>
+                          <p className="mt-1 text-sm font-semibold text-[#173526]">≈ {format(category.estimatedAmountNZD)}</p>
+                        </div>
+                      </div>
+
+                      <div className="mt-4">
+                        <input
+                          type="range"
+                          min="0"
+                          max={sliderMax}
+                          step="50"
+                          value={category.estimatedAmountNZD}
+                          onChange={(e) => updateCategory(category.id, e.target.value)}
+                          className="h-2 w-full cursor-pointer appearance-none rounded-full"
+                          style={{
+                            background: `linear-gradient(90deg, ${accent} 0%, ${accent} ${sliderMax ? (category.estimatedAmountNZD / sliderMax) * 100 : 0}%, #efe4d5 ${sliderMax ? (category.estimatedAmountNZD / sliderMax) * 100 : 0}%, #efe4d5 100%)`,
+                          }}
+                        />
+                        <div className="mt-2 flex items-center justify-between text-[11px] text-[#9c8f83]">
+                          <span>0</span>
+                          <span>{t('planner.adjust_hint')}</span>
+                          <span>{format(sliderMax)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </motion.div>
-              </AnimatePresence>
-
-              <button
-                onClick={() => removeCategory(cat.id)}
-                className="opacity-0 group-hover:opacity-100 p-1.5 text-gray-300 hover:text-risky transition-all rounded-lg hover:bg-red-50"
-              >
-                <Trash2 size={14} />
-              </button>
-            </motion.div>
-          ))}
-        </AnimatePresence>
-      </div>
-
-      {/* Add category */}
-      <AnimatePresence>
-        {showAddForm ? (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="flex gap-2"
-          >
-            <input
-              autoFocus
-              type="text"
-              placeholder={t('planner.add_category_placeholder')}
-              value={newName}
-              onChange={e => setNewName(e.target.value)}
-              className="flex-1 border border-brand-mid rounded-xl px-4 py-2.5 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
-            />
-            <input
-              type="number"
-              placeholder="NZD amount"
-              value={newAmount}
-              onChange={e => setNewAmount(e.target.value)}
-              className="w-28 border border-brand-mid rounded-xl px-3 py-2.5 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
-              min="0"
-            />
-            <button
-              onClick={handleAdd}
-              className="px-4 py-2.5 bg-brand text-white text-sm font-semibold rounded-xl hover:bg-brand-deep transition-colors"
-            >
-              Add
-            </button>
-            <button
-              onClick={() => setShowAddForm(false)}
-              className="px-4 py-2.5 text-gray-400 text-sm rounded-xl hover:bg-gray-100 transition-colors"
-            >
-              Cancel
-            </button>
-          </motion.div>
-        ) : (
-          <button
-            onClick={() => setShowAddForm(true)}
-            className="flex items-center gap-2 text-brand text-sm font-semibold hover:text-brand-deep transition-colors"
-          >
-            <Plus size={16} />
-            {t('planner.add_category')}
-          </button>
-        )}
-      </AnimatePresence>
-
-      {/* Sticky total */}
-      <div className="sticky bottom-20 md:bottom-4 bg-brand-deep text-white rounded-2xl p-4 flex items-center justify-between shadow-brand-lg">
-        <div>
-          <p className="text-xs text-white/60 font-medium">{t('planner.monthly_total')}</p>
-          <AnimatePresence mode="wait">
-            <motion.p
-              key={`${currency}-${total}`}
-              initial={{ opacity: 0, y: -8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 8 }}
-              transition={{ duration: 0.2 }}
-              className="text-2xl font-bold"
-            >
-              {format(total)}
-            </motion.p>
+              )
+            })}
           </AnimatePresence>
         </div>
-        <div className="text-right">
-          <p className="text-xs text-white/60">{planCategories.length} categories</p>
-          <p className="text-sm text-brand-soft font-medium">/ month</p>
+
+        {/* ── Add category ──────────────────────────────── */}
+        <AnimatePresence>
+          {showAddForm ? (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="rounded-[28px] border border-dashed border-[#d9c9b6] bg-[#fffaf3] p-4"
+            >
+              <div className="grid gap-3 md:grid-cols-[1fr_160px_auto_auto]">
+                <input
+                  autoFocus
+                  type="text"
+                  placeholder={t('planner.add_category_placeholder')}
+                  value={newName}
+                  onChange={e => setNewName(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleAdd()}
+                  className="rounded-2xl border border-[#eadfce] bg-white px-4 py-3 text-sm outline-none focus:border-[#1f5c46] focus:ring-2 focus:ring-[#1f5c46]/10"
+                />
+                <input
+                  type="number"
+                  placeholder={t('planner.amount_placeholder')}
+                  value={newAmount}
+                  onChange={e => setNewAmount(e.target.value)}
+                  className="rounded-2xl border border-[#eadfce] bg-white px-4 py-3 text-sm outline-none focus:border-[#1f5c46] focus:ring-2 focus:ring-[#1f5c46]/10"
+                  min="0"
+                  max={MONEY_LIMITS.monthlyCategoryNZD}
+                  step="50"
+                />
+                <button
+                  onClick={handleAdd}
+                  className="rounded-2xl bg-[#173526] px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#0f281c]"
+                >
+                  {t('planner.add_action')}
+                </button>
+                <button
+                  onClick={() => setShowAddForm(false)}
+                  className="rounded-2xl px-5 py-3 text-sm font-semibold text-[#7d6f62] transition-colors hover:bg-[#f3ebdf]"
+                >
+                  {t('planner.cancel_action')}
+                </button>
+              </div>
+            </motion.div>
+          ) : (
+            <button
+              onClick={() => setShowAddForm(true)}
+              className="inline-flex items-center gap-2 rounded-2xl border border-dashed border-[#d8c8b5] bg-[#fffaf3] px-4 py-3 text-sm font-semibold text-[#173526] transition-colors hover:bg-white"
+            >
+              <Plus size={16} />
+              {t('planner.add_category')}
+            </button>
+          )}
+        </AnimatePresence>
+
+        <div className="h-24 md:h-20" />
+
+        {/* ── Fixed glass total bar ─────────────────────── */}
+        <div className="pointer-events-none fixed inset-x-0 bottom-20 z-50 px-4 pb-safe md:bottom-5">
+          <div className="pointer-events-auto mx-auto flex w-fit min-w-[280px] max-w-2xl items-center justify-between gap-5 rounded-[26px] border border-white/45 bg-[rgba(0,149,161,0.82)] px-5 py-3 text-white shadow-[0_18px_40px_rgba(0,89,96,0.22)] backdrop-blur-2xl">
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/80 sm:text-[11px]">
+                {t('planner.monthly_total')}
+              </p>
+              <p className="mt-0.5 text-[11px] text-white/65 sm:text-xs">
+                {planCategories.length} {t('planner.category_count')}
+              </p>
+            </div>
+
+            <AnimatePresence mode="wait">
+              <motion.p
+                key={`${currency}-${total}`}
+                initial={{ opacity: 0, y: -6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 6 }}
+                transition={{ duration: 0.18 }}
+                className="text-2xl font-bold tracking-tight text-white md:text-3xl"
+              >
+                {format(total)}
+              </motion.p>
+            </AnimatePresence>
+          </div>
         </div>
       </div>
-    </div>
+
+      {/* ── Pie chart modal ───────────────────────────────── */}
+      <AnimatePresence>
+        {showChartModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[70] flex items-center justify-center bg-[#0b1d15]/46 px-4 py-6 backdrop-blur-md"
+            onClick={() => setShowChartModal(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: 20 }}
+              transition={{ type: 'spring', stiffness: 260, damping: 24 }}
+              onClick={(e) => e.stopPropagation()}
+              className="relative flex max-h-[88vh] w-full max-w-[34rem] flex-col items-center overflow-hidden rounded-[34px] border border-white/55 bg-[#fffaf3]/72 p-5 shadow-[0_34px_80px_rgba(23,53,38,0.28),inset_0_1px_0_rgba(255,255,255,0.70)] backdrop-blur-2xl md:p-7"
+            >
+              <button
+                onClick={() => setShowChartModal(false)}
+                type="button"
+                aria-label={t('home.modal_close')}
+                className="absolute right-4 top-4 z-10 rounded-2xl bg-white/75 p-3 text-[#7f7265] shadow-sm backdrop-blur-xl transition-colors hover:text-[#173526]"
+              >
+                <X size={18} />
+              </button>
+
+              {chartData.length > 0 ? (
+                <div className="flex w-full flex-col items-center pt-8">
+                  <p className="text-center text-[11px] font-semibold uppercase tracking-[0.18em] text-[#b66a48]">
+                    {t('planner.chart_preview')}
+                  </p>
+                  <div className="relative mt-5 h-[min(72vw,22rem)] w-full max-w-[22rem] rounded-full bg-white/50 p-4 shadow-[0_18px_45px_rgba(57,42,22,0.10),inset_0_1px_0_rgba(255,255,255,0.76)] backdrop-blur-xl">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={chartData}
+                          dataKey="value"
+                          nameKey="categoryName"
+                          innerRadius="54%"
+                          outerRadius="82%"
+                          paddingAngle={3}
+                          stroke="none"
+                        >
+                          {chartData.map((entry, index) => (
+                            <Cell key={entry.id} fill={entry.color || CHART_COLORS[index % CHART_COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip content={<BreakdownTooltip format={format} />} />
+                      </PieChart>
+                    </ResponsiveContainer>
+
+                    <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                      <div className="max-w-[9.5rem] rounded-full bg-[#fffaf3]/72 px-4 py-3 text-center shadow-[0_10px_28px_rgba(57,42,22,0.10)] backdrop-blur-xl">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#8c6f58]">
+                          {t('planner.monthly_total')}
+                        </p>
+                        <p className="mt-1 break-words text-lg font-extrabold leading-tight text-[#173526]">
+                          {format(total)}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  <p className="mt-5 text-center text-xs font-semibold text-[#7b6f63]">
+                    {planCategories.length} {t('planner.category_count')} · {t('planner.month_suffix')}
+                  </p>
+                </div>
+              ) : (
+                <div className="mt-10 w-full rounded-[28px] border border-dashed border-[#d8c8b5] bg-white/70 p-10 text-center">
+                  <p className="font-semibold text-[#173526]">{t('planner.chart_empty')}</p>
+                  <p className="mt-2 text-sm text-[#7b6f63]">{t('planner.chart_empty_subtitle')}</p>
+                </div>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
   )
 }

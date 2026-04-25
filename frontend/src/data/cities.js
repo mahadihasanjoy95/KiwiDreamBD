@@ -10,7 +10,7 @@ export const CITIES = [
     weeklyRentHint: 320,
     highlightsEN: ['Largest BD community', 'Most jobs', 'Best transport'],
     highlightsBN: ['সবচেয়ে বড় বাংলাদেশী কমিউনিটি', 'সবচেয়ে বেশি চাকরি', 'সেরা পরিবহন'],
-    color: '#7C3AED',
+    color: '#0095A1',
   },
   {
     id: 'WELLINGTON',

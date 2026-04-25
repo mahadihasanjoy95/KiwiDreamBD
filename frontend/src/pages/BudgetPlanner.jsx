@@ -1,7 +1,8 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router-dom'
-import { BookmarkPlus, LockKeyhole } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { BookmarkPlus, CheckCircle2, Circle, LockKeyhole, Minus, Plus, Trash2 } from 'lucide-react'
 import useStore from '@/store/useStore'
 import { LifestyleCards } from '@/components/budget/LifestyleCards'
 import { CitySelector } from '@/components/budget/CitySelector'
@@ -10,15 +11,286 @@ import { MovingCost } from '@/components/budget/MovingCost'
 import { LivingFund } from '@/components/budget/LivingFund'
 import { LIFESTYLE_TYPES } from '@/data/templates'
 import { CITIES } from '@/data/cities'
+import { CHECKLIST_GROUPS } from '@/data/checklist'
 import { cn } from '@/utils/cn'
 import { useAffordability } from '@/hooks/useAffordability'
+import soloStudentSvg from '@/assets/svg/solo-student.svg'
+import comfortableSoloSvg from '@/assets/svg/comfortable-solo.svg'
+import familyPlanningSvg from '@/assets/svg/family-planning.svg'
+import aucklandSvg from '@/assets/svg/auckland.svg'
+import wellingtonSvg from '@/assets/svg/wellington.svg'
+import christchurchSvg from '@/assets/svg/christchurch.svg'
+import hamiltonSvg from '@/assets/svg/hamilton.svg'
+import dunedinSvg from '@/assets/svg/dunedin.svg'
 
-const TABS = ['monthly', 'moving', 'fund']
+const TABS = ['monthly', 'moving', 'checklist', 'fund']
+
+const CHECKLIST_CATEGORY_OPTIONS = [
+  ...CHECKLIST_GROUPS,
+  { id: 'other', titleEN: 'Other', titleBN: 'অন্যান্য', items: [] },
+]
+
+const LIFESTYLE_ICON_SVG = {
+  SOLO_MODEST: soloStudentSvg,
+  COUPLE_STANDARD: familyPlanningSvg,
+  SOLO_COMFORTABLE: comfortableSoloSvg,
+  FAMILY_PLANNING: familyPlanningSvg,
+}
+
+const CITY_ICON_SVG = {
+  AUCKLAND: aucklandSvg,
+  WELLINGTON: wellingtonSvg,
+  CHRISTCHURCH: christchurchSvg,
+  HAMILTON: hamiltonSvg,
+  DUNEDIN: dunedinSvg,
+}
 
 const slideVariants = {
-  enter: (dir) => ({ x: dir > 0 ? 80 : -80, opacity: 0 }),
+  enter:  (dir) => ({ x: dir > 0 ? 60 : -60, opacity: 0 }),
   center: { x: 0, opacity: 1 },
-  exit:  (dir) => ({ x: dir > 0 ? -80 : 80, opacity: 0 }),
+  exit:   (dir) => ({ x: dir > 0 ? -60 : 60, opacity: 0 }),
+}
+
+function PlannerChecklistPanel() {
+  const language = useStore(s => s.language)
+  const [items, setItems] = useState(() =>
+    CHECKLIST_GROUPS.flatMap(group =>
+      group.items.map(item => ({
+        ...item,
+        groupId: group.id,
+        quantity: 1,
+        completed: false,
+      }))
+    )
+  )
+  const [newGroupId, setNewGroupId] = useState(CHECKLIST_CATEGORY_OPTIONS[0]?.id || 'documents')
+  const [newText, setNewText] = useState('')
+  const [newQuantity, setNewQuantity] = useState(1)
+
+  const clampQuantity = value => Math.min(1000, Math.max(0, Number(value) || 0))
+
+  const totals = useMemo(() => {
+    const total = items.length
+    const done = items.filter(item => item.completed).length
+    return { total, done, percent: total ? Math.round((done / total) * 100) : 0 }
+  }, [items])
+
+  const groupedItems = useMemo(
+    () =>
+      CHECKLIST_CATEGORY_OPTIONS.map(group => ({
+        ...group,
+        items: items.filter(item => item.groupId === group.id),
+      })),
+    [items]
+  )
+
+  const updateItem = (id, patch) => {
+    setItems(prev => prev.map(item => (item.id === id ? { ...item, ...patch } : item)))
+  }
+
+  const removeItem = (id) => {
+    setItems(prev => prev.filter(item => item.id !== id))
+  }
+
+  const addItem = () => {
+    if (!newText.trim()) return
+    const text = newText.trim()
+    setItems(prev => [
+      ...prev,
+      {
+        id: `custom-${Date.now()}`,
+        groupId: newGroupId,
+        textEN: text,
+        textBN: text,
+        quantity: clampQuantity(newQuantity),
+        completed: false,
+        isCustom: true,
+      },
+    ])
+    setNewText('')
+    setNewQuantity(1)
+  }
+
+  const copy = {
+    badge: language === 'BN' ? 'প্রি-ডিপার্চার প্রস্তুতি' : 'Pre-departure readiness',
+    title: language === 'BN' ? 'যাওয়ার আগে কী কী প্রস্তুত?' : 'What should be ready before you move?',
+    helper:
+      language === 'BN'
+        ? 'ডকুমেন্ট, টাকা, থাকার জায়গা, স্বাস্থ্য আর শপিং আইটেম একই জায়গায় ট্র্যাক করুন।'
+        : 'Track documents, money, housing, health, and shopping items in one practical list.',
+    completed: language === 'BN' ? 'সম্পন্ন' : 'completed',
+    addTitle: language === 'BN' ? 'নিজের আইটেম যোগ করুন' : 'Add your own item',
+    itemPlaceholder: language === 'BN' ? 'যেমন: শীতের জ্যাকেট' : 'e.g. winter jacket',
+    quantity: language === 'BN' ? 'পরিমাণ' : 'Qty',
+    add: language === 'BN' ? 'যোগ করুন' : 'Add item',
+    empty: language === 'BN' ? 'এই ক্যাটাগরিতে এখনো কিছু নেই' : 'Nothing in this category yet',
+  }
+
+  return (
+    <div className="rounded-[30px] border border-[#c9e4e2] bg-[linear-gradient(135deg,#fbfffc_0%,#edf8f7_100%)] p-5 shadow-[0_20px_48px_rgba(0,89,96,0.10)]">
+      <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand/70">
+            {copy.badge}
+          </p>
+          <h3 className="mt-2 font-serif text-2xl font-bold text-brand-deep">
+            {copy.title}
+          </h3>
+          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[#5f787a]">{copy.helper}</p>
+        </div>
+        <div className="min-w-[220px] rounded-[24px] border border-white/60 bg-white/60 p-4 shadow-[0_14px_34px_rgba(0,89,96,0.08)] backdrop-blur-xl">
+          <p className="text-sm font-bold text-brand-deep">
+            {totals.done} / {totals.total} {copy.completed}
+          </p>
+          <div className="mt-3 h-3 overflow-hidden rounded-full bg-brand-mid/70">
+            <motion.div
+              className="h-full bg-gradient-to-r from-brand to-brand-soft"
+              animate={{ width: `${totals.percent}%` }}
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="mb-5 rounded-[26px] border border-white/70 bg-white/72 p-4 shadow-[0_16px_36px_rgba(0,89,96,0.08)] backdrop-blur-xl">
+        <p className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-brand/70">{copy.addTitle}</p>
+        <div className="grid gap-3 lg:grid-cols-[170px_1fr_auto_auto]">
+          <select
+            value={newGroupId}
+            onChange={e => setNewGroupId(e.target.value)}
+            className="rounded-2xl border border-brand-mid bg-white px-4 py-3 text-sm font-semibold text-brand-deep outline-none focus:border-brand"
+          >
+            {CHECKLIST_CATEGORY_OPTIONS.map(group => (
+              <option key={group.id} value={group.id}>
+                {language === 'BN' ? group.titleBN : group.titleEN}
+              </option>
+            ))}
+          </select>
+          <input
+            type="text"
+            value={newText}
+            onChange={e => setNewText(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && addItem()}
+            placeholder={copy.itemPlaceholder}
+            className="rounded-2xl border border-brand-mid bg-white px-4 py-3 text-sm font-medium text-brand-deep outline-none placeholder:text-[#8ca1a3] focus:border-brand"
+          />
+          <div className="flex items-center overflow-hidden rounded-2xl border border-brand-mid bg-white text-brand-deep focus-within:border-brand">
+            <button
+              type="button"
+              onClick={() => setNewQuantity(value => clampQuantity(value - 1))}
+              className="flex h-12 w-10 items-center justify-center text-brand transition-colors hover:bg-brand-light"
+              aria-label="Decrease quantity"
+            >
+              <Minus size={15} />
+            </button>
+            <input
+              type="number"
+              value={newQuantity}
+              onChange={e => setNewQuantity(clampQuantity(e.target.value))}
+              aria-label={copy.quantity}
+              min="0"
+              max="1000"
+              className="h-12 w-14 bg-transparent text-center text-sm font-bold text-brand-deep outline-none"
+            />
+            <button
+              type="button"
+              onClick={() => setNewQuantity(value => clampQuantity(value + 1))}
+              className="flex h-12 w-10 items-center justify-center text-brand transition-colors hover:bg-brand-light"
+              aria-label="Increase quantity"
+            >
+              <Plus size={15} />
+            </button>
+          </div>
+          <button
+            type="button"
+            onClick={addItem}
+            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-brand px-5 py-3 text-sm font-bold text-white shadow-[0_14px_30px_rgba(0,149,161,0.20)] transition-colors hover:bg-brand-deep"
+          >
+            <Plus size={16} />
+            {copy.add}
+          </button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+        {groupedItems.map((group, idx) => {
+          const title = language === 'BN' ? group.titleBN : group.titleEN
+          const done = group.items.filter(item => item.completed).length
+          return (
+            <motion.div
+              key={group.id}
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: idx * 0.04 }}
+              className="rounded-[26px] border border-white/70 bg-white/70 p-4 shadow-[0_14px_32px_rgba(0,89,96,0.07)] backdrop-blur-xl sm:p-5"
+            >
+              <div className="mb-4 flex items-center justify-between">
+                <div>
+                  <h4 className="font-bold text-brand-deep">{title}</h4>
+                  <p className="mt-1 text-xs text-[#6a8284]">{done} / {group.items.length}</p>
+                </div>
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-brand-light font-bold text-brand">
+                  {done}
+                </div>
+              </div>
+
+              <div className="divide-y divide-brand-mid/70">
+                {group.items.length === 0 ? (
+                  <div className="py-4 text-sm text-[#6a8284]">
+                    {copy.empty}
+                  </div>
+                ) : null}
+
+                {group.items.map(item => {
+                  const checked = item.completed
+                  const text = language === 'BN' ? item.textBN : item.textEN
+                  return (
+                    <div
+                      key={item.id}
+                      className="grid grid-cols-[auto_auto_1fr_auto] items-start gap-2 py-3 sm:gap-3"
+                    >
+                      <div className="flex h-8 min-w-10 items-center justify-center rounded-full bg-white/70 px-2 text-sm font-bold text-brand-deep ring-1 ring-brand-mid">
+                        {item.quantity}x
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => updateItem(item.id, { completed: !checked })}
+                        className="flex h-8 w-8 shrink-0 items-center justify-center text-brand"
+                        aria-label={checked ? 'Mark incomplete' : 'Mark complete'}
+                      >
+                        {checked ? <CheckCircle2 size={18} /> : <Circle size={18} />}
+                      </button>
+                      <div className="min-w-0">
+                        <textarea
+                          value={text}
+                          onChange={e =>
+                            updateItem(item.id, language === 'BN' ? { textBN: e.target.value } : { textEN: e.target.value })
+                          }
+                          rows={Math.max(1, Math.ceil(text.length / 34))}
+                          className={cn(
+                            'block w-full min-w-0 resize-none overflow-hidden bg-transparent text-[1.28rem] font-semibold leading-7 outline-none sm:text-[1.42rem]',
+                            language === 'BN' ? 'font-bengali text-base sm:text-lg' : 'font-hand',
+                            checked ? 'hand-strike-text text-brand-deep/86' : 'text-brand-deep/86'
+                          )}
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeItem(item.id)}
+                        className="rounded-xl p-2 text-gray-300 transition-colors hover:bg-red-50 hover:text-red-500"
+                        aria-label="Remove item"
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
+                  )
+                })}
+              </div>
+            </motion.div>
+          )
+        })}
+      </div>
+    </div>
+  )
 }
 
 export default function BudgetPlanner() {
@@ -33,23 +305,46 @@ export default function BudgetPlanner() {
   const isAuthenticated = useStore(s => s.isAuthenticated)
   const saveCurrentPlan = useStore(s => s.saveCurrentPlan)
   const savedPlans = useStore(s => s.savedPlans)
+  const setWizardStep = useStore(s => s.setWizardStep)
+  const rechooseLifestyle = useStore(s => s.rechooseLifestyle)
+  const rechooseCity = useStore(s => s.rechooseCity)
   const { monthlyTotal, survivalMonths } = useAffordability()
+
+  // Track slide direction: +1 = forward (higher step), -1 = back (lower step)
+  const prevStepRef = useRef(wizardStep)
+  const dirRef = useRef(1)
+  if (prevStepRef.current !== wizardStep) {
+    dirRef.current = wizardStep > prevStepRef.current ? 1 : -1
+    prevStepRef.current = wizardStep
+  }
+  const slideDir = dirRef.current
 
   const lifestyle = selectedLifestyle ? LIFESTYLE_TYPES[selectedLifestyle] : null
   const city = selectedCity ? CITIES.find(c => c.id === selectedCity) : null
 
-  return (
-    <div className="min-h-screen bg-brand-light">
-      {/* Progress bar */}
-      <div className="h-1 bg-brand-mid">
-        <motion.div
-          className="h-full bg-gradient-to-r from-brand to-brand-soft"
-          animate={{ width: `${(wizardStep / 2) * 100}%` }}
-          transition={{ type: 'spring', stiffness: 200, damping: 25 }}
-        />
-      </div>
+  useEffect(() => {
+    if (wizardStep === 1 && !selectedLifestyle) {
+      setWizardStep(0)
+      return
+    }
 
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
+    if (wizardStep === 2 && !selectedLifestyle) {
+      setWizardStep(0)
+      return
+    }
+
+    if (wizardStep === 2 && !selectedCity) {
+      setWizardStep(1)
+    }
+  }, [selectedCity, selectedLifestyle, setWizardStep, wizardStep])
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
+  }, [wizardStep])
+
+  return (
+    <div className="min-h-screen bg-[linear-gradient(180deg,#e4f4f4_0%,#f7fbf8_100%)]">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-8 pb-28 md:pb-8">
         {/* Breadcrumb (shown on step 2) */}
         {wizardStep === 2 && lifestyle && city && (
           <motion.div
@@ -58,34 +353,48 @@ export default function BudgetPlanner() {
             className="flex flex-wrap items-center gap-2 mb-6 text-sm"
           >
             <button
-              onClick={() => useStore.getState().setWizardStep(0)}
-              className="flex items-center gap-1.5 bg-white border border-brand-mid rounded-full px-3 py-1.5 text-brand font-semibold hover:bg-brand-light transition-colors"
+              type="button"
+              onClick={rechooseLifestyle}
+              className="flex items-center gap-1.5 rounded-full border border-brand-mid bg-white px-3 py-1.5 font-semibold text-brand transition-colors hover:bg-brand-light"
             >
-              <span className="text-base">{lifestyle.icon}</span>
+              <img
+                src={LIFESTYLE_ICON_SVG[lifestyle.id]}
+                alt=""
+                aria-hidden="true"
+                className="h-5 w-5 shrink-0 object-contain"
+              />
               <span>{language === 'BN' ? lifestyle.labelBN : lifestyle.labelEN}</span>
             </button>
             <span className="text-gray-300">→</span>
             <button
-              onClick={() => useStore.getState().setWizardStep(1)}
-              className="flex items-center gap-1.5 bg-white border border-brand-mid rounded-full px-3 py-1.5 text-brand font-semibold hover:bg-brand-light transition-colors"
+              type="button"
+              onClick={rechooseCity}
+              className="flex items-center gap-1.5 rounded-full border border-brand-mid bg-white px-3 py-1.5 font-semibold text-brand transition-colors hover:bg-brand-light"
             >
-              <span>{city.emoji}</span>
+              <img
+                src={CITY_ICON_SVG[city.id]}
+                alt=""
+                aria-hidden="true"
+                className="h-5 w-5 shrink-0 object-contain"
+              />
               <span>{language === 'BN' ? city.nameBN : city.name}</span>
             </button>
           </motion.div>
         )}
 
         {/* Wizard steps */}
-        <AnimatePresence mode="wait" custom={wizardStep}>
+        {/* mode="popLayout" removes exiting element from flow immediately —
+            no blank gap between steps. Direction-aware slide. */}
+        <AnimatePresence mode="popLayout" custom={slideDir}>
           {wizardStep === 0 && (
             <motion.div
               key="lifestyle"
-              custom={1}
+              custom={slideDir}
               variants={slideVariants}
               initial="enter"
               animate="center"
               exit="exit"
-              transition={{ duration: 0.25, ease: 'easeInOut' }}
+              transition={{ duration: 0.2, ease: 'easeInOut' }}
             >
               <LifestyleCards />
             </motion.div>
@@ -94,12 +403,12 @@ export default function BudgetPlanner() {
           {wizardStep === 1 && (
             <motion.div
               key="city"
-              custom={1}
+              custom={slideDir}
               variants={slideVariants}
               initial="enter"
               animate="center"
               exit="exit"
-              transition={{ duration: 0.25, ease: 'easeInOut' }}
+              transition={{ duration: 0.2, ease: 'easeInOut' }}
             >
               <CitySelector />
             </motion.div>
@@ -108,21 +417,22 @@ export default function BudgetPlanner() {
           {wizardStep === 2 && (
             <motion.div
               key="planner"
-              custom={1}
+              custom={slideDir}
               variants={slideVariants}
               initial="enter"
               animate="center"
               exit="exit"
-              transition={{ duration: 0.25, ease: 'easeInOut' }}
+              transition={{ duration: 0.2, ease: 'easeInOut' }}
             >
               {/* Tab bar */}
-              <div className="bg-white rounded-2xl border border-brand-mid p-1 flex gap-1 mb-6 shadow-brand-sm">
+              <div className="mb-6 rounded-2xl border border-brand-mid bg-white p-1 shadow-brand-sm">
+                <div className="grid grid-cols-4 gap-1">
                 {TABS.map((tab, i) => (
                   <button
                     key={tab}
                     onClick={() => setActiveTab(i)}
                     className={cn(
-                      'relative flex-1 py-2.5 text-sm font-semibold rounded-xl transition-colors duration-200',
+                      'relative min-w-0 rounded-xl px-1.5 py-2.5 text-[11px] font-semibold transition-colors duration-200 sm:px-2 sm:text-sm',
                       activeTab === i ? 'text-white' : 'text-gray-500 hover:text-gray-700'
                     )}
                   >
@@ -133,9 +443,11 @@ export default function BudgetPlanner() {
                         transition={{ type: 'spring', stiffness: 400, damping: 35 }}
                       />
                     )}
-                    <span className="relative">{t(`planner.tabs.${tab}`)}</span>
+                    <span className="relative block truncate sm:hidden">{t(`planner.tabs_short.${tab}`)}</span>
+                    <span className="relative hidden truncate sm:block">{t(`planner.tabs.${tab}`)}</span>
                   </button>
                 ))}
+                </div>
               </div>
 
               {/* Tab content */}
@@ -149,51 +461,75 @@ export default function BudgetPlanner() {
                 >
                   {activeTab === 0 && <MonthlyPlan />}
                   {activeTab === 1 && <MovingCost />}
-                  {activeTab === 2 && <LivingFund />}
+                  {activeTab === 2 && <PlannerChecklistPanel />}
+                  {activeTab === 3 && <LivingFund />}
                 </motion.div>
               </AnimatePresence>
 
-              <div className="mt-6 bg-white rounded-2xl border border-brand-mid p-5 shadow-brand-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
-                    {t('auth.save_plan_label')}
-                  </p>
-                  <p className="text-sm text-gray-600 mt-2">
-                    {isAuthenticated
-                      ? t('auth.save_plan_signedin', { count: savedPlans.length })
-                      : t('auth.save_plan_signedout')}
-                  </p>
-                  {monthlyTotal > 0 ? (
-                    <p className="text-xs text-gray-400 mt-2">
-                      {t('auth.plan_snapshot', {
-                        monthly: monthlyTotal.toLocaleString(),
-                        runway: survivalMonths !== null ? survivalMonths.toFixed(1) : '0.0',
-                      })}
+              <div className="mt-6 rounded-[30px] border border-[#c9e4e2] bg-[linear-gradient(135deg,#fbfffc_0%,#edf8f7_48%,#dff0ef_100%)] p-5 shadow-[0_20px_48px_rgba(0,89,96,0.10)]">
+                <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#00818a]">
+                      {t('auth.save_plan_label')}
                     </p>
-                  ) : null}
+                    <h3 className="mt-2 font-serif text-2xl font-bold text-[#142334]">
+                      {t('auth.save_plan_title')}
+                    </h3>
+                    <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[#4e6567]">
+                      {isAuthenticated
+                        ? t('auth.save_plan_signedin', { count: savedPlans.length })
+                        : t('auth.save_plan_signedout')}
+                    </p>
+                  </div>
+
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="rounded-[24px] border border-white/60 bg-white/55 px-4 py-3 shadow-[0_14px_34px_rgba(57,42,22,0.08)] backdrop-blur-sm">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#6a8284]">
+                        {t('auth.snapshot_monthly')}
+                      </p>
+                      <p className="mt-1 text-xl font-bold text-[#142334]">NZD {monthlyTotal.toLocaleString()}</p>
+                    </div>
+                    <div className="rounded-[24px] border border-white/60 bg-white/55 px-4 py-3 shadow-[0_14px_34px_rgba(57,42,22,0.08)] backdrop-blur-sm">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#6a8284]">
+                        {t('auth.snapshot_runway')}
+                      </p>
+                      <p className="mt-1 text-xl font-bold text-[#142334]">
+                        {survivalMonths !== null ? survivalMonths.toFixed(1) : '0.0'} {t('planner.months_short')}
+                      </p>
+                    </div>
+                  </div>
                 </div>
 
-                {isAuthenticated ? (
-                  <button
-                    onClick={() => {
-                      const result = saveCurrentPlan()
-                      if (result.ok) navigate('/dashboard')
-                    }}
-                    className="inline-flex items-center justify-center gap-2 rounded-2xl bg-brand text-white px-5 py-3 font-semibold hover:bg-brand-deep transition-colors"
-                  >
-                    <BookmarkPlus size={18} />
-                    {t('auth.save_plan_cta')}
-                  </button>
-                ) : (
-                  <Link
-                    to="/signin"
-                    state={{ next: '/plan' }}
-                    className="inline-flex items-center justify-center gap-2 rounded-2xl bg-brand-deep text-white px-5 py-3 font-semibold hover:bg-[#26134d] transition-colors"
-                  >
-                    <LockKeyhole size={18} />
-                    {t('auth.signin_to_save')}
-                  </Link>
-                )}
+                <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-xs text-[#6a8284]">
+                    {t('auth.plan_snapshot', {
+                      monthly: monthlyTotal.toLocaleString(),
+                      runway: survivalMonths !== null ? survivalMonths.toFixed(1) : '0.0',
+                    })}
+                  </p>
+
+                  {isAuthenticated ? (
+                    <button
+                      onClick={() => {
+                        const result = saveCurrentPlan()
+                        if (result.ok) navigate('/dashboard')
+                      }}
+                      className="inline-flex items-center justify-center gap-2 rounded-[20px] bg-brand px-5 py-3 font-semibold text-white shadow-[0_16px_34px_rgba(0,149,161,0.22)] transition-transform hover:-translate-y-0.5 hover:bg-brand-deep"
+                    >
+                      <BookmarkPlus size={18} />
+                      {t('auth.save_plan_cta')}
+                    </button>
+                  ) : (
+                    <Link
+                      to="/signin"
+                      state={{ next: '/plan' }}
+                      className="inline-flex items-center justify-center gap-2 rounded-[20px] bg-brand-deep px-5 py-3 font-semibold text-white shadow-[0_16px_34px_rgba(20,35,52,0.20)] transition-transform hover:-translate-y-0.5 hover:bg-[#0d1825]"
+                    >
+                      <LockKeyhole size={18} />
+                      {t('auth.signin_to_save')}
+                    </Link>
+                  )}
+                </div>
               </div>
             </motion.div>
           )}

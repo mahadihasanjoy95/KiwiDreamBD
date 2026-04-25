@@ -1,0 +1,92 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+<defs>
+  <linearGradient id="hm-branch" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0%" stop-color="#92400E"></stop>
+    <stop offset="100%" stop-color="#78350F"></stop>
+  </linearGradient>
+  <linearGradient id="hm-leaf1" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0%" stop-color="#86EFAC"></stop>
+    <stop offset="100%" stop-color="#047857"></stop>
+  </linearGradient>
+  <linearGradient id="hm-leaf2" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0%" stop-color="#6EE7B7"></stop>
+    <stop offset="100%" stop-color="#065F46"></stop>
+  </linearGradient>
+  <linearGradient id="hm-leaf3" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0%" stop-color="#A7F3D0"></stop>
+    <stop offset="100%" stop-color="#047857"></stop>
+  </linearGradient>
+  <linearGradient id="hm-river" x1="0" y1="0" x2="1" y2="0">
+    <stop offset="0%" stop-color="#00D4BA"></stop>
+    <stop offset="50%" stop-color="#0095A1"></stop>
+    <stop offset="100%" stop-color="#00D4BA"></stop>
+  </linearGradient>
+  <linearGradient id="hm-accent" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0%" stop-color="#FED7AA"></stop>
+    <stop offset="100%" stop-color="#EA580C"></stop>
+  </linearGradient>
+  <filter id="hm-shadow">
+    <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#10233A" flood-opacity="0.22"></feDropShadow>
+  </filter>
+</defs>
+
+<g filter="url(#hm-shadow)">
+
+
+<path d="M60,380 C100,360 140,370 180,358 C220,346 260,358 300,348 C340,338 380,350 420,340 C440,335 455,338 460,342 L460,406 C440,410 400,400 360,408 C320,416 280,404 240,412 C200,420 160,408 120,416 C90,422 68,418 60,414 Z" fill="url(#hm-river)"></path>
+
+<path d="M80,374 C120,366 170,374 220,368 C270,362 320,370 370,364" stroke="rgba(255,255,255,0.35)" stroke-width="2.5" fill="none" stroke-linecap="round"></path>
+<path d="M100,392 C150,384 200,392 260,386 C320,380 380,388 440,382" stroke="rgba(255,255,255,0.25)" stroke-width="2" fill="none" stroke-linecap="round"></path>
+<path d="M80,406 C140,400 200,408 270,402 C340,396 400,404 440,398" stroke="rgba(255,255,255,0.2)" stroke-width="1.5" fill="none" stroke-linecap="round"></path>
+
+<path d="M60,414 C100,422 160,412 220,418 C280,424 340,414 400,420 C430,424 450,420 460,418 L460,460 Q256,470 60,460 Z" fill="#065F46" opacity="0.5"></path>
+
+
+<path d="M128,430 C148,380 176,320 220,272 C252,238 290,216 330,196" stroke="url(#hm-branch)" stroke-width="22" fill="none" stroke-linecap="round"></path>
+<path d="M128,430 C148,380 176,320 220,272 C252,238 290,216 330,196" stroke="#92400E" stroke-width="10" fill="none" stroke-linecap="round" opacity="0.5"></path>
+
+<path d="M132,424 C152,374 178,316 222,268 C254,234 292,212 330,194" stroke="#C2410C" stroke-width="4" fill="none" stroke-linecap="round" opacity="0.25"></path>
+
+
+<path d="M265,268 C292,246 320,230 350,218" stroke="url(#hm-branch)" stroke-width="14" fill="none" stroke-linecap="round"></path>
+<path d="M295,248 C316,232 338,222 362,212" stroke="url(#hm-branch)" stroke-width="10" fill="none" stroke-linecap="round"></path>
+
+<path d="M330,196 C354,182 380,172 400,164" stroke="url(#hm-branch)" stroke-width="8" fill="none" stroke-linecap="round"></path>
+
+
+
+<path d="M220,272 C196,240 172,196 196,164 C216,140 244,156 256,186 C264,208 248,248 220,272 Z" fill="url(#hm-leaf1)"></path>
+<path d="M220,272 C202,250 184,216 196,180" stroke="#16A34A" stroke-width="2.5" fill="none" opacity="0.5" stroke-linecap="round"></path>
+
+<path d="M218,268 C204,248 190,218 198,188" stroke="white" stroke-width="1.5" fill="none" opacity="0.3" stroke-linecap="round"></path>
+<path d="M210,260 C202,244 196,222 200,200" stroke="white" stroke-width="1" fill="none" opacity="0.25"></path>
+
+
+<path d="M295,248 C310,216 330,180 360,166 C372,194 358,228 332,250 C320,260 306,258 295,248 Z" fill="url(#hm-leaf2)"></path>
+<path d="M296,246 C312,218 332,182 360,168" stroke="#065F46" stroke-width="2.5" fill="none" opacity="0.5" stroke-linecap="round"></path>
+<path d="M302,244 C316,220 336,186 356,172" stroke="white" stroke-width="1.5" fill="none" opacity="0.25" stroke-linecap="round"></path>
+
+
+<path d="M330,196 C348,170 372,148 398,140 C404,164 388,190 364,206 C352,214 338,210 330,196 Z" fill="url(#hm-leaf3)"></path>
+<path d="M331,194 C349,168 374,150 396,142" stroke="#16A34A" stroke-width="2" fill="none" opacity="0.4" stroke-linecap="round"></path>
+
+
+<path d="M176,338 C156,318 144,290 160,272 C174,256 194,264 200,284 C206,302 196,326 176,338 Z" fill="url(#hm-leaf1)" opacity="0.8"></path>
+<path d="M177,336 C160,316 148,290 162,274" stroke="#16A34A" stroke-width="2" fill="none" opacity="0.4" stroke-linecap="round"></path>
+
+
+<path d="M250,300 C238,284 234,264 246,252 C256,242 268,250 268,264 C268,276 260,292 250,300 Z" fill="url(#hm-leaf2)" opacity="0.75"></path>
+
+
+<circle cx="262" cy="194" r="11" fill="url(#hm-accent)"></circle>
+<circle cx="262" cy="194" r="6" fill="#FED7AA" opacity="0.6"></circle>
+<circle cx="245" cy="206" r="9" fill="url(#hm-accent)" opacity="0.9"></circle>
+<circle cx="278" cy="208" r="8" fill="#EA580C" opacity="0.8"></circle>
+<circle cx="400" cy="162" r="10" fill="url(#hm-accent)"></circle>
+<circle cx="412" cy="172" r="8" fill="#EA580C" opacity="0.85"></circle>
+
+
+<path d="M214,260 C206,240 200,216 204,192" stroke="white" stroke-width="3" fill="none" opacity="0.2" stroke-linecap="round"></path>
+<path d="M300,240 C310,218 326,192 348,176" stroke="white" stroke-width="2.5" fill="none" opacity="0.2" stroke-linecap="round"></path>
+</g>
+</svg>

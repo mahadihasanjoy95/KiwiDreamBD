@@ -2,7 +2,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router-dom'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { BookmarkPlus, CheckCircle2, Circle, LockKeyhole, Minus, Plus, Trash2 } from 'lucide-react'
+import { BookmarkPlus, CheckCircle2, Circle, Download, LockKeyhole, Minus, Plus } from 'lucide-react'
 import useStore from '@/store/useStore'
 import { LifestyleCards } from '@/components/budget/LifestyleCards'
 import { CitySelector } from '@/components/budget/CitySelector'
@@ -57,6 +57,8 @@ function PlannerChecklistPanel() {
     CHECKLIST_GROUPS.flatMap(group =>
       group.items.map(item => ({
         ...item,
+        text: item.text || '',
+        draftText: item.text || '',
         groupId: group.id,
         quantity: 1,
         completed: false,
@@ -100,8 +102,8 @@ function PlannerChecklistPanel() {
       {
         id: `custom-${Date.now()}`,
         groupId: newGroupId,
-        textEN: text,
-        textBN: text,
+        text,
+        draftText: text,
         quantity: clampQuantity(newQuantity),
         completed: false,
         isCustom: true,
@@ -242,11 +244,10 @@ function PlannerChecklistPanel() {
 
                 {group.items.map(item => {
                   const checked = item.completed
-                  const text = language === 'BN' ? item.textBN : item.textEN
                   return (
                     <div
                       key={item.id}
-                      className="grid grid-cols-[auto_auto_1fr_auto] items-start gap-2 py-3 sm:gap-3"
+                      className="grid grid-cols-[auto_auto_1fr] items-start gap-2 py-3 sm:gap-3"
                     >
                       <div className="flex h-8 min-w-10 items-center justify-center rounded-full bg-white/70 px-2 text-sm font-bold text-brand-deep ring-1 ring-brand-mid">
                         {item.quantity}x
@@ -261,26 +262,32 @@ function PlannerChecklistPanel() {
                       </button>
                       <div className="min-w-0">
                         <textarea
-                          value={text}
-                          onChange={e =>
-                            updateItem(item.id, language === 'BN' ? { textBN: e.target.value } : { textEN: e.target.value })
-                          }
-                          rows={Math.max(1, Math.ceil(text.length / 34))}
+                          value={item.draftText ?? item.text ?? ''}
+                          onChange={e => updateItem(item.id, { draftText: e.target.value })}
+                          rows={Math.max(1, Math.ceil(String(item.draftText ?? item.text ?? '').length / 34))}
                           className={cn(
                             'block w-full min-w-0 resize-none overflow-hidden bg-transparent text-[1.28rem] font-semibold leading-7 outline-none sm:text-[1.42rem]',
                             language === 'BN' ? 'font-bengali text-base sm:text-lg' : 'font-hand',
                             checked ? 'hand-strike-text text-brand-deep/86' : 'text-brand-deep/86'
                           )}
                         />
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            onClick={() => updateItem(item.id, { text: item.draftText ?? item.text ?? '' })}
+                            className="rounded-full bg-brand px-3 py-1.5 text-xs font-bold text-white hover:bg-brand-deep"
+                          >
+                            {language === 'BN' ? 'আপডেট' : 'Update'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => removeItem(item.id)}
+                            className="rounded-full border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-bold text-red-700 hover:bg-red-100"
+                          >
+                            {language === 'BN' ? 'ডিলিট' : 'Delete'}
+                          </button>
+                        </div>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => removeItem(item.id)}
-                        className="rounded-xl p-2 text-gray-300 transition-colors hover:bg-red-50 hover:text-red-500"
-                        aria-label="Remove item"
-                      >
-                        <Trash2 size={15} />
-                      </button>
                     </div>
                   )
                 })}
@@ -508,27 +515,38 @@ export default function BudgetPlanner() {
                     })}
                   </p>
 
-                  {isAuthenticated ? (
+                  <div className="flex flex-col gap-3 sm:flex-row">
                     <button
-                      onClick={() => {
-                        const result = saveCurrentPlan()
-                        if (result.ok) navigate('/dashboard')
-                      }}
-                      className="inline-flex items-center justify-center gap-2 rounded-[20px] bg-brand px-5 py-3 font-semibold text-white shadow-[0_16px_34px_rgba(0,149,161,0.22)] transition-transform hover:-translate-y-0.5 hover:bg-brand-deep"
+                      type="button"
+                      onClick={() => window.print()}
+                      className="inline-flex items-center justify-center gap-2 rounded-[20px] border border-brand-mid bg-white/70 px-5 py-3 font-semibold text-brand-deep transition-transform hover:-translate-y-0.5 hover:bg-white"
                     >
-                      <BookmarkPlus size={18} />
-                      {t('auth.save_plan_cta')}
+                      <Download size={18} />
+                      {t('dashboard.export_pdf')}
                     </button>
-                  ) : (
-                    <Link
-                      to="/signin"
-                      state={{ next: '/plan' }}
-                      className="inline-flex items-center justify-center gap-2 rounded-[20px] bg-brand-deep px-5 py-3 font-semibold text-white shadow-[0_16px_34px_rgba(20,35,52,0.20)] transition-transform hover:-translate-y-0.5 hover:bg-[#0d1825]"
-                    >
-                      <LockKeyhole size={18} />
-                      {t('auth.signin_to_save')}
-                    </Link>
-                  )}
+
+                    {isAuthenticated ? (
+                      <button
+                        onClick={() => {
+                          const result = saveCurrentPlan()
+                          if (result.ok) navigate('/dashboard')
+                        }}
+                        className="inline-flex items-center justify-center gap-2 rounded-[20px] bg-brand px-5 py-3 font-semibold text-white shadow-[0_16px_34px_rgba(0,149,161,0.22)] transition-transform hover:-translate-y-0.5 hover:bg-brand-deep"
+                      >
+                        <BookmarkPlus size={18} />
+                        {t('auth.save_plan_cta')}
+                      </button>
+                    ) : (
+                      <Link
+                        to="/signin"
+                        state={{ next: '/plan' }}
+                        className="inline-flex items-center justify-center gap-2 rounded-[20px] bg-brand-deep px-5 py-3 font-semibold text-white shadow-[0_16px_34px_rgba(20,35,52,0.20)] transition-transform hover:-translate-y-0.5 hover:bg-[#0d1825]"
+                      >
+                        <LockKeyhole size={18} />
+                        {t('auth.signin_to_save')}
+                      </Link>
+                    )}
+                  </div>
                 </div>
               </div>
             </motion.div>

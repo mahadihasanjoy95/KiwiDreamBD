@@ -138,6 +138,11 @@
    rounded-* or btn-* class, so existing styles still win on
    background/color — we only add the glass layer on top.        */
 @layer components {
+  .profile-input,
+  .home-modal-input {
+    @apply w-full rounded-2xl border border-brand-mid/70 bg-white/80 px-4 py-3 text-sm font-medium text-brand-deep outline-none transition-colors placeholder:text-slate-400 focus:border-brand focus:bg-white;
+  }
+
   button:not([disabled]),
   a[class*="rounded"],
   a[class*="px-"],

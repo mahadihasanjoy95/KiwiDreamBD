@@ -1,20 +1,38 @@
+import { useEffect, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { Link } from 'react-router-dom'
-import { ArrowRight, Calendar, MapPin, PiggyBank, Sparkles, TrendingUp } from 'lucide-react'
+import { Link, useNavigate } from 'react-router-dom'
+import {
+  ArrowRight,
+  BarChart3,
+  BookOpen,
+  CalendarCheck,
+  CircleDollarSign,
+  Download,
+  Pencil,
+  PiggyBank,
+  Trash2,
+} from 'lucide-react'
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts'
 import useStore from '@/store/useStore'
 import { useCurrency } from '@/hooks/useCurrency'
 import { ReadinessRing } from '@/components/dashboard/ReadinessRing'
-import { PlanCard } from '@/components/dashboard/PlanCard'
 import { DonutChart } from '@/components/dashboard/DonutChart'
-import { Timeline } from '@/components/dashboard/Timeline'
 
-const DASHBOARD_HERO =
-  'https://images.pexels.com/photos/29724796/pexels-photo-29724796.jpeg?cs=srgb&dl=pexels-diego-silveira-675020766-29724796.jpg&fm=jpg'
+const CHART_COLORS = ['#8FD3DD', '#B8D69B', '#E5E779', '#6DB1B4', '#9CC8AA', '#C9E4E2']
 
 const DEMO_PLANS = [
   {
-    id: '1',
+    id: 'demo-auckland',
     planName: 'Auckland Solo Plan',
     city: 'Auckland',
     lifestyleLabel: 'Solo Student',
@@ -22,9 +40,16 @@ const DEMO_PLANS = [
     survivalMonths: 9.2,
     setupCostNZD: 3780,
     affordability: 'SAFE',
+    categories: [
+      { id: 'rent', categoryName: 'Rent', estimatedAmountNZD: 1280 },
+      { id: 'groceries', categoryName: 'Groceries', estimatedAmountNZD: 240 },
+      { id: 'transport', categoryName: 'Transport', estimatedAmountNZD: 120 },
+      { id: 'utilities', categoryName: 'Utilities', estimatedAmountNZD: 80 },
+      { id: 'other', categoryName: 'Other', estimatedAmountNZD: 110 },
+    ],
   },
   {
-    id: '2',
+    id: 'demo-wellington',
     planName: 'Wellington Couple Plan',
     city: 'Wellington',
     lifestyleLabel: 'Student Couple',
@@ -32,178 +57,237 @@ const DEMO_PLANS = [
     survivalMonths: 5.1,
     setupCostNZD: 5200,
     affordability: 'TIGHT',
+    categories: [
+      { id: 'rent', categoryName: 'Rent', estimatedAmountNZD: 2100 },
+      { id: 'groceries', categoryName: 'Groceries', estimatedAmountNZD: 520 },
+      { id: 'transport', categoryName: 'Transport', estimatedAmountNZD: 210 },
+      { id: 'utilities', categoryName: 'Utilities', estimatedAmountNZD: 170 },
+      { id: 'other', categoryName: 'Other', estimatedAmountNZD: 200 },
+    ],
   },
-]
-
-const DEMO_DONUT = [
-  { name: 'Rent', value: 1280 },
-  { name: 'Groceries', value: 240 },
-  { name: 'Transport', value: 120 },
-  { name: 'Utilities', value: 80 },
-  { name: 'Eating Out', value: 60 },
-  { name: 'Other', value: 50 },
 ]
 
 export default function Dashboard() {
   const { t } = useTranslation()
-  const language = useStore(s => s.language)
+  const navigate = useNavigate()
   const { format } = useCurrency()
   const isAuthenticated = useStore(s => s.isAuthenticated)
   const user = useStore(s => s.user)
   const savedPlans = useStore(s => s.savedPlans)
+  const loadSavedPlan = useStore(s => s.loadSavedPlan)
+  const deleteSavedPlan = useStore(s => s.deleteSavedPlan)
 
   const plans = isAuthenticated && savedPlans.length > 0 ? savedPlans : DEMO_PLANS
-  const leadPlan = plans[0]
+  const [selectedPlanId, setSelectedPlanId] = useState(plans[0]?.id || '')
+
+  useEffect(() => {
+    if (!plans.some(plan => plan.id === selectedPlanId)) {
+      setSelectedPlanId(plans[0]?.id || '')
+    }
+  }, [plans, selectedPlanId])
+
+  const selectedPlan = plans.find(plan => plan.id === selectedPlanId) || plans[0]
+  const categories = useMemo(() => getCategories(selectedPlan), [selectedPlan])
+  const readinessScore = Math.min(100, Math.max(18, Math.round((selectedPlan?.survivalMonths || 0) * 8.5)))
+  const topCategory = categories[0]
+
+  const handleUpdate = () => {
+    if (!selectedPlan) return
+    if (isAuthenticated) loadSavedPlan(selectedPlan.id)
+    navigate('/plan')
+  }
+
+  const handleDelete = () => {
+    if (!selectedPlan || !isAuthenticated) return
+    deleteSavedPlan(selectedPlan.id)
+  }
+
+  const handleExport = () => {
+    window.print()
+  }
 
   return (
-    <div className="min-h-screen bg-[#f7f2ea]">
-      <section className="px-4 pt-6 sm:px-6 md:pt-10">
-        <div className="mx-auto grid max-w-6xl gap-6 lg:grid-cols-[1.05fr_0.95fr]">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="rounded-[32px] bg-white p-6 shadow-[0_18px_48px_rgba(57,42,22,0.08)] md:p-8"
-          >
-            <div className="inline-flex rounded-full bg-[#f4ecdf] px-3 py-1 text-xs font-semibold text-[#b66a48]">
-              {isAuthenticated ? t('dashboard.auth_eyebrow') : t('dashboard.preview_eyebrow')}
-            </div>
-
-            <h1 className="mt-4 max-w-xl font-serif text-3xl font-bold leading-tight text-[#173526] md:text-4xl">
-              {isAuthenticated
-                ? t('dashboard.hero_title_auth', { name: user?.name || t('auth.guest_user') })
-                : t('dashboard.hero_title_guest')}
-            </h1>
-
-            <p className="mt-4 max-w-xl text-sm leading-relaxed text-[#6d6257] md:text-base">
-              {isAuthenticated ? t('dashboard.hero_subtitle_auth') : t('dashboard.hero_subtitle_guest')}
-            </p>
-
-            <div className="mt-7 grid gap-3 sm:grid-cols-3">
-              <StatTile
-                icon={TrendingUp}
-                label={t('dashboard.quick_monthly')}
-                value={format(leadPlan.monthlyTotalNZD)}
-              />
-              <StatTile
-                icon={PiggyBank}
-                label={t('dashboard.quick_setup')}
-                value={format(leadPlan.setupCostNZD)}
-              />
-              <StatTile
-                icon={Calendar}
-                label={t('dashboard.quick_runway')}
-                value={`${leadPlan.survivalMonths} ${t('common.months')}`}
-              />
-            </div>
-
-            <div className="mt-7 flex flex-col gap-3 sm:flex-row">
-              <Link
-                to={isAuthenticated ? '/plan' : '/signin'}
-                state={isAuthenticated ? undefined : { next: '/dashboard' }}
-                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#173526] px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#0f281c]"
-              >
-                {isAuthenticated ? t('dashboard.primary_cta_auth') : t('dashboard.primary_cta_guest')}
-                <ArrowRight size={16} />
-              </Link>
-              <Link
-                to="/compare"
-                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[#dfd2c3] bg-[#fffaf3] px-5 py-3 text-sm font-semibold text-[#173526] transition-colors hover:bg-white"
-              >
-                {t('dashboard.secondary_cta')}
-              </Link>
-            </div>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.08 }}
-            className="relative overflow-hidden rounded-[32px] min-h-[340px] shadow-[0_24px_60px_rgba(23,53,38,0.14)]"
-          >
-            <img src={DASHBOARD_HERO} alt={t('dashboard.hero_image_alt')} className="absolute inset-0 h-full w-full object-cover" />
-            <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(21,33,25,0.06),rgba(21,33,25,0.82))]" />
-            <div className="absolute left-6 right-6 top-6">
-              <div className="inline-flex items-center gap-2 rounded-full bg-white/14 px-3 py-1.5 text-xs font-semibold text-white backdrop-blur-sm">
-                <Sparkles size={14} />
-                {t('dashboard.hero_card_eyebrow')}
-              </div>
-            </div>
-            <div className="absolute inset-x-0 bottom-0 p-6">
-              <div className="max-w-sm rounded-[28px] bg-[#fffaf3]/92 p-5 backdrop-blur-sm">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#b66a48]">
-                  {t('dashboard.next_step_label')}
-                </p>
-                <h2 className="mt-2 font-serif text-2xl leading-tight text-[#173526]">
-                  {t('dashboard.next_step_title')}
-                </h2>
-                <p className="mt-3 text-sm leading-relaxed text-[#6d6257]">
-                  {t('dashboard.next_step_body')}
-                </p>
-              </div>
-            </div>
-          </motion.div>
-        </div>
-      </section>
-
-      <section className="px-4 py-8 sm:px-6 md:py-10">
-        <div className="mx-auto grid max-w-6xl gap-6 lg:grid-cols-[0.92fr_1.08fr]">
+    <div className="min-h-screen bg-[linear-gradient(180deg,#eaf6f5_0%,#f8fbf6_52%,#eef7f6_100%)]">
+      <section className="px-4 py-6 sm:px-6 md:py-10">
+        <div className="mx-auto max-w-6xl">
           <motion.div
             initial={{ opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
-            className="rounded-[32px] bg-white p-6 shadow-[0_18px_48px_rgba(57,42,22,0.08)]"
+            className="rounded-[30px] border border-white/70 bg-white/62 p-5 shadow-[0_24px_70px_rgba(0,89,96,0.10)] backdrop-blur-2xl sm:p-7"
           >
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#b66a48]">
-              {t('dashboard.readiness_kicker')}
-            </p>
-            <h2 className="mt-3 font-serif text-2xl font-bold text-[#173526]">{t('dashboard.readiness_title')}</h2>
-            <p className="mt-2 text-sm leading-relaxed text-[#6d6257]">{t('dashboard.readiness_summary')}</p>
-            <div className="mt-7 flex justify-center">
-              <ReadinessRing score={72} />
-            </div>
-            <div className="mt-6 rounded-[24px] bg-[#f4ecdf] p-4">
-              <div className="flex items-start gap-3">
-                <div className="mt-0.5 flex h-10 w-10 items-center justify-center rounded-2xl bg-white text-[#173526] shadow-sm">
-                  <PiggyBank size={18} />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-[#173526]">{t('dashboard.insight_title')}</p>
-                  <p className="mt-1 text-sm leading-relaxed text-[#6d6257]">{t('dashboard.insight_body')}</p>
-                </div>
+            <div className="grid gap-5 lg:grid-cols-[1fr_auto] lg:items-end">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand/60">
+                  {isAuthenticated ? t('dashboard.home_badge_auth') : t('dashboard.home_badge_preview')}
+                </p>
+                <h1 className="mt-3 max-w-3xl font-serif text-3xl font-bold leading-tight text-brand-deep md:text-4xl">
+                  {isAuthenticated
+                    ? t('dashboard.home_title_auth', { name: user?.name || t('auth.guest_user') })
+                    : t('dashboard.home_title_guest')}
+                </h1>
+                <p className="mt-3 max-w-2xl text-sm leading-relaxed text-brand-deep/64 md:text-base">
+                  {t('dashboard.plan_switch_copy')}
+                </p>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-[minmax(220px,300px)_auto]">
+                <label className="block">
+                  <span className="mb-2 block text-xs font-bold uppercase tracking-[0.14em] text-brand/58">
+                    {t('dashboard.choose_plan')}
+                  </span>
+                  <select
+                    value={selectedPlanId}
+                    onChange={(event) => setSelectedPlanId(event.target.value)}
+                    className="h-12 w-full rounded-full border border-brand-mid bg-white/80 px-4 text-sm font-bold text-brand-deep outline-none focus:border-brand"
+                  >
+                    {plans.map(plan => (
+                      <option key={plan.id} value={plan.id}>
+                        {plan.planName}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <button
+                  type="button"
+                  onClick={handleExport}
+                  className="mt-auto inline-flex h-12 items-center justify-center gap-2 rounded-full bg-brand px-5 text-sm font-bold text-white shadow-[0_16px_36px_rgba(0,149,161,0.22)] hover:bg-brand-deep"
+                >
+                  <Download size={16} />
+                  {t('dashboard.export_pdf')}
+                </button>
               </div>
             </div>
           </motion.div>
 
-          <div className="space-y-6">
-            <div>
-              <div className="mb-4 flex items-end justify-between gap-4">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#b66a48]">{t('dashboard.plan_eyebrow')}</p>
-                  <h2 className="mt-2 font-serif text-2xl font-bold text-[#173526]">{t('dashboard.plans_title')}</h2>
-                </div>
-              </div>
-              <div className="grid gap-4 md:grid-cols-2">
-                {plans.map((plan, index) => (
-                  <PlanCard key={plan.id} plan={plan} delay={index * 0.08} />
-                ))}
-              </div>
+          {!isAuthenticated ? (
+            <div className="mt-4 rounded-3xl border border-amber-200/80 bg-amber-50/78 px-4 py-3 text-sm text-amber-900 shadow-[0_12px_30px_rgba(146,90,21,0.06)] sm:flex sm:items-center sm:justify-between sm:gap-4">
+              <span className="font-semibold">{t('dashboard.preview_banner')}</span>
+              <Link to="/signin" state={{ next: '/dashboard' }} className="mt-2 inline-flex font-bold text-amber-800 underline-offset-4 hover:underline sm:mt-0">
+                {t('dashboard.preview_cta')}
+              </Link>
             </div>
+          ) : null}
 
-            <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
-              <div className="rounded-[32px] bg-white p-6 shadow-[0_18px_48px_rgba(57,42,22,0.08)]">
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#b66a48]">{t('dashboard.breakdown_eyebrow')}</p>
-                <h2 className="mt-2 font-serif text-2xl font-bold text-[#173526]">{t('dashboard.donut_title')}</h2>
-                <div className="mt-6">
-                  <DonutChart data={DEMO_DONUT} />
+          <div className="mt-6 grid gap-6 lg:grid-cols-[0.78fr_1.22fr]">
+            <motion.div
+              initial={{ opacity: 0, y: 18 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="rounded-[30px] border border-white/70 bg-white/68 p-5 shadow-[0_18px_54px_rgba(0,89,96,0.08)] backdrop-blur-xl sm:p-6"
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-brand/60">{t('dashboard.selected_plan')}</p>
+                  <h2 className="mt-2 font-serif text-2xl font-bold text-brand-deep">{selectedPlan?.planName}</h2>
+                  <p className="mt-1 text-sm font-medium text-brand-deep/55">
+                    {selectedPlan?.city} · {selectedPlan?.lifestyleLabel}
+                  </p>
                 </div>
+                <span className="rounded-full bg-brand-light px-3 py-1.5 text-xs font-bold text-brand">
+                  {t(`planner.affordability_${String(selectedPlan?.affordability || 'TIGHT').toLowerCase()}`)}
+                </span>
               </div>
 
-              <div className="rounded-[32px] bg-white p-6 shadow-[0_18px_48px_rgba(57,42,22,0.08)]">
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#b66a48]">{t('dashboard.timeline_eyebrow')}</p>
-                <h2 className="mt-2 font-serif text-2xl font-bold text-[#173526]">{t('dashboard.timeline_title')}</h2>
-                <p className="mt-2 text-sm text-[#6d6257]">{t('dashboard.timeline_subtitle')}</p>
-                <div className="mt-6">
-                  <Timeline language={language} />
+              <div className="mt-6 flex justify-center">
+                <ReadinessRing score={readinessScore} size={146} />
+              </div>
+
+              <div className="mt-6 grid gap-3">
+                <Stat icon={CircleDollarSign} label={t('dashboard.stats_monthly')} value={format(selectedPlan?.monthlyTotalNZD || 0)} />
+                <Stat icon={CalendarCheck} label={t('dashboard.stats_setup')} value={format(selectedPlan?.setupCostNZD || 0)} />
+                <Stat icon={PiggyBank} label={t('dashboard.stats_survival')} value={`${selectedPlan?.survivalMonths || 0} ${t('planner.months_short')}`} />
+              </div>
+
+              <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={handleUpdate}
+                  className="inline-flex items-center justify-center gap-2 rounded-full border border-brand-mid bg-white/80 px-5 py-3 text-sm font-bold text-brand-deep hover:bg-brand-light"
+                >
+                  <Pencil size={16} />
+                  {t('dashboard.update_plan')}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  disabled={!isAuthenticated}
+                  className="inline-flex items-center justify-center gap-2 rounded-full border border-red-200 bg-red-50 px-5 py-3 text-sm font-bold text-red-700 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-45"
+                >
+                  <Trash2 size={16} />
+                  {t('dashboard.delete_plan')}
+                </button>
+              </div>
+            </motion.div>
+
+            <div className="grid gap-6">
+              <motion.div
+                initial={{ opacity: 0, y: 18 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.04 }}
+                className="rounded-[30px] border border-white/70 bg-white/68 p-5 shadow-[0_18px_54px_rgba(0,89,96,0.08)] backdrop-blur-xl sm:p-6"
+              >
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-brand/60">{t('dashboard.breakdown_kicker')}</p>
+                    <h2 className="mt-2 font-serif text-2xl font-bold text-brand-deep">{t('dashboard.donut_title')}</h2>
+                  </div>
+                  <p className="max-w-sm text-sm leading-relaxed text-brand-deep/55">
+                    {topCategory ? t('dashboard.top_category', { name: topCategory.name, amount: format(topCategory.value) }) : ''}
+                  </p>
                 </div>
+                <div className="mt-4 grid gap-4 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
+                  <DonutChart data={categories} />
+                  <CategoryBars data={categories} />
+                </div>
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, y: 18 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.08 }}
+                className="rounded-[30px] border border-white/70 bg-[#f7fffe]/78 p-5 shadow-[0_18px_54px_rgba(0,89,96,0.07)] backdrop-blur-xl sm:p-6"
+              >
+                <div className="mb-4 flex items-center gap-3">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-brand-light text-brand">
+                    <BarChart3 size={19} />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-brand/60">{t('dashboard.monthly_bar_kicker')}</p>
+                    <h2 className="font-serif text-2xl font-bold text-brand-deep">{t('dashboard.monthly_bar_title')}</h2>
+                  </div>
+                </div>
+                <div className="h-[280px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={categories} margin={{ top: 8, right: 12, left: 0, bottom: 4 }}>
+                      <CartesianGrid stroke="#DCEDEA" vertical={false} />
+                      <XAxis dataKey="name" tickLine={false} axisLine={false} tick={{ fill: '#4E6567', fontSize: 11 }} />
+                      <YAxis tickLine={false} axisLine={false} tick={{ fill: '#739194', fontSize: 11 }} width={42} />
+                      <Tooltip content={<DashboardTooltip format={format} />} cursor={{ fill: 'rgba(0,149,161,0.06)' }} />
+                      <Bar dataKey="value" radius={[12, 12, 4, 4]} barSize={34}>
+                        {categories.map((entry, index) => (
+                          <Cell key={entry.name} fill={entry.color || CHART_COLORS[index % CHART_COLORS.length]} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </motion.div>
+            </div>
+          </div>
+
+          <div className="mt-6 rounded-[28px] border border-brand-mid/60 bg-white/58 p-5 shadow-[0_18px_54px_rgba(0,89,96,0.07)] backdrop-blur-xl sm:p-6">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-brand/60">{t('dashboard.next_kicker')}</p>
+                <h2 className="mt-2 font-serif text-2xl font-bold text-brand-deep">{t('dashboard.next_title')}</h2>
+              </div>
+              <div className="flex flex-wrap gap-3">
+                <Link to="/plan" className="rounded-full bg-brand px-5 py-3 text-sm font-bold text-white hover:bg-brand-deep">
+                  {t('dashboard.action_budget_title')}
+                </Link>
+                <Link to="/guide" className="inline-flex items-center gap-2 rounded-full border border-brand-mid bg-white/80 px-5 py-3 text-sm font-bold text-brand-deep hover:bg-brand-light">
+                  <BookOpen size={16} />
+                  {t('dashboard.action_essentials_title')}
+                </Link>
               </div>
             </div>
           </div>
@@ -213,14 +297,70 @@ export default function Dashboard() {
   )
 }
 
-function StatTile({ icon: Icon, label, value }) {
+function getCategories(plan) {
+  const source = plan?.categories?.length
+    ? plan.categories
+    : [
+        { categoryName: 'Monthly total', estimatedAmountNZD: plan?.monthlyTotalNZD || 0 },
+      ]
+
+  return source
+    .map((item, index) => ({
+      name: item.categoryName || item.name || `Item ${index + 1}`,
+      value: item.estimatedAmountNZD || item.value || 0,
+      color: CHART_COLORS[index % CHART_COLORS.length],
+    }))
+    .filter(item => item.value > 0)
+    .sort((a, b) => b.value - a.value)
+}
+
+function Stat({ icon: Icon, label, value }) {
   return (
-    <div className="rounded-[24px] bg-[#f8f3eb] p-4">
-      <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white text-[#173526] shadow-sm">
-        <Icon size={18} />
+    <div className="flex items-center justify-between gap-4 rounded-2xl border border-brand-mid/55 bg-white/76 px-4 py-3">
+      <div className="flex items-center gap-3">
+        <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-brand-light text-brand">
+          <Icon size={18} />
+        </span>
+        <span className="text-xs font-bold uppercase tracking-[0.12em] text-brand/58">{label}</span>
       </div>
-      <p className="mt-4 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#9a8d81]">{label}</p>
-      <p className="mt-1 text-lg font-bold text-[#173526]">{value}</p>
+      <span className="font-extrabold text-brand-deep">{value}</span>
+    </div>
+  )
+}
+
+function CategoryBars({ data }) {
+  const { format } = useCurrency()
+  const max = Math.max(...data.map(item => item.value), 1)
+
+  return (
+    <div className="space-y-3">
+      {data.map((item) => (
+        <div key={item.name}>
+          <div className="mb-1.5 flex items-center justify-between gap-4">
+            <span className="text-sm font-bold text-brand-deep">{item.name}</span>
+            <span className="text-xs font-bold text-brand-deep/55">{format(item.value)}</span>
+          </div>
+          <div className="h-4 overflow-hidden rounded-full bg-brand-light">
+            <motion.div
+              initial={{ width: 0 }}
+              animate={{ width: `${(item.value / max) * 100}%` }}
+              className="h-full rounded-full"
+              style={{ backgroundColor: item.color }}
+            />
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function DashboardTooltip({ active, payload, format }) {
+  if (!active || !payload?.length) return null
+  const item = payload[0].payload
+  return (
+    <div className="rounded-2xl border border-brand-mid bg-white px-3 py-2 shadow-brand-md">
+      <p className="text-sm font-bold text-brand-deep">{item.name}</p>
+      <p className="text-sm font-semibold text-brand">{format(item.value)}</p>
     </div>
   )
 }

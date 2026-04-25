@@ -17,7 +17,7 @@ import {
   PieChart as PieChartIcon,
   X,
 } from 'lucide-react'
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts'
+import { Bar, BarChart, CartesianGrid, Cell, PieChart, Pie, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import useStore, { MONEY_LIMITS } from '@/store/useStore'
 import { useCurrency } from '@/hooks/useCurrency'
 import { cn } from '@/utils/cn'
@@ -151,6 +151,37 @@ export function MonthlyPlan() {
             </button>
           </div>
         </div>
+
+        {chartData.length > 0 ? (
+          <div className="rounded-[30px] border border-[#c9e4e2] bg-[linear-gradient(135deg,#fbfffc_0%,#edf8f7_100%)] p-5 shadow-[0_20px_48px_rgba(0,89,96,0.08)]">
+            <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand/70">
+                  {t('planner.monthly_bar_kicker')}
+                </p>
+                <h3 className="font-serif text-2xl font-bold text-brand-deep">
+                  {t('planner.monthly_bar_title')}
+                </h3>
+              </div>
+              <p className="text-sm font-semibold text-brand-deep/55">{format(total)}</p>
+            </div>
+            <div className="h-[260px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={chartData} margin={{ top: 8, right: 12, left: 0, bottom: 4 }}>
+                  <CartesianGrid stroke="#DCEDEA" vertical={false} />
+                  <XAxis dataKey="categoryName" tickLine={false} axisLine={false} tick={{ fill: '#4E6567', fontSize: 11 }} />
+                  <YAxis tickLine={false} axisLine={false} tick={{ fill: '#739194', fontSize: 11 }} width={42} />
+                  <Tooltip content={<BreakdownTooltip format={format} />} cursor={{ fill: 'rgba(0,149,161,0.06)' }} />
+                  <Bar dataKey="value" radius={[12, 12, 4, 4]} barSize={34}>
+                    {chartData.map((entry, index) => (
+                      <Cell key={entry.id} fill={['#8FD3DD', '#B8D69B', '#E5E779', '#6DB1B4', '#9CC8AA', '#C9E4E2'][index % 6]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        ) : null}
 
         {/* ── Category cards ────────────────────────────── */}
         <div className="grid gap-4 md:grid-cols-2">

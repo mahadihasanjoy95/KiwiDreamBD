@@ -247,6 +247,9 @@ const useStore = create(
           planName: `${cityLabel} ${lifestyleLabel}`.trim(),
           city: cityLabel,
           lifestyleLabel,
+          categories: state.planCategories.map(item => ({ ...item })),
+          movingItems: state.movingItems.map(item => ({ ...item })),
+          livingFundBDT: state.livingFundBDT,
           monthlyTotalNZD,
           setupCostNZD: state.movingItems.reduce((sum, item) => sum + (item.amountNZD || 0), 0),
           survivalMonths: survivalMonths ?? 0,
@@ -259,6 +262,29 @@ const useStore = create(
         }))
 
         return { ok: true, plan: savedPlan }
+      },
+
+      loadSavedPlan: (planId) => {
+        const plan = get().savedPlans.find(item => item.id === planId)
+        if (!plan) return { ok: false }
+
+        set({
+          planCategories: plan.categories?.map(item => ({ ...item })) || [],
+          movingItems: plan.movingItems?.map(item => ({ ...item })) || DEFAULT_MOVING_ITEMS.map(item => ({ ...item })),
+          livingFundBDT: plan.livingFundBDT || '',
+          selectedCity: plan.city?.toUpperCase?.().replaceAll(' ', '_') || null,
+          selectedLifestyle: null,
+          wizardStep: 2,
+          activeTab: 0,
+        })
+
+        return { ok: true, plan }
+      },
+
+      deleteSavedPlan: (planId) => {
+        set(state => ({
+          savedPlans: state.savedPlans.filter(plan => plan.id !== planId),
+        }))
       },
     }),
     {

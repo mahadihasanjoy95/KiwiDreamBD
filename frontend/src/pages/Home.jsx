@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { ArrowRight, CheckCircle, Heart, X, Mail } from 'lucide-react'
+import { ArrowRight, CheckCircle, ChevronDown, Heart, X, Mail, Send } from 'lucide-react'
 import useStore from '@/store/useStore'
 import logoTigerNew from '@/assets/images/logo_tiger_new.png'
 import cloud1 from '@/assets/images/cloud_1.png'
@@ -10,6 +10,7 @@ import cloud3 from '@/assets/images/cloud_3.png'
 import cloud4 from '@/assets/images/cloud_4.png'
 import devTeamImg from '@/assets/images/dev_team.png'
 import fernBushSvg from '@/assets/svg/fern-bush.svg'
+import smallFlowersSvg from '@/assets/svg/small-flowers.svg'
 import { HowItWorks } from '@/components/home/HowItWorks'
 
 function MountainSilhouette() {
@@ -81,7 +82,8 @@ function CloudDrift() {
 
 function HomeActionModal({ type, onClose }) {
   const { t } = useTranslation()
-  const isTalk = type === 'talk'
+  const isContact = type === 'contact'
+  const isCoffee = type === 'coffee'
 
   return type ? (
     <div className="fixed inset-0 z-[70] flex items-center justify-center bg-brand-deep/45 px-5 backdrop-blur-sm">
@@ -102,27 +104,73 @@ function HomeActionModal({ type, onClose }) {
         </button>
 
         <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-brand text-white shadow-brand-md">
-          {isTalk ? <Mail size={20} /> : <Heart size={20} fill="currentColor" />}
+          {isContact ? <Mail size={20} /> : <Heart size={20} fill="currentColor" />}
         </div>
         <p className="mt-5 text-xs font-semibold uppercase tracking-[0.18em] text-brand/65">
-          {isTalk ? t('home.talk_badge') : t('home.coffee_badge')}
+          {isContact ? t('home.contact_badge') : t('home.coffee_badge')}
         </p>
         <h3 className="mt-2 font-serif text-2xl font-bold text-brand-deep md:text-3xl">
-          {isTalk ? t('home.talk_title') : t('home.coffee_title')}
+          {isContact ? t('home.contact_title') : t('home.coffee_title')}
         </h3>
         <p className="mt-3 text-sm leading-relaxed text-[#4e6567]">
-          {isTalk ? t('home.talk_copy') : t('home.coffee_copy')}
+          {isContact ? t('home.contact_copy') : t('home.coffee_copy')}
         </p>
-        {isTalk ? (
-          <div className="mt-5 rounded-3xl border border-brand-mid bg-brand-light/70 p-4">
-            <p className="text-xs font-bold uppercase tracking-[0.16em] text-brand/70">
-              {t('home.contact_email_label')}
-            </p>
-            <a
-              href="mailto:hello@kiwidreambd.com"
-              className="mt-2 inline-flex rounded-full border border-brand/35 bg-white/70 px-4 py-2 font-bold text-brand-deep glass-pill-hover"
+        {isContact ? (
+          <form
+            className="mt-5 space-y-3"
+            onSubmit={(event) => {
+              event.preventDefault()
+              const formData = new FormData(event.currentTarget)
+              const subject = encodeURIComponent(`KiwiDream BD message from ${formData.get('name') || 'student'}`)
+              const body = encodeURIComponent(`${formData.get('message') || ''}\n\nReply to: ${formData.get('email') || ''}`)
+              window.location.href = `mailto:hello@kiwidreambd.com?subject=${subject}&body=${body}`
+            }}
+          >
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="block">
+                <span className="mb-1.5 block text-xs font-bold uppercase tracking-[0.12em] text-brand/65">
+                  {t('home.contact_name')}
+                </span>
+                <input name="name" className="home-modal-input" placeholder={t('home.contact_name_placeholder')} />
+              </label>
+              <label className="block">
+                <span className="mb-1.5 block text-xs font-bold uppercase tracking-[0.12em] text-brand/65">
+                  {t('home.contact_email')}
+                </span>
+                <input name="email" type="email" className="home-modal-input" placeholder={t('home.contact_email_placeholder')} />
+              </label>
+            </div>
+            <label className="block">
+              <span className="mb-1.5 block text-xs font-bold uppercase tracking-[0.12em] text-brand/65">
+                {t('home.contact_message')}
+              </span>
+              <textarea name="message" rows="4" className="home-modal-input resize-none" placeholder={t('home.contact_message_placeholder')} />
+            </label>
+            <button
+              type="submit"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-brand px-5 py-3 text-sm font-bold text-white shadow-[0_16px_36px_rgba(0,149,161,0.22)] hover:bg-brand-deep"
             >
-              hello@kiwidreambd.com
+              <Send size={16} />
+              {t('home.contact_cta')}
+            </button>
+          </form>
+        ) : null}
+        {isCoffee ? (
+          <div className="mt-5 grid gap-3 rounded-3xl border border-brand-mid bg-brand-light/70 p-4">
+            <button
+              type="button"
+              onClick={() => window.open('https://www.buymeacoffee.com/', '_blank', 'noopener,noreferrer')}
+              className="inline-flex items-center justify-center gap-2 rounded-full bg-brand px-5 py-3 text-sm font-bold text-white shadow-[0_16px_36px_rgba(0,149,161,0.22)] hover:bg-brand-deep"
+            >
+              <Heart size={16} fill="currentColor" />
+              {t('home.coffee_cta')}
+            </button>
+            <a
+              href="mailto:hello@kiwidreambd.com?subject=KiwiDream%20BD%20support"
+              className="inline-flex items-center justify-center gap-2 rounded-full border border-brand/30 bg-white/70 px-5 py-3 text-sm font-bold text-brand-deep hover:bg-white"
+            >
+              <Mail size={16} />
+              {t('home.coffee_email_cta')}
             </a>
           </div>
         ) : null}
@@ -245,6 +293,48 @@ export default function Home() {
 
           </div>
         </div>
+
+        <motion.button
+          type="button"
+          initial={{ opacity: 0, y: 18, scale: 0.94 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          whileHover={{ y: -4, scale: 1.03 }}
+          whileTap={{ scale: 0.97 }}
+          transition={{ delay: 0.95, type: 'spring', stiffness: 260, damping: 20 }}
+          onClick={() => document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+          className="group absolute bottom-4 left-1/2 z-20 flex -translate-x-1/2 flex-col items-center gap-2 outline-none md:bottom-6"
+          aria-label={t('home.see_how_it_works')}
+        >
+          <span className="relative flex h-16 w-20 items-center justify-center sm:h-[4.6rem] sm:w-24">
+            <motion.span
+              aria-hidden="true"
+              animate={{ scale: [1, 1.12, 1], opacity: [0.42, 0.12, 0.42] }}
+              transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
+              className="absolute inset-0 bg-brand/35"
+              style={{ clipPath: 'polygon(50% 100%, 4% 12%, 96% 12%)' }}
+            />
+            <span
+              aria-hidden="true"
+              className="absolute inset-x-2 bottom-1 top-2 bg-white/72 shadow-[0_20px_46px_rgba(0,89,96,0.22)] backdrop-blur-xl transition-colors group-hover:bg-white/88"
+              style={{ clipPath: 'polygon(50% 100%, 2% 0%, 98% 0%)' }}
+            />
+            <span
+              aria-hidden="true"
+              className="absolute inset-x-5 bottom-4 top-5 bg-brand"
+              style={{ clipPath: 'polygon(50% 100%, 0% 0%, 100% 0%)' }}
+            />
+            <motion.span
+              animate={{ y: [0, 5, 0] }}
+              transition={{ duration: 1.05, repeat: Infinity, ease: 'easeInOut' }}
+              className="relative z-10 mt-1 text-white"
+            >
+              <ChevronDown size={22} strokeWidth={3} />
+            </motion.span>
+          </span>
+          <span className="rounded-full border border-white/55 bg-white/50 px-3 py-1 text-[11px] font-extrabold uppercase tracking-[0.12em] text-brand-deep/75 shadow-[0_10px_28px_rgba(0,89,96,0.12)] backdrop-blur-xl transition-colors group-hover:bg-white/75">
+            {t('home.see_how_it_works')}
+          </span>
+        </motion.button>
       </section>
 
       {/* ── How it works (animated steps) ────────────────────────── */}
@@ -259,6 +349,12 @@ export default function Home() {
           alt=""
           aria-hidden="true"
           className="pointer-events-none absolute bottom-0 left-0 w-[90px] opacity-40 sm:w-[140px] md:w-[220px] md:opacity-50"
+        />
+        <img
+          src={smallFlowersSvg}
+          alt=""
+          aria-hidden="true"
+          className="pointer-events-none absolute right-0 top-10 hidden w-[150px] opacity-55 sm:block md:right-6 md:top-16 md:w-[220px]"
         />
 
         <div className="relative mx-auto max-w-6xl px-6">
@@ -307,25 +403,21 @@ export default function Home() {
                 {t('auth.dev_team_caption')}
               </p>
 
-              {/* Contact email — always visible */}
-              <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-brand/30 bg-white/60 px-4 py-2 backdrop-blur-sm">
-                <Mail size={14} className="text-brand" />
-                <a
-                  href="mailto:hello@kiwidreambd.com"
-                  className="text-sm font-semibold text-brand-deep transition-colors hover:text-brand"
+              <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+                <button
+                  type="button"
+                  onClick={() => setModalType('contact')}
+                  className="inline-flex items-center justify-center gap-2 rounded-full border border-brand/30 bg-white/68 px-6 py-3 font-bold text-brand-deep shadow-[0_14px_34px_rgba(0,89,96,0.08)] backdrop-blur-sm transition-all hover:bg-white active:scale-95"
                 >
-                  hello@kiwidreambd.com
-                </a>
-              </div>
-
-              {/* Donate button */}
-              <div className="mt-4">
+                  <Mail size={16} className="text-brand" />
+                  {t('home.contact_title')}
+                </button>
                 <button
                   type="button"
                   onClick={() => setModalType('coffee')}
-                  className="inline-flex items-center gap-2 rounded-full bg-brand px-6 py-3 font-bold text-white shadow-[0_18px_42px_rgba(0,149,161,0.22)] transition-all hover:bg-brand-deep hover:shadow-[0_22px_48px_rgba(0,149,161,0.32)] active:scale-95"
+                  className="inline-flex items-center justify-center gap-2 rounded-full bg-brand px-6 py-3 font-bold text-white shadow-[0_18px_42px_rgba(0,149,161,0.22)] transition-all hover:bg-brand-deep hover:shadow-[0_22px_48px_rgba(0,149,161,0.32)] active:scale-95"
                 >
-                  <span>☕</span>
+                  <Heart size={16} fill="currentColor" />
                   {t('home.buy_coffee')}
                 </button>
               </div>

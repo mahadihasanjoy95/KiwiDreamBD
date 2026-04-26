@@ -111,13 +111,13 @@ public class CityController {
     }
 
     @DeleteMapping("/{cityId}")
-    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     @SecurityRequirement(name = "bearerAuth")
-    @Operation(summary = "Delete a city (SUPER_ADMIN only — blocked if plans are linked)")
+    @Operation(summary = "Delete a city (ADMIN — blocked if plans are linked)")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "City deleted"),
             @ApiResponse(responseCode = "401", description = "Not authenticated"),
-            @ApiResponse(responseCode = "403", description = "SUPER_ADMIN role required"),
+            @ApiResponse(responseCode = "403", description = "Admin role required"),
             @ApiResponse(responseCode = "404", description = "City or country not found"),
             @ApiResponse(responseCode = "409", description = "Cannot delete city while plans are linked")
     })

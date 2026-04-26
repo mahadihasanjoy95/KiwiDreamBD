@@ -1,10 +1,9 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { getTemplate } from '@/data/templates'
 import { DEFAULT_MOVING_ITEMS } from '@/data/movingCosts'
 import i18n from 'i18next'
-import { calcSurvivalMonths, getAffordabilityStatus } from '@/utils/affordability'
 import { changeMyPassword, getMyProfile, loginUser, logoutUser, registerUser, updateMyProfile, updateMyProfilePicture } from '@/api/auth'
+import { createPlanFromMaster } from '@/api/userPlans'
 
 export const MONEY_LIMITS = {
   monthlyCategoryNZD: 10000,
@@ -161,12 +160,15 @@ const useStore = create(
       },
 
       // ── Plan wizard state ────────────────────────────────────
-      selectedLifestyle: null,
-      selectedCity: null,
+      selectedLifestyle: null,   // profile code e.g. 'SOLO_STUDENT'
+      selectedCity: null,        // city id (UUID)
+      selectedCountry: null,     // country id (UUID)
+      selectedProfile: null,     // planning profile object from API
+      currentMasterPlan: null,   // full PlanResponseDto fetched from API
       wizardStep: 0,
       activeTab: 0,
 
-      // ── Plan data ────────────────────────────────────────────
+      // ── Plan data (editable in-session) ──────────────────────
       planCategories: [],
       movingItems: DEFAULT_MOVING_ITEMS.map(item => ({ ...item })),
       livingFundBDT: '',
@@ -184,6 +186,9 @@ const useStore = create(
       rechooseLifestyle: () => set(state => ({
         selectedLifestyle: null,
         selectedCity: null,
+        selectedCountry: null,
+        selectedProfile: null,
+        currentMasterPlan: null,
         wizardStep: 0,
         activeTab: 0,
         planCategories: state.planCategories.filter(c => c.isCustom),
@@ -191,35 +196,70 @@ const useStore = create(
 
       rechooseCity: () => set(state => ({
         selectedCity: null,
+        currentMasterPlan: null,
         wizardStep: state.selectedLifestyle ? 1 : 0,
         activeTab: 0,
         planCategories: state.planCategories.filter(c => c.isCustom),
       })),
 
-      setLifestyle: (lifestyleType) => {
+      setLifestyle: (lifestyleType, profileObj) => {
         const { planCategories } = get()
         const customCategories = planCategories.filter(c => c.isCustom)
         set({
           selectedLifestyle: lifestyleType,
+          selectedProfile: profileObj || null,
           selectedCity: null,
+          currentMasterPlan: null,
           wizardStep: 1,
           activeTab: 0,
           planCategories: customCategories,
         })
       },
 
-      setCity: (cityId) => {
-        const { selectedLifestyle, planCategories } = get()
-        const customCategories = planCategories.filter(c => c.isCustom)
-        let newCategories = []
-        if (selectedLifestyle) {
-          newCategories = getTemplate(cityId, selectedLifestyle)
-        }
+      setCity: (cityId, countryId) => {
         set({
           selectedCity: cityId,
+          selectedCountry: countryId || null,
+          currentMasterPlan: null,
           wizardStep: 2,
           activeTab: 0,
-          planCategories: [...newCategories, ...customCategories],
+          planCategories: [],
+          movingItems: DEFAULT_MOVING_ITEMS.map(item => ({ ...item })),
+        })
+      },
+
+      /** Called when the master plan is fetched from the API. Populates local edit state. */
+      setMasterPlan: (masterPlan) => {
+        if (!masterPlan) {
+          set({ currentMasterPlan: null })
+          return
+        }
+        const planCategories = (masterPlan.monthlyItems || []).map((item, idx) => ({
+          id: item.id,
+          categoryName: item.nameEn || item.customName || 'Item',
+          categoryNameBN: item.nameBn || '',
+          estimatedAmountNZD: Number(item.estimatedAmountNzd) || 0,
+          noteEn: item.noteEn || '',
+          noteBn: item.noteBn || '',
+          isCustom: false,
+          displayOrder: item.displayOrder ?? idx,
+        }))
+        const movingItems = (masterPlan.movingItems || []).map((item, idx) => ({
+          id: item.id,
+          itemName: item.itemNameEn || item.customItemName || 'Item',
+          itemNameBN: item.itemNameBn || '',
+          amountNZD: Number(item.estimatedAmountNzd) || 0,
+          noteEn: item.noteEn || '',
+          isCustom: false,
+          autoCalc: false,
+          displayOrder: item.displayOrder ?? idx,
+        }))
+        set({
+          currentMasterPlan: masterPlan,
+          planCategories,
+          movingItems: movingItems.length > 0
+            ? movingItems
+            : DEFAULT_MOVING_ITEMS.map(item => ({ ...item })),
         })
       },
 
@@ -302,6 +342,9 @@ const useStore = create(
       resetPlan: () => set({
         selectedLifestyle: null,
         selectedCity: null,
+        selectedCountry: null,
+        selectedProfile: null,
+        currentMasterPlan: null,
         planCategories: [],
         movingItems: DEFAULT_MOVING_ITEMS.map(item => ({ ...item })),
         livingFundBDT: '',
@@ -309,21 +352,33 @@ const useStore = create(
         activeTab: 0,
       }),
 
-      saveCurrentPlan: () => {
+      /**
+       * Save current plan to backend.
+       * If a master plan is loaded (currentMasterPlan != null), creates a user plan from it via API.
+       * Returns { ok, plan } or { ok: false, reason }.
+       */
+      saveCurrentPlan: async () => {
         const state = get()
         if (!state.isAuthenticated) return { ok: false, reason: 'AUTH_REQUIRED' }
+        if (!state.accessToken) return { ok: false, reason: 'AUTH_REQUIRED' }
 
-        const cityLabel = state.selectedCity?.replace(/_/g, ' ') || 'Custom'
+        // API-backed save: use master plan deep copy
+        if (state.currentMasterPlan?.id) {
+          const masterPlanId = state.currentMasterPlan.id
+          const cityName = state.currentMasterPlan.cityNameEn || 'City'
+          const profileName = state.currentMasterPlan.profileNameEn || 'Plan'
+          const planName = `${cityName} — ${profileName}`
+          const savedPlan = await createPlanFromMaster(state.accessToken, masterPlanId, planName)
+          return { ok: true, plan: savedPlan }
+        }
+
+        // Fallback: localStorage save (when no master plan is loaded)
+        const cityLabel = state.selectedCity || 'Custom'
         const lifestyleLabel = state.selectedLifestyle
           ? state.selectedLifestyle.replaceAll('_', ' ').toLowerCase().replace(/\b\w/g, c => c.toUpperCase())
           : 'Custom Plan'
 
         const monthlyTotalNZD = state.planCategories.reduce((sum, item) => sum + (item.estimatedAmountNZD || 0), 0)
-        const survivalMonths = state.livingFundBDT
-          ? calcSurvivalMonths(state.livingFundBDT, monthlyTotalNZD, state.exchangeRate)
-          : null
-        const affordability = getAffordabilityStatus(survivalMonths) || 'TIGHT'
-
         const savedPlan = {
           id: `plan-${Date.now()}`,
           planName: `${cityLabel} ${lifestyleLabel}`.trim(),
@@ -334,8 +389,8 @@ const useStore = create(
           livingFundBDT: state.livingFundBDT,
           monthlyTotalNZD,
           setupCostNZD: state.movingItems.reduce((sum, item) => sum + (item.amountNZD || 0), 0),
-          survivalMonths: survivalMonths ?? 0,
-          affordability,
+          survivalMonths: 0,
+          affordability: 'TIGHT',
           savedAt: new Date().toISOString(),
         }
 
@@ -370,7 +425,7 @@ const useStore = create(
       },
     }),
     {
-      name: 'kiwi-dream-plan-v1',
+      name: 'kiwi-dream-plan-v2',
       onRehydrateStorage: () => (state) => {
         const language = state?.language === 'BN' ? 'bn' : 'en'
         if (i18n.isInitialized && i18n.language !== language) {
@@ -388,6 +443,9 @@ const useStore = create(
         savedPlans: state.savedPlans,
         selectedLifestyle: state.selectedLifestyle,
         selectedCity: state.selectedCity,
+        selectedCountry: state.selectedCountry,
+        selectedProfile: state.selectedProfile,
+        currentMasterPlan: state.currentMasterPlan,
         wizardStep: state.wizardStep,
         activeTab: state.activeTab,
         planCategories: state.planCategories,

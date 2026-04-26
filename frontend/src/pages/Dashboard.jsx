@@ -28,6 +28,7 @@ import { useCurrency } from '@/hooks/useCurrency'
 import { ReadinessRing } from '@/components/dashboard/ReadinessRing'
 import { DonutChart } from '@/components/dashboard/DonutChart'
 import { AppLoader } from '@/components/common/AppLoader'
+import { listMyPlans, deleteMyPlan } from '@/api/userPlans'
 
 const CHART_COLORS = ['#8FD3DD', '#B8D69B', '#E5E779', '#6DB1B4', '#9CC8AA', '#C9E4E2']
 
@@ -68,20 +69,60 @@ const DEMO_PLANS = [
   },
 ]
 
+/** Normalize a plan from the API (PlanSummaryResponseDto) or demo data into a common shape */
+function normalizePlan(plan) {
+  if (!plan) return null
+  // API plan
+  if (plan.monthlyTotalNzd !== undefined) {
+    return {
+      id: plan.id,
+      planName: plan.displayPlanName || `${plan.cityNameEn || ''} Plan`,
+      city: plan.cityNameEn || '',
+      cityNameBN: plan.cityNameBn || '',
+      lifestyleLabel: plan.profileNameEn || '',
+      monthlyTotalNZD: Number(plan.monthlyTotalNzd) || 0,
+      survivalMonths: Number(plan.survivalMonths) || 0,
+      setupCostNZD: Number(plan.movingCostTotalNzd) || 0,
+      affordability: plan.affordabilityStatus || 'TIGHT',
+      categories: [],  // loaded separately if needed
+      _isApiPlan: true,
+    }
+  }
+  // Legacy localStorage plan
+  return plan
+}
+
 export default function Dashboard() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const { format } = useCurrency()
   const isAuthenticated = useStore(s => s.isAuthenticated)
+  const accessToken = useStore(s => s.accessToken)
   const user = useStore(s => s.user)
-  const savedPlans = useStore(s => s.savedPlans)
-  const loadSavedPlan = useStore(s => s.loadSavedPlan)
-  const deleteSavedPlan = useStore(s => s.deleteSavedPlan)
 
-  const plans = isAuthenticated && savedPlans.length > 0 ? savedPlans : DEMO_PLANS
-  const [selectedPlanId, setSelectedPlanId] = useState(plans[0]?.id || '')
+  const [apiPlans, setApiPlans] = useState([])
+  const [plansLoading, setPlansLoading] = useState(false)
   const [pageLoading, setPageLoading] = useState(true)
   const [loadingPlan, setLoadingPlan] = useState(false)
+
+  // Fetch real plans when authenticated
+  useEffect(() => {
+    if (!isAuthenticated || !accessToken) {
+      setApiPlans([])
+      return
+    }
+    setPlansLoading(true)
+    listMyPlans(accessToken, 'ACTIVE')
+      .then(data => setApiPlans((data || []).map(normalizePlan)))
+      .catch(() => setApiPlans([]))
+      .finally(() => setPlansLoading(false))
+  }, [isAuthenticated, accessToken])
+
+  const plans = isAuthenticated
+    ? (apiPlans.length > 0 ? apiPlans : (plansLoading ? [] : DEMO_PLANS))
+    : DEMO_PLANS
+
+  const [selectedPlanId, setSelectedPlanId] = useState('')
 
   useEffect(() => {
     const id = window.setTimeout(() => setPageLoading(false), 750)
@@ -89,7 +130,7 @@ export default function Dashboard() {
   }, [])
 
   useEffect(() => {
-    if (!plans.some(plan => plan.id === selectedPlanId)) {
+    if (plans.length > 0 && !plans.some(plan => plan.id === selectedPlanId)) {
       setSelectedPlanId(plans[0]?.id || '')
     }
   }, [plans, selectedPlanId])
@@ -103,15 +144,21 @@ export default function Dashboard() {
     if (!selectedPlan) return
     setLoadingPlan(true)
     window.setTimeout(() => {
-      if (isAuthenticated) loadSavedPlan(selectedPlan.id)
       navigate('/plan')
       setLoadingPlan(false)
     }, 1100)
   }
 
-  const handleDelete = () => {
-    if (!selectedPlan || !isAuthenticated) return
-    deleteSavedPlan(selectedPlan.id)
+  const handleDelete = async () => {
+    if (!selectedPlan || !isAuthenticated || !accessToken) return
+    if (selectedPlan._isApiPlan) {
+      try {
+        await deleteMyPlan(accessToken, selectedPlan.id)
+        setApiPlans(prev => prev.filter(p => p.id !== selectedPlan.id))
+      } catch {
+        // silently fail — plan may already be deleted
+      }
+    }
   }
 
   const handleExport = () => {
@@ -163,7 +210,7 @@ export default function Dashboard() {
                   >
                     {plans.map(plan => (
                       <option key={plan.id} value={plan.id}>
-                        {plan.planName}
+                        {plan.planName || plan.displayPlanName || 'My Plan'}
                       </option>
                     ))}
                   </select>

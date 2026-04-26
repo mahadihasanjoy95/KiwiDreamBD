@@ -4,53 +4,61 @@ import { useTranslation } from 'react-i18next'
 import { Check, Sparkles } from 'lucide-react'
 import useStore from '@/store/useStore'
 import { useCurrency } from '@/hooks/useCurrency'
-import { LIFESTYLE_TYPES } from '@/data/templates'
 import birdSvg from '@/assets/svg/bird.svg'
 import heroCharactersSvg from '@/assets/svg/hero-characters.svg'
 import comfortableSoloSvg from '@/assets/svg/comfortable-solo.svg'
 import familyPlanningSvg from '@/assets/svg/family-planning.svg'
 
-const LIFESTYLE_SVG = {
-  SOLO_MODEST:       birdSvg,
-  COUPLE_STANDARD:   heroCharactersSvg,
-  SOLO_COMFORTABLE:  comfortableSoloSvg,
-  FAMILY_PLANNING:   familyPlanningSvg,
-}
-
-/* ── Per-card visual identity ─────────────────────────────────── */
-const CARD_META = {
-  SOLO_MODEST: {
+// ── Visual identity keyed by API profile code ────────────────────────────────
+const PROFILE_META = {
+  SOLO_STUDENT: {
     gradient: 'linear-gradient(145deg, #4c1d95 0%, #6d28d9 50%, #7c3aed 100%)',
     glow: 'rgba(124,58,237,0.55)',
     border: '#7c3aed',
     tags: ['Survival mode', 'Shared flat', 'Every NZD counts'],
-    tagBg: 'rgba(167,139,250,0.18)',
-    tagColor: '#c4b5fd',
+    svg: birdSvg,
   },
-  COUPLE_STANDARD: {
+  STUDENT_COUPLE: {
     gradient: 'linear-gradient(145deg, #0c4a6e 0%, #0369a1 50%, #0ea5e9 100%)',
     glow: 'rgba(14,165,233,0.55)',
     border: '#0ea5e9',
     tags: ['Setting up home', 'Shared costs', 'Cook together'],
-    tagBg: 'rgba(125,211,252,0.18)',
-    tagColor: '#7dd3fc',
+    svg: heroCharactersSvg,
   },
-  SOLO_COMFORTABLE: {
+  WORKER: {
     gradient: 'linear-gradient(145deg, #064e3b 0%, #047857 50%, #10b981 100%)',
     glow: 'rgba(16,185,129,0.55)',
     border: '#10b981',
     tags: ['Better suburb', 'Dining out', 'More comfort'],
-    tagBg: 'rgba(110,231,183,0.18)',
-    tagColor: '#6ee7b7',
+    svg: comfortableSoloSvg,
   },
-  FAMILY_PLANNING: {
+  FAMILY: {
     gradient: 'linear-gradient(145deg, #7c1d4d 0%, #be185d 50%, #f43f5e 100%)',
     glow: 'rgba(244,63,94,0.55)',
     border: '#f43f5e',
     tags: ['Kids in mind', 'Long-term plan', 'Family suburb'],
-    tagBg: 'rgba(253,164,175,0.18)',
-    tagColor: '#fda4af',
+    svg: familyPlanningSvg,
   },
+  VISITOR: {
+    gradient: 'linear-gradient(145deg, #1e3a5f 0%, #1d4ed8 50%, #3b82f6 100%)',
+    glow: 'rgba(59,130,246,0.55)',
+    border: '#3b82f6',
+    tags: ['Short stay', 'Explore NZ', 'Flexible plan'],
+    svg: birdSvg,
+  },
+}
+
+// Fallback gradient for unknown profile codes
+const FALLBACK_META = {
+  gradient: 'linear-gradient(145deg, #374151 0%, #6b7280 100%)',
+  glow: 'rgba(107,114,128,0.4)',
+  border: '#6b7280',
+  tags: [],
+  svg: birdSvg,
+}
+
+function getMeta(code) {
+  return PROFILE_META[code] || FALLBACK_META
 }
 
 const containerV = {
@@ -62,7 +70,10 @@ const cardV = {
   show:   { opacity: 1, y: 0,  scale: 1, transition: { type: 'spring', stiffness: 320, damping: 24 } },
 }
 
-export function LifestyleCards() {
+/**
+ * @param {Array} profiles — API planning profiles array. Required. Pass empty array to show skeleton.
+ */
+export function LifestyleCards({ profiles = [] }) {
   const { t } = useTranslation()
   const language = useStore(s => s.language)
   const selectedLifestyle = useStore(s => s.selectedLifestyle)
@@ -70,17 +81,36 @@ export function LifestyleCards() {
   const { format } = useCurrency()
   const [hoveredId, setHoveredId] = useState(null)
 
-  const handleSelect = (id) => {
-    setLifestyle(id)
+  const handleSelect = (profile) => {
+    setLifestyle(profile.code, profile)
   }
 
-  const cards = Object.values(LIFESTYLE_TYPES)
+  // Loading skeleton
+  if (profiles.length === 0) {
+    return (
+      <div className="w-full">
+        <div className="text-center mb-10">
+          <div className="inline-flex items-center gap-2 mb-5">
+            {[0, 1, 2].map(dot => (
+              <div key={dot} className={`rounded-full ${dot === 0 ? 'w-6 h-2 bg-brand' : 'w-2 h-2 bg-brand-mid'}`} />
+            ))}
+          </div>
+          <h2 className="font-serif text-3xl md:text-4xl font-bold text-brand-deep">{t('planner.lifestyle_prompt')}</h2>
+          <p className="text-gray-400 mt-3 text-sm md:text-base max-w-md mx-auto leading-relaxed">{t('planner.lifestyle_subprompt')}</p>
+        </div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5">
+          {[0, 1, 2, 3].map(i => (
+            <div key={i} className="h-64 rounded-[28px] animate-pulse bg-gradient-to-b from-brand-mid/40 to-white/50" />
+          ))}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="w-full">
-
-      {/* ── Ambient glow that follows hovered card ── */}
       <div className="relative">
+        {/* ── Ambient glow ── */}
         <AnimatePresence>
           {hoveredId && (
             <motion.div
@@ -91,7 +121,7 @@ export function LifestyleCards() {
               transition={{ duration: 0.4 }}
               className="pointer-events-none absolute inset-0 -z-10 rounded-3xl"
               style={{
-                background: `radial-gradient(ellipse 60% 50% at 50% 0%, ${CARD_META[hoveredId].glow} 0%, transparent 70%)`,
+                background: `radial-gradient(ellipse 60% 50% at 50% 0%, ${getMeta(hoveredId).glow} 0%, transparent 70%)`,
                 filter: 'blur(20px)',
               }}
             />
@@ -105,22 +135,13 @@ export function LifestyleCards() {
           transition={{ duration: 0.45 }}
           className="text-center mb-10"
         >
-          {/* Step badge */}
           <div className="inline-flex items-center gap-2 mb-5">
             {[0, 1, 2].map(dot => (
-              <div
-                key={dot}
-                className={`rounded-full transition-all duration-300 ${dot === 0 ? 'w-6 h-2 bg-brand' : 'w-2 h-2 bg-brand-mid'}`}
-              />
+              <div key={dot} className={`rounded-full transition-all duration-300 ${dot === 0 ? 'w-6 h-2 bg-brand' : 'w-2 h-2 bg-brand-mid'}`} />
             ))}
           </div>
-
-          <h2 className="font-serif text-3xl md:text-4xl font-bold text-brand-deep">
-            {t('planner.lifestyle_prompt')}
-          </h2>
-          <p className="text-gray-400 mt-3 text-sm md:text-base max-w-md mx-auto leading-relaxed">
-            {t('planner.lifestyle_subprompt')}
-          </p>
+          <h2 className="font-serif text-3xl md:text-4xl font-bold text-brand-deep">{t('planner.lifestyle_prompt')}</h2>
+          <p className="text-gray-400 mt-3 text-sm md:text-base max-w-md mx-auto leading-relaxed">{t('planner.lifestyle_subprompt')}</p>
         </motion.div>
 
         {/* ── Cards grid ── */}
@@ -130,18 +151,19 @@ export function LifestyleCards() {
           animate="show"
           className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5"
         >
-          {cards.map((type) => {
-            const meta = CARD_META[type.id]
-            const isSelected = selectedLifestyle === type.id
-            const isHovered = hoveredId === type.id
-            const [minNZD, maxNZD] = type.monthlyRangeNZD
+          {profiles.map((profile) => {
+            const meta = getMeta(profile.code)
+            const isSelected = selectedLifestyle === profile.code
+            const isHovered = hoveredId === profile.code
+            const minNZD = Number(profile.monthlyBudgetRangeMinNzd) || 0
+            const maxNZD = Number(profile.monthlyBudgetRangeMaxNzd) || 0
 
             return (
               <motion.button
-                key={type.id}
+                key={profile.id}
                 variants={cardV}
-                onClick={() => handleSelect(type.id)}
-                onHoverStart={() => setHoveredId(type.id)}
+                onClick={() => handleSelect(profile)}
+                onHoverStart={() => setHoveredId(profile.code)}
                 onHoverEnd={() => setHoveredId(null)}
                 whileTap={{ scale: 0.97 }}
                 transition={{ duration: 0.3 }}
@@ -160,33 +182,24 @@ export function LifestyleCards() {
                   className="relative flex flex-col items-center justify-center pt-8 pb-6 px-4"
                   style={{ background: meta.gradient, minHeight: 160 }}
                 >
-                  {/* Background shimmer */}
-                  <div
-                    className="absolute inset-0 opacity-30"
-                    style={{
-                      background: 'radial-gradient(ellipse at 30% 30%, rgba(255,255,255,0.15) 0%, transparent 60%)',
-                    }}
-                  />
+                  <div className="absolute inset-0 opacity-30" style={{ background: 'radial-gradient(ellipse at 30% 30%, rgba(255,255,255,0.15) 0%, transparent 60%)' }} />
 
-                  {/* SVG illustration */}
                   <motion.div
                     animate={isHovered ? { y: -6, scale: 1.12 } : { y: 0, scale: 1 }}
                     transition={{ type: 'spring', stiffness: 300, damping: 18 }}
                     className="mb-3 relative z-10"
                     style={{ filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.25))' }}
                   >
-                    <img src={LIFESTYLE_SVG[type.id]} alt="" className="w-16 h-16 md:w-20 md:h-20 object-contain" />
+                    <img src={meta.svg} alt="" className="w-16 h-16 md:w-20 md:h-20 object-contain" />
                   </motion.div>
 
-                  {/* Name on gradient */}
                   <p className="relative z-10 text-sm font-bold text-white text-center leading-tight drop-shadow">
-                    {language === 'BN' ? type.labelBN : type.labelEN}
+                    {language === 'BN' ? profile.nameBn : profile.nameEn}
                   </p>
                   {language === 'BN' && (
-                    <p className="relative z-10 text-[11px] text-white/60 mt-0.5 font-sans">{type.labelEN}</p>
+                    <p className="relative z-10 text-[11px] text-white/60 mt-0.5 font-sans">{profile.nameEn}</p>
                   )}
 
-                  {/* Selected checkmark badge */}
                   <AnimatePresence>
                     {isSelected && (
                       <motion.div
@@ -201,58 +214,45 @@ export function LifestyleCards() {
                       </motion.div>
                     )}
                   </AnimatePresence>
-
                 </div>
 
                 {/* ── White detail zone ── */}
                 <div className="flex-1 bg-white px-4 py-4 flex flex-col gap-3">
-
-                  {/* Description */}
                   <p className="text-[12px] text-gray-500 leading-relaxed">
-                    {language === 'BN' ? type.descBN : type.descEN}
+                    {language === 'BN' ? profile.shortDetailsBn : profile.shortDetailsEn}
                   </p>
 
-                  {/* Trait tags */}
                   <div className="flex flex-wrap gap-1.5">
-                    {meta.tags.map(tag => (
+                    {(profile.tags || meta.tags || []).slice(0, 3).map(tag => (
                       <span
                         key={tag}
                         className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
-                        style={{ background: isSelected || isHovered ? `${meta.border}18` : '#f3f0ff', color: isSelected || isHovered ? meta.border : '#7c6fa0' }}
+                        style={{
+                          background: isSelected || isHovered ? `${meta.border}18` : '#f3f0ff',
+                          color: isSelected || isHovered ? meta.border : '#7c6fa0',
+                        }}
                       >
                         {tag}
                       </span>
                     ))}
                   </div>
 
-                  {/* Price range */}
-                  <div
-                    className="mt-auto pt-3 border-t border-gray-100 flex items-center justify-between"
-                  >
+                  <div className="mt-auto pt-3 border-t border-gray-100 flex items-center justify-between">
                     <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">Monthly</span>
-                    <span
-                      className="text-xs font-bold"
-                      style={{ color: isSelected || isHovered ? meta.border : '#6b7280' }}
-                    >
-                      {format(minNZD)}–{format(maxNZD)}
+                    <span className="text-xs font-bold" style={{ color: isSelected || isHovered ? meta.border : '#6b7280' }}>
+                      {minNZD > 0 ? `${format(minNZD)}–${format(maxNZD)}` : '—'}
                     </span>
                   </div>
                 </div>
 
-                {/* Selected bottom accent bar */}
                 {isSelected && (
-                  <motion.div
-                    layoutId="selectedBar"
-                    className="h-1"
-                    style={{ background: meta.gradient }}
-                  />
+                  <motion.div layoutId="selectedBar" className="h-1" style={{ background: meta.gradient }} />
                 )}
               </motion.button>
             )
           })}
         </motion.div>
 
-        {/* ── Bottom hint ── */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}

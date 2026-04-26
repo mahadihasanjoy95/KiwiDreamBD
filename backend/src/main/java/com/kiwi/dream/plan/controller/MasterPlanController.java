@@ -93,9 +93,9 @@ public class MasterPlanController {
     }
 
     @DeleteMapping("/api/v1/admin/plans/master/{planId}")
-    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     @SecurityRequirement(name = "bearerAuth")
-    @Operation(summary = "Hard-delete a master plan and all its sub-resources (SUPER_ADMIN)")
+    @Operation(summary = "Hard-delete a master plan and all its sub-resources (ADMIN)")
     public ResponseEntity<CommonApiResponse<Void>> delete(@PathVariable String planId) {
         masterPlanService.delete(planId);
         return ResponseEntity.ok(CommonApiResponse.success("Master plan deleted.", null));

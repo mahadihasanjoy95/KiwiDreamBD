@@ -4,63 +4,61 @@ import { useTranslation } from 'react-i18next'
 import { ArrowLeft, Check, Sparkles } from 'lucide-react'
 import useStore from '@/store/useStore'
 import { useCurrency } from '@/hooks/useCurrency'
-import { CITIES } from '@/data/cities'
 import aucklandSvg from '@/assets/svg/auckland.svg'
 import wellingtonSvg from '@/assets/svg/wellington.svg'
 import christchurchSvg from '@/assets/svg/christchurch.svg'
 import hamiltonSvg from '@/assets/svg/hamilton.svg'
 import dunedinSvg from '@/assets/svg/dunedin.svg'
 
-const CITY_SVG = {
-  AUCKLAND:     aucklandSvg,
-  WELLINGTON:   wellingtonSvg,
-  CHRISTCHURCH: christchurchSvg,
-  HAMILTON:     hamiltonSvg,
-  DUNEDIN:      dunedinSvg,
-}
-
-/* ── Per-city visual identity ─────────────────────────────────── */
+// ── Visual identity keyed by city CODE (matches API) ────────────────────────
 const CITY_META = {
   AUCKLAND: {
     gradient: 'linear-gradient(145deg, #3b0764 0%, #6d28d9 50%, #7c3aed 100%)',
     glow: 'rgba(124,58,237,0.55)',
     border: '#7c3aed',
     tags: ["NZ's largest", 'Most diverse', 'Best job market'],
-    tagBg: 'rgba(167,139,250,0.18)',
-    tagColor: '#c4b5fd',
+    svg: aucklandSvg,
   },
   WELLINGTON: {
     gradient: 'linear-gradient(145deg, #042f2e 0%, #0f766e 50%, #14b8a6 100%)',
     glow: 'rgba(20,184,166,0.55)',
     border: '#14b8a6',
     tags: ['Capital city', 'Café culture', 'Compact & walkable'],
-    tagBg: 'rgba(94,234,212,0.18)',
-    tagColor: '#5eead4',
+    svg: wellingtonSvg,
   },
   CHRISTCHURCH: {
     gradient: 'linear-gradient(145deg, #0c2d6b 0%, #1d4ed8 50%, #3b82f6 100%)',
     glow: 'rgba(59,130,246,0.55)',
     border: '#3b82f6',
-    tags: ['Garden city', 'Lower rent', 'Easy driving'],
-    tagBg: 'rgba(147,197,253,0.18)',
-    tagColor: '#93c5fd',
+    tags: ['Garden city', 'Lower rent', 'Easy cycling'],
+    svg: christchurchSvg,
   },
   HAMILTON: {
     gradient: 'linear-gradient(145deg, #431407 0%, #c2410c 50%, #f97316 100%)',
     glow: 'rgba(249,115,22,0.55)',
     border: '#f97316',
     tags: ['Budget friendly', 'Student hub', 'Close to Auckland'],
-    tagBg: 'rgba(253,186,116,0.18)',
-    tagColor: '#fdba74',
+    svg: hamiltonSvg,
   },
   DUNEDIN: {
     gradient: 'linear-gradient(145deg, #1e1b4b 0%, #3730a3 50%, #6366f1 100%)',
     glow: 'rgba(99,102,241,0.55)',
     border: '#6366f1',
     tags: ['Cheapest rents', 'Uni town', 'Cozy & quiet'],
-    tagBg: 'rgba(165,180,252,0.18)',
-    tagColor: '#a5b4fc',
+    svg: dunedinSvg,
   },
+}
+
+const FALLBACK_META = {
+  gradient: 'linear-gradient(145deg, #374151 0%, #6b7280 100%)',
+  glow: 'rgba(107,114,128,0.4)',
+  border: '#6b7280',
+  tags: [],
+  svg: aucklandSvg,
+}
+
+function getMeta(code) {
+  return CITY_META[code] || FALLBACK_META
 }
 
 const containerV = {
@@ -72,24 +70,53 @@ const cardV = {
   show:   { opacity: 1, y: 0,  scale: 1, transition: { type: 'spring', stiffness: 320, damping: 24 } },
 }
 
-export function CitySelector() {
+/**
+ * @param {Array}  cities    — API cities array (under the selected country). Required.
+ * @param {string} countryId — API country UUID. Passed to setCity.
+ */
+export function CitySelector({ cities = [], countryId = '' }) {
   const { t } = useTranslation()
-  const language   = useStore(s => s.language)
+  const language = useStore(s => s.language)
   const selectedCity = useStore(s => s.selectedCity)
   const { setCity, rechooseLifestyle } = useStore()
   const { format } = useCurrency()
+  const [hoveredId, setHoveredId] = useState(null)
 
-  const [hoveredId,   setHoveredId]   = useState(null)
+  const handleSelect = (city) => {
+    setCity(city.id, countryId)
+  }
 
-  const handleSelect = (id) => {
-    setCity(id)
+  // Loading skeleton
+  if (cities.length === 0) {
+    return (
+      <div className="w-full">
+        <div className="mb-10">
+          <button onClick={rechooseLifestyle} className="flex items-center gap-1.5 text-brand hover:text-brand-deep transition-colors text-sm font-semibold mb-6">
+            <ArrowLeft size={15} />
+            {t('planner.back')}
+          </button>
+          <div className="text-center">
+            <div className="inline-flex items-center gap-2 mb-5">
+              {[0, 1, 2].map(dot => (
+                <div key={dot} className={`rounded-full ${dot === 1 ? 'w-6 h-2 bg-brand' : 'w-2 h-2 bg-brand-mid'}`} />
+              ))}
+            </div>
+            <h2 className="font-serif text-3xl md:text-4xl font-bold text-brand-deep">{t('planner.city_prompt')}</h2>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 md:gap-5">
+          {[0, 1, 2, 3, 4].map(i => (
+            <div key={i} className="h-56 rounded-[28px] animate-pulse bg-gradient-to-b from-brand-mid/40 to-white/50" />
+          ))}
+        </div>
+      </div>
+    )
   }
 
   return (
     <div className="w-full">
       <div className="relative">
-
-        {/* ── Ambient glow that follows hovered card ── */}
+        {/* ── Ambient glow ── */}
         <AnimatePresence>
           {hoveredId && (
             <motion.div
@@ -100,7 +127,7 @@ export function CitySelector() {
               transition={{ duration: 0.4 }}
               className="pointer-events-none absolute inset-0 -z-10 rounded-3xl"
               style={{
-                background: `radial-gradient(ellipse 60% 50% at 50% 0%, ${CITY_META[hoveredId].glow} 0%, transparent 70%)`,
+                background: `radial-gradient(ellipse 60% 50% at 50% 0%, ${getMeta(hoveredId).glow} 0%, transparent 70%)`,
                 filter: 'blur(20px)',
               }}
             />
@@ -108,40 +135,19 @@ export function CitySelector() {
         </AnimatePresence>
 
         {/* ── Header ── */}
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.45 }}
-          className="mb-10"
-        >
-          {/* Back button */}
-          <button
-            onClick={rechooseLifestyle}
-            className="flex items-center gap-1.5 text-brand hover:text-brand-deep transition-colors text-sm font-semibold mb-6"
-          >
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45 }} className="mb-10">
+          <button onClick={rechooseLifestyle} className="flex items-center gap-1.5 text-brand hover:text-brand-deep transition-colors text-sm font-semibold mb-6">
             <ArrowLeft size={15} />
             {t('planner.back')}
           </button>
-
           <div className="text-center">
-            {/* Step dots — index 1 is active */}
             <div className="inline-flex items-center gap-2 mb-5">
               {[0, 1, 2].map(dot => (
-                <div
-                  key={dot}
-                  className={`rounded-full transition-all duration-300 ${
-                    dot === 1 ? 'w-6 h-2 bg-brand' : 'w-2 h-2 bg-brand-mid'
-                  }`}
-                />
+                <div key={dot} className={`rounded-full transition-all duration-300 ${dot === 1 ? 'w-6 h-2 bg-brand' : 'w-2 h-2 bg-brand-mid'}`} />
               ))}
             </div>
-
-            <h2 className="font-serif text-3xl md:text-4xl font-bold text-brand-deep">
-              {t('planner.city_prompt')}
-            </h2>
-            <p className="text-gray-400 mt-3 text-sm md:text-base max-w-md mx-auto leading-relaxed">
-              {t('planner.city_subprompt')}
-            </p>
+            <h2 className="font-serif text-3xl md:text-4xl font-bold text-brand-deep">{t('planner.city_prompt')}</h2>
+            <p className="text-gray-400 mt-3 text-sm md:text-base max-w-md mx-auto leading-relaxed">{t('planner.city_subprompt')}</p>
           </div>
         </motion.div>
 
@@ -152,17 +158,17 @@ export function CitySelector() {
           animate="show"
           className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 md:gap-5"
         >
-          {CITIES.map((city) => {
-            const meta         = CITY_META[city.id]
-            const isSelected   = selectedCity === city.id
-            const isHovered    = hoveredId === city.id
+          {cities.map((city) => {
+            const meta = getMeta(city.code)
+            const isSelected = selectedCity === city.id
+            const isHovered = hoveredId === city.code
 
             return (
               <motion.button
                 key={city.id}
                 variants={cardV}
-                onClick={() => handleSelect(city.id)}
-                onHoverStart={() => setHoveredId(city.id)}
+                onClick={() => handleSelect(city)}
+                onHoverStart={() => setHoveredId(city.code)}
                 onHoverEnd={() => setHoveredId(null)}
                 whileTap={{ scale: 0.97 }}
                 transition={{ duration: 0.3 }}
@@ -181,33 +187,24 @@ export function CitySelector() {
                   className="relative flex flex-col items-center justify-center pt-8 pb-6 px-4"
                   style={{ background: meta.gradient, minHeight: 140 }}
                 >
-                  {/* Background shimmer */}
-                  <div
-                    className="absolute inset-0 opacity-30"
-                    style={{
-                      background: 'radial-gradient(ellipse at 30% 30%, rgba(255,255,255,0.15) 0%, transparent 60%)',
-                    }}
-                  />
+                  <div className="absolute inset-0 opacity-30" style={{ background: 'radial-gradient(ellipse at 30% 30%, rgba(255,255,255,0.15) 0%, transparent 60%)' }} />
 
-                  {/* SVG illustration */}
                   <motion.div
                     animate={isHovered ? { y: -6, scale: 1.12 } : { y: 0, scale: 1 }}
                     transition={{ type: 'spring', stiffness: 300, damping: 18 }}
                     className="mb-3 relative z-10"
                     style={{ filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.25))' }}
                   >
-                    <img src={CITY_SVG[city.id]} alt="" className="w-14 h-14 md:w-16 md:h-16 object-contain" />
+                    <img src={meta.svg} alt="" className="w-14 h-14 md:w-16 md:h-16 object-contain" />
                   </motion.div>
 
-                  {/* City name */}
                   <p className="relative z-10 text-sm font-bold text-white text-center leading-tight drop-shadow">
-                    {language === 'BN' ? city.nameBN : city.name}
+                    {language === 'BN' ? city.nameBn : city.nameEn}
                   </p>
                   {language === 'BN' && (
-                    <p className="relative z-10 text-[11px] text-white/60 mt-0.5 font-sans">{city.name}</p>
+                    <p className="relative z-10 text-[11px] text-white/60 mt-0.5 font-sans">{city.nameEn}</p>
                   )}
 
-                  {/* Selected checkmark badge */}
                   <AnimatePresence>
                     {isSelected && (
                       <motion.div
@@ -222,20 +219,16 @@ export function CitySelector() {
                       </motion.div>
                     )}
                   </AnimatePresence>
-
                 </div>
 
                 {/* ── White detail zone ── */}
                 <div className="flex-1 bg-white px-4 py-4 flex flex-col gap-3">
-
-                  {/* Tagline */}
                   <p className="text-[12px] text-gray-500 leading-relaxed">
-                    {language === 'BN' ? city.taglineBN : city.taglineEN}
+                    {language === 'BN' ? city.taglineBn : city.taglineEn}
                   </p>
 
-                  {/* Trait tags */}
                   <div className="flex flex-wrap gap-1.5">
-                    {meta.tags.map(tag => (
+                    {((city.tags && Array.isArray(city.tags) ? city.tags : []) || meta.tags).slice(0, 3).map(tag => (
                       <span
                         key={tag}
                         className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
@@ -249,32 +242,22 @@ export function CitySelector() {
                     ))}
                   </div>
 
-                  {/* Weekly rent */}
                   <div className="mt-auto pt-3 border-t border-gray-100 flex items-center justify-between">
-                    <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">Weekly</span>
-                    <span
-                      className="text-xs font-bold"
-                      style={{ color: isSelected || isHovered ? meta.border : '#6b7280' }}
-                    >
-                      {format(city.weeklyRentHint * city.rentIndex)}/wk
+                    <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">Weekly rent</span>
+                    <span className="text-xs font-bold" style={{ color: isSelected || isHovered ? meta.border : '#6b7280' }}>
+                      {city.roomRentHintNzd ? `${format(city.roomRentHintNzd)}/wk` : '—'}
                     </span>
                   </div>
                 </div>
 
-                {/* Selected bottom accent bar */}
                 {isSelected && (
-                  <motion.div
-                    layoutId="citySelectedBar"
-                    className="h-1"
-                    style={{ background: meta.gradient }}
-                  />
+                  <motion.div layoutId="citySelectedBar" className="h-1" style={{ background: meta.gradient }} />
                 )}
               </motion.button>
             )
           })}
         </motion.div>
 
-        {/* ── Bottom hint ── */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -285,7 +268,6 @@ export function CitySelector() {
           <span>Pick your city — suburb-level costs load automatically</span>
           <Sparkles size={13} className="text-brand-soft" />
         </motion.div>
-
       </div>
     </div>
   )

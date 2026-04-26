@@ -104,13 +104,13 @@ public class PlanningProfileController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     @SecurityRequirement(name = "bearerAuth")
-    @Operation(summary = "Delete a planning profile (SUPER_ADMIN only — blocked if plans are linked)")
+    @Operation(summary = "Delete a planning profile (ADMIN — blocked if plans are linked)")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Profile deleted"),
             @ApiResponse(responseCode = "401", description = "Not authenticated"),
-            @ApiResponse(responseCode = "403", description = "SUPER_ADMIN role required"),
+            @ApiResponse(responseCode = "403", description = "Admin role required"),
             @ApiResponse(responseCode = "404", description = "Profile not found"),
             @ApiResponse(responseCode = "409", description = "Cannot delete profile while plans are linked")
     })

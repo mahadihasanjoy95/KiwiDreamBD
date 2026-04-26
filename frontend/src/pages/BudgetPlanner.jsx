@@ -12,9 +12,10 @@ import { LivingFund } from '@/components/budget/LivingFund'
 import { AppLoader } from '@/components/common/AppLoader'
 import { Alert } from '@/components/common/Alert'
 import { useToast } from '@/components/common/ToastProvider'
-import { LIFESTYLE_TYPES } from '@/data/templates'
-import { CITIES } from '@/data/cities'
 import { CHECKLIST_GROUPS } from '@/data/checklist'
+import { listCountries, listCitiesByCountry } from '@/api/countries'
+import { listPlanningProfiles } from '@/api/profiles'
+import { getMasterPlanByCombo } from '@/api/masterPlans'
 import { cn } from '@/utils/cn'
 import { useAffordability } from '@/hooks/useAffordability'
 import soloStudentSvg from '@/assets/svg/solo-student.svg'
@@ -33,11 +34,13 @@ const CHECKLIST_CATEGORY_OPTIONS = [
   { id: 'other', titleEN: 'Other', titleBN: 'অন্যান্য', items: [] },
 ]
 
+// Keyed by API profile CODE (matches PROFILE_META in LifestyleCards)
 const LIFESTYLE_ICON_SVG = {
-  SOLO_MODEST: soloStudentSvg,
-  COUPLE_STANDARD: familyPlanningSvg,
-  SOLO_COMFORTABLE: comfortableSoloSvg,
-  FAMILY_PLANNING: familyPlanningSvg,
+  SOLO_STUDENT:    soloStudentSvg,
+  STUDENT_COUPLE:  familyPlanningSvg,
+  WORKER:          comfortableSoloSvg,
+  FAMILY:          familyPlanningSvg,
+  VISITOR:         soloStudentSvg,
 }
 
 const CITY_ICON_SVG = {
@@ -314,8 +317,8 @@ export default function BudgetPlanner() {
   const wizardStep = useStore(s => s.wizardStep)
   const activeTab = useStore(s => s.activeTab)
   const setActiveTab = useStore(s => s.setActiveTab)
-  const selectedLifestyle = useStore(s => s.selectedLifestyle)
-  const selectedCity = useStore(s => s.selectedCity)
+  const selectedLifestyle = useStore(s => s.selectedLifestyle)  // profile CODE e.g. 'SOLO_STUDENT'
+  const selectedCity = useStore(s => s.selectedCity)            // city UUID
   const language = useStore(s => s.language)
   const isAuthenticated = useStore(s => s.isAuthenticated)
   const saveCurrentPlan = useStore(s => s.saveCurrentPlan)
@@ -323,9 +326,60 @@ export default function BudgetPlanner() {
   const setWizardStep = useStore(s => s.setWizardStep)
   const rechooseLifestyle = useStore(s => s.rechooseLifestyle)
   const rechooseCity = useStore(s => s.rechooseCity)
+  const setMasterPlan = useStore(s => s.setMasterPlan)
+  const currentMasterPlan = useStore(s => s.currentMasterPlan)
   const { monthlyTotal, survivalMonths } = useAffordability()
   const [pageLoading, setPageLoading] = useState(true)
   const [savingPlan, setSavingPlan] = useState(false)
+  const [masterPlanLoading, setMasterPlanLoading] = useState(false)
+
+  // ── API data ────────────────────────────────────────────────────────────
+  const [apiCountry, setApiCountry] = useState(null)    // NZ country object
+  const [apiCities, setApiCities] = useState([])
+  const [apiProfiles, setApiProfiles] = useState([])
+
+  // Fetch NZ country + profiles once on mount
+  useEffect(() => {
+    listCountries()
+      .then(countries => {
+        const nz = (countries || []).find(c => c.code === 'NZ') || countries?.[0] || null
+        setApiCountry(nz)
+      })
+      .catch(() => {})
+
+    listPlanningProfiles().then(setApiProfiles).catch(() => {})
+  }, [])
+
+  // Fetch cities when country is loaded (auto-selects NZ)
+  useEffect(() => {
+    if (!apiCountry) return
+    listCitiesByCountry(apiCountry.id).then(setApiCities).catch(() => {})
+  }, [apiCountry])
+
+  // Fetch master plan when profile + city are both selected
+  useEffect(() => {
+    if (!selectedLifestyle || !selectedCity || !apiCountry) return
+
+    // selectedLifestyle is profile CODE (e.g. 'SOLO_STUDENT')
+    // selectedCity is city UUID
+    const apiProfile = apiProfiles.find(p => p.code === selectedLifestyle)
+    const apiCity = apiCities.find(c => c.id === selectedCity)
+
+    if (!apiProfile || !apiCity) return
+
+    // Skip re-fetch if already have the matching plan
+    if (
+      currentMasterPlan &&
+      currentMasterPlan.cityId === apiCity.id &&
+      currentMasterPlan.planningProfileId === apiProfile.id
+    ) return
+
+    setMasterPlanLoading(true)
+    getMasterPlanByCombo(apiCountry.id, apiCity.id, apiProfile.id)
+      .then(plan => setMasterPlan(plan))
+      .catch(() => setMasterPlan(null))
+      .finally(() => setMasterPlanLoading(false))
+  }, [selectedLifestyle, selectedCity, apiCountry, apiCities, apiProfiles, setMasterPlan, currentMasterPlan])
 
   useEffect(() => {
     const id = window.setTimeout(() => setPageLoading(false), 700)
@@ -341,8 +395,9 @@ export default function BudgetPlanner() {
   }
   const slideDir = dirRef.current
 
-  const lifestyle = selectedLifestyle ? LIFESTYLE_TYPES[selectedLifestyle] : null
-  const city = selectedCity ? CITIES.find(c => c.id === selectedCity) : null
+  // Resolve display objects from API data (selectedLifestyle = profile CODE, selectedCity = UUID)
+  const lifestyle = selectedLifestyle ? (apiProfiles.find(p => p.code === selectedLifestyle) || null) : null
+  const city      = selectedCity      ? (apiCities.find(c => c.id === selectedCity)           || null) : null
 
   useEffect(() => {
     if (wizardStep === 1 && !selectedLifestyle) {
@@ -379,6 +434,17 @@ export default function BudgetPlanner() {
             : (language === 'BN' ? 'আপনার budget workspace সাজানো হচ্ছে' : 'Setting up your budget workspace')
         }
       />
+      {masterPlanLoading && !pageLoading && (
+        <div className="fixed inset-x-0 top-16 z-30 flex justify-center pointer-events-none">
+          <div className="mt-2 flex items-center gap-2 rounded-full border border-brand-mid bg-white px-4 py-2 shadow-brand-sm text-sm text-brand font-semibold">
+            <svg className="animate-spin h-4 w-4 text-brand" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+            </svg>
+            {language === 'BN' ? 'পরিকল্পনা লোড হচ্ছে…' : 'Loading your plan data…'}
+          </div>
+        </div>
+      )}
       <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-8 pb-28 md:pb-8">
         {/* Breadcrumb (shown on step 2) */}
         {wizardStep === 2 && lifestyle && city && (
@@ -392,13 +458,15 @@ export default function BudgetPlanner() {
               onClick={rechooseLifestyle}
               className="flex items-center gap-1.5 rounded-full border border-brand-mid bg-white px-3 py-1.5 font-semibold text-brand transition-colors hover:bg-brand-light"
             >
-              <img
-                src={LIFESTYLE_ICON_SVG[lifestyle.id]}
-                alt=""
-                aria-hidden="true"
-                className="h-5 w-5 shrink-0 object-contain"
-              />
-              <span>{language === 'BN' ? lifestyle.labelBN : lifestyle.labelEN}</span>
+              {LIFESTYLE_ICON_SVG[lifestyle.code] && (
+                <img
+                  src={LIFESTYLE_ICON_SVG[lifestyle.code]}
+                  alt=""
+                  aria-hidden="true"
+                  className="h-5 w-5 shrink-0 object-contain"
+                />
+              )}
+              <span>{language === 'BN' ? (lifestyle.nameBn || lifestyle.nameEn) : lifestyle.nameEn}</span>
             </button>
             <span className="text-gray-300">→</span>
             <button
@@ -406,13 +474,15 @@ export default function BudgetPlanner() {
               onClick={rechooseCity}
               className="flex items-center gap-1.5 rounded-full border border-brand-mid bg-white px-3 py-1.5 font-semibold text-brand transition-colors hover:bg-brand-light"
             >
-              <img
-                src={CITY_ICON_SVG[city.id]}
-                alt=""
-                aria-hidden="true"
-                className="h-5 w-5 shrink-0 object-contain"
-              />
-              <span>{language === 'BN' ? city.nameBN : city.name}</span>
+              {CITY_ICON_SVG[city.code] && (
+                <img
+                  src={CITY_ICON_SVG[city.code]}
+                  alt=""
+                  aria-hidden="true"
+                  className="h-5 w-5 shrink-0 object-contain"
+                />
+              )}
+              <span>{language === 'BN' ? (city.nameBn || city.nameEn) : city.nameEn}</span>
             </button>
           </motion.div>
         )}
@@ -431,7 +501,7 @@ export default function BudgetPlanner() {
               exit="exit"
               transition={{ duration: 0.2, ease: 'easeInOut' }}
             >
-              <LifestyleCards />
+              <LifestyleCards profiles={apiProfiles} />
             </motion.div>
           )}
 
@@ -445,7 +515,7 @@ export default function BudgetPlanner() {
               exit="exit"
               transition={{ duration: 0.2, ease: 'easeInOut' }}
             >
-              <CitySelector />
+              <CitySelector cities={apiCities} countryId={apiCountry?.id || ''} />
             </motion.div>
           )}
 
@@ -563,15 +633,15 @@ export default function BudgetPlanner() {
 
                     {isAuthenticated ? (
                       <button
-                        onClick={() => {
+                        onClick={async () => {
                           setSavingPlan(true)
-                          window.setTimeout(() => {
-                            const result = saveCurrentPlan()
+                          try {
+                            const result = await saveCurrentPlan()
                             if (result.ok) {
                               showToast({
                                 tone: 'success',
                                 title: t('auth.save_toast_title'),
-                                message: t('auth.save_toast_copy', { plan: result.plan.planName }),
+                                message: t('auth.save_toast_copy', { plan: result.plan?.displayPlanName || result.plan?.planName || 'Your plan' }),
                               })
                               navigate('/dashboard')
                             } else {
@@ -581,14 +651,21 @@ export default function BudgetPlanner() {
                                 message: t('auth.save_toast_error_copy'),
                               })
                             }
+                          } catch {
+                            showToast({
+                              tone: 'error',
+                              title: t('auth.save_toast_error_title'),
+                              message: t('auth.save_toast_error_copy'),
+                            })
+                          } finally {
                             setSavingPlan(false)
-                          }, 1400)
+                          }
                         }}
-                        disabled={savingPlan}
-                        className="inline-flex items-center justify-center gap-2 rounded-[20px] bg-brand px-5 py-3 font-semibold text-white shadow-[0_16px_34px_rgba(0,149,161,0.22)] transition-transform hover:-translate-y-0.5 hover:bg-brand-deep"
+                        disabled={savingPlan || masterPlanLoading}
+                        className="inline-flex items-center justify-center gap-2 rounded-[20px] bg-brand px-5 py-3 font-semibold text-white shadow-[0_16px_34px_rgba(0,149,161,0.22)] transition-transform hover:-translate-y-0.5 hover:bg-brand-deep disabled:opacity-60"
                       >
                         <BookmarkPlus size={18} />
-                        {t('auth.save_plan_cta')}
+                        {masterPlanLoading ? 'Loading plan…' : t('auth.save_plan_cta')}
                       </button>
                     ) : (
                       <Link

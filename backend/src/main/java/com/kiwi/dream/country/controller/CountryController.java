@@ -102,13 +102,13 @@ public class CountryController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     @SecurityRequirement(name = "bearerAuth")
-    @Operation(summary = "Delete a country (SUPER_ADMIN only — blocked if cities exist)")
+    @Operation(summary = "Delete a country (ADMIN — blocked if cities exist)")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Country deleted"),
             @ApiResponse(responseCode = "401", description = "Not authenticated"),
-            @ApiResponse(responseCode = "403", description = "SUPER_ADMIN role required"),
+            @ApiResponse(responseCode = "403", description = "Admin role required"),
             @ApiResponse(responseCode = "404", description = "Country not found"),
             @ApiResponse(responseCode = "409", description = "Cannot delete country while cities exist")
     })

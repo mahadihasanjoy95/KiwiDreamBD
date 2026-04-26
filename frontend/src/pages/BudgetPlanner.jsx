@@ -9,6 +9,7 @@ import { CitySelector } from '@/components/budget/CitySelector'
 import { MonthlyPlan } from '@/components/budget/MonthlyPlan'
 import { MovingCost } from '@/components/budget/MovingCost'
 import { LivingFund } from '@/components/budget/LivingFund'
+import { AppLoader } from '@/components/common/AppLoader'
 import { LIFESTYLE_TYPES } from '@/data/templates'
 import { CITIES } from '@/data/cities'
 import { CHECKLIST_GROUPS } from '@/data/checklist'
@@ -320,6 +321,13 @@ export default function BudgetPlanner() {
   const rechooseLifestyle = useStore(s => s.rechooseLifestyle)
   const rechooseCity = useStore(s => s.rechooseCity)
   const { monthlyTotal, survivalMonths } = useAffordability()
+  const [pageLoading, setPageLoading] = useState(true)
+  const [savingPlan, setSavingPlan] = useState(false)
+
+  useEffect(() => {
+    const id = window.setTimeout(() => setPageLoading(false), 700)
+    return () => window.clearTimeout(id)
+  }, [])
 
   // Track slide direction: +1 = forward (higher step), -1 = back (lower step)
   const prevStepRef = useRef(wizardStep)
@@ -355,6 +363,19 @@ export default function BudgetPlanner() {
 
   return (
     <div className="min-h-screen bg-[linear-gradient(180deg,#e4f4f4_0%,#f7fbf8_100%)]">
+      <AppLoader
+        show={pageLoading || savingPlan}
+        label={
+          savingPlan
+            ? (language === 'BN' ? 'আপনার plan সেভ হচ্ছে' : 'Saving your plan')
+            : (language === 'BN' ? 'Planner প্রস্তুত হচ্ছে' : 'Loading your planner')
+        }
+        sublabel={
+          savingPlan
+            ? (language === 'BN' ? 'Budget, moving cost, আর readiness একসাথে রাখা হচ্ছে' : 'Keeping your budget, moving cost, and readiness together')
+            : (language === 'BN' ? 'আপনার budget workspace সাজানো হচ্ছে' : 'Setting up your budget workspace')
+        }
+      />
       <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-8 pb-28 md:pb-8">
         {/* Breadcrumb (shown on step 2) */}
         {wizardStep === 2 && lifestyle && city && (
@@ -532,9 +553,14 @@ export default function BudgetPlanner() {
                     {isAuthenticated ? (
                       <button
                         onClick={() => {
-                          const result = saveCurrentPlan()
-                          if (result.ok) navigate('/dashboard')
+                          setSavingPlan(true)
+                          window.setTimeout(() => {
+                            const result = saveCurrentPlan()
+                            if (result.ok) navigate('/dashboard')
+                            setSavingPlan(false)
+                          }, 1400)
                         }}
+                        disabled={savingPlan}
                         className="inline-flex items-center justify-center gap-2 rounded-[20px] bg-brand px-5 py-3 font-semibold text-white shadow-[0_16px_34px_rgba(0,149,161,0.22)] transition-transform hover:-translate-y-0.5 hover:bg-brand-deep"
                       >
                         <BookmarkPlus size={18} />

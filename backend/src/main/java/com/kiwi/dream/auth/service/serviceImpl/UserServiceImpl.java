@@ -1,15 +1,15 @@
 package com.kiwi.dream.auth.service.serviceImpl;
 
-import com.kiwi.dream.auth.constants.SystemRoles;
 import com.kiwi.dream.auth.dto.request.AssignUserRoleRequestDto;
 import com.kiwi.dream.auth.dto.request.CreateAdminRequestDto;
 import com.kiwi.dream.auth.dto.response.UserResponseDto;
-import com.kiwi.dream.auth.entity.Role;
 import com.kiwi.dream.auth.entity.User;
 import com.kiwi.dream.auth.enums.AuthProvider;
-import com.kiwi.dream.auth.exception.*;
+import com.kiwi.dream.auth.enums.UserRole;
+import com.kiwi.dream.auth.exception.ProtectedSuperAdminOperationException;
+import com.kiwi.dream.auth.exception.UserAlreadyExistsException;
+import com.kiwi.dream.auth.exception.UserNotFoundException;
 import com.kiwi.dream.auth.repository.RefreshTokenRepository;
-import com.kiwi.dream.auth.repository.RoleRepository;
 import com.kiwi.dream.auth.repository.UserRepository;
 import com.kiwi.dream.auth.service.UserService;
 import com.kiwi.dream.common.email.EmailRequest;
@@ -34,7 +34,6 @@ import java.util.Map;
 public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
-    private final RoleRepository roleRepository;
     private final RefreshTokenRepository refreshTokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
@@ -50,15 +49,6 @@ public class UserServiceImpl implements UserService {
             throw new UserAlreadyExistsException("An account with email '" + requestDto.email() + "' already exists");
         }
 
-        String roleName = requestDto.effectiveRole();
-
-        if (SystemRoles.isReserved(roleName)) {
-            throw new InvalidAssignableRoleException(roleName);
-        }
-
-        Role adminRole = roleRepository.findByName(roleName)
-                .orElseThrow(() -> new RoleNotFoundException(roleName));
-
         String temporaryPassword = generateSecurePassword();
 
         User user = new User();
@@ -66,9 +56,9 @@ public class UserServiceImpl implements UserService {
         user.setEmail(requestDto.email().toLowerCase().trim());
         user.setPasswordHash(passwordEncoder.encode(temporaryPassword));
         user.setAuthProvider(AuthProvider.LOCAL);
+        user.setRole(UserRole.ROLE_ADMIN);
         user.setActive(true);
         user.setEmailVerified(true);
-        user.getRoles().add(adminRole);
 
         User saved = userRepository.save(user);
         log.info("New admin created: {}", saved.getEmail());
@@ -87,16 +77,6 @@ public class UserServiceImpl implements UserService {
         return authServiceImpl.toUserResponse(saved);
     }
 
-    private String generateSecurePassword() {
-        String chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%";
-        SecureRandom random = new SecureRandom();
-        StringBuilder sb = new StringBuilder(12);
-        for (int i = 0; i < 12; i++) {
-            sb.append(chars.charAt(random.nextInt(chars.length())));
-        }
-        return sb.toString();
-    }
-
     @Override
     @Transactional(readOnly = true)
     public PageResponse<UserResponseDto> listUsers(Pageable pageable) {
@@ -108,7 +88,7 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional(readOnly = true)
     public PageResponse<UserResponseDto> listAdminUsers(Pageable pageable) {
-        Page<UserResponseDto> page = userRepository.findAllByRoles_Name(SystemRoles.ADMIN, pageable)
+        Page<UserResponseDto> page = userRepository.findByRole(UserRole.ROLE_ADMIN, pageable)
                 .map(authServiceImpl::toUserResponse);
         return PageResponse.from(page);
     }
@@ -116,7 +96,7 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional(readOnly = true)
     public PageResponse<UserResponseDto> listRegularUsers(Pageable pageable) {
-        Page<UserResponseDto> page = userRepository.findAllByRoles_Name(SystemRoles.USER, pageable)
+        Page<UserResponseDto> page = userRepository.findByRole(UserRole.ROLE_APPLICANT, pageable)
                 .map(authServiceImpl::toUserResponse);
         return PageResponse.from(page);
     }
@@ -134,15 +114,15 @@ public class UserServiceImpl implements UserService {
     public UserResponseDto assignRole(String userId, AssignUserRoleRequestDto requestDto) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException(userId));
+
         assertNotSuperAdmin(user);
-        assertRoleIsAssignable(requestDto.role());
 
-        Role role = roleRepository.findByName(requestDto.role())
-                .orElseThrow(() -> new RoleNotFoundException(requestDto.role()));
+        // Prevent promoting anyone to SUPER_ADMIN via this endpoint
+        if (requestDto.role() == UserRole.ROLE_SUPER_ADMIN) {
+            throw new ProtectedSuperAdminOperationException();
+        }
 
-        // Enforce single-role: clear existing roles before assigning
-        user.getRoles().clear();
-        user.getRoles().add(role);
+        user.setRole(requestDto.role());
 
         // Revoke all active refresh tokens — user must re-authenticate with new role
         refreshTokenRepository.revokeAllByUserId(userId);
@@ -187,16 +167,18 @@ public class UserServiceImpl implements UserService {
     // ──────────────────────────────────────────────────────────────────────────
 
     private void assertNotSuperAdmin(User user) {
-        boolean isSuperAdmin = user.getRoles().stream()
-                .anyMatch(role -> SystemRoles.SUPER_ADMIN.equals(role.getName()));
-        if (isSuperAdmin) {
+        if (user.getRole() == UserRole.ROLE_SUPER_ADMIN) {
             throw new ProtectedSuperAdminOperationException();
         }
     }
 
-    private void assertRoleIsAssignable(String roleName) {
-        if (SystemRoles.isReserved(roleName)) {
-            throw new InvalidAssignableRoleException(roleName);
+    private String generateSecurePassword() {
+        String chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%";
+        SecureRandom random = new SecureRandom();
+        StringBuilder sb = new StringBuilder(12);
+        for (int i = 0; i < 12; i++) {
+            sb.append(chars.charAt(random.nextInt(chars.length())));
         }
+        return sb.toString();
     }
 }

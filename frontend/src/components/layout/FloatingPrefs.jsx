@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Settings2 } from 'lucide-react'
 import useStore from '@/store/useStore'
+import { AppLoader } from '@/components/common/AppLoader'
 
 export function FloatingPrefs() {
   const [open, setOpen] = useState(false)
@@ -11,6 +12,7 @@ export function FloatingPrefs() {
   const setCurrency = useStore(s => s.setCurrency)
   const language = useStore(s => s.language)
   const setLanguage = useStore(s => s.setLanguage)
+  const [loadingPref, setLoadingPref] = useState(null)
 
   // Close panel on outside tap
   useEffect(() => {
@@ -22,8 +24,31 @@ export function FloatingPrefs() {
     return () => document.removeEventListener('pointerdown', handler)
   }, [open])
 
+  const changeLanguage = (id) => {
+    if (id === language || loadingPref) return
+    setLoadingPref(id)
+    window.setTimeout(() => {
+      setLanguage(id)
+      setLoadingPref(null)
+    }, 650)
+  }
+
+  const changeCurrency = (id) => {
+    if (id === currency || loadingPref) return
+    setLoadingPref(id)
+    window.setTimeout(() => {
+      setCurrency(id)
+      setLoadingPref(null)
+    }, 650)
+  }
+
   return (
     <div ref={containerRef} className="fixed bottom-24 right-4 z-50 flex flex-col items-end gap-2 md:hidden">
+      <AppLoader
+        show={Boolean(loadingPref)}
+        label={loadingPref === 'BN' ? 'বাংলা চালু হচ্ছে' : loadingPref === 'EN' ? 'Switching to English' : `${loadingPref} view`}
+        sublabel={loadingPref === 'NZD' || loadingPref === 'BDT' ? 'Converting amounts across the app' : 'Refreshing text across the app'}
+      />
 
       {/* Glass card */}
       <AnimatePresence>
@@ -51,7 +76,8 @@ export function FloatingPrefs() {
                   {[{ id: 'EN', label: 'EN' }, { id: 'BN', label: 'বাং' }].map(opt => (
                     <button
                       key={opt.id}
-                      onClick={() => setLanguage(opt.id)}
+                      onClick={() => changeLanguage(opt.id)}
+                      disabled={Boolean(loadingPref)}
                       className="relative flex-1 py-2 rounded-xl text-sm font-semibold overflow-hidden"
                     >
                       {language === opt.id && (
@@ -83,7 +109,8 @@ export function FloatingPrefs() {
                   {['NZD', 'BDT'].map(c => (
                     <button
                       key={c}
-                      onClick={() => setCurrency(c)}
+                      onClick={() => changeCurrency(c)}
+                      disabled={Boolean(loadingPref)}
                       className="relative flex-1 py-2 rounded-xl text-sm font-semibold overflow-hidden"
                     >
                       {currency === c && (

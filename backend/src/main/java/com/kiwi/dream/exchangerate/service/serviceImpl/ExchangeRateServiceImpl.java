@@ -40,6 +40,17 @@ public class ExchangeRateServiceImpl implements ExchangeRateService {
      */
     private static final String ORIGIN_CURRENCY = "BDT";
 
+    /**
+     * Currency codes that are ALWAYS synced on every startup and nightly cron,
+     * regardless of whether any countries exist in the DB yet.
+     *
+     * <p>This prevents the empty-table scenario on a fresh install:
+     * if no countries are seeded yet, the sync used to skip entirely because
+     * {@code countryRepository.findAll()} returned an empty list.
+     * Now BDT↔NZD is guaranteed to be populated from day one.</p>
+     */
+    private static final List<String> PLATFORM_ESSENTIAL_CURRENCIES = List.of("NZD", "AUD", "CAD", "GBP");
+
     private final ExchangeRateRepository exchangeRateRepository;
     private final CountryRepository countryRepository;
     private final ExchangeRateMapper exchangeRateMapper;
@@ -105,7 +116,7 @@ public class ExchangeRateServiceImpl implements ExchangeRateService {
     @Override
     @Transactional
     public int syncRatesFromApi() {
-        log.info("Starting exchange rate sync from external API...");
+        log.info("Starting exchange rate sync from external API: {}", apiUrl);
 
         // 1. Fetch USD-base rates from the free API
         CurrencyApiResponse apiResponse;
@@ -135,18 +146,25 @@ public class ExchangeRateServiceImpl implements ExchangeRateService {
             return 0;
         }
 
-        // 3. Collect all unique currency codes from countries in our DB
-        List<String> destinationCurrencies = countryRepository.findAll()
+        // 3. Build destination currency list:
+        //    - ALWAYS include PLATFORM_ESSENTIAL_CURRENCIES (NZD, AUD, CAD, GBP)
+        //      so BDT↔NZD is synced even on a fresh install with no countries seeded yet.
+        //    - Also merge in any currency codes from countries in the DB.
+        List<String> dbCurrencies = countryRepository.findAll()
                 .stream()
                 .map(c -> c.getCurrencyCode().toUpperCase())
-                .filter(code -> !code.equals(ORIGIN_CURRENCY)) // skip BDT itself
+                .filter(code -> !code.equals(ORIGIN_CURRENCY))
                 .distinct()
                 .toList();
 
-        if (destinationCurrencies.isEmpty()) {
-            log.warn("No countries found in the database. Skipping exchange rate sync.");
-            return 0;
+        List<String> destinationCurrencies = new ArrayList<>(PLATFORM_ESSENTIAL_CURRENCIES);
+        for (String code : dbCurrencies) {
+            if (!destinationCurrencies.contains(code)) {
+                destinationCurrencies.add(code);
+            }
         }
+        log.info("Syncing {} destination currencies: {} ({} from DB countries)",
+                destinationCurrencies.size(), destinationCurrencies, dbCurrencies.size());
 
         int updatedCount = 0;
         List<ExchangeRate> toSave = new ArrayList<>();

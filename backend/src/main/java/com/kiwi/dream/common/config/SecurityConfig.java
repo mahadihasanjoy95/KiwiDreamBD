@@ -58,23 +58,48 @@ public class SecurityConfig {
             "/api/v1/auth/refresh",
             "/api/v1/auth/forgot-password",
             "/api/v1/auth/reset-password",
+            "/api/v1/auth/verify-email",           // email verification link click
             "/api/v1/auth/admin-invite/activate"
     };
 
     /**
-     * Public read endpoints — any visitor can browse countries, cities,
-     * planning profiles, master plans, news, exchange rate.
+     * Public read endpoints — any visitor can browse without authentication.
+     *
+     * <p>Rules:</p>
+     * <ul>
+     *   <li>Countries, cities, planning profiles — reference data, always public.</li>
+     *   <li>Master plans — only published ones are returned by the service, but the
+     *       endpoint itself is public so guests can browse the planner freely.</li>
+     *   <li>Exchange rates — public so the frontend can display BDT ↔ NZD figures
+     *       without requiring login. Admin write endpoints on the same controller
+     *       are protected by {@code @PreAuthorize} — Spring Security checks the
+     *       permit list first, then method-level annotations for writes.</li>
+     *   <li>News — published articles are public.</li>
+     *   <li>Settings — non-sensitive site config (maintenance mode, featured cities).</li>
+     * </ul>
      */
     private static final String[] BUSINESS_PUBLIC = {
+            // Reference data
             "/api/v1/countries",
             "/api/v1/countries/**",
             "/api/v1/planning-profiles",
             "/api/v1/planning-profiles/**",
+
+            // Master plans (published only — gated in service layer, not here)
             "/api/v1/plans/master",
             "/api/v1/plans/master/**",
+
+            // Exchange rates (active rates only — admin write routes use @PreAuthorize)
+            "/api/v1/exchange-rates",
+            "/api/v1/exchange-rates/**",
+
+            // News
             "/api/v1/news",
             "/api/v1/news/**",
-            "/api/v1/settings/exchange-rate"
+
+            // App settings (non-sensitive public config)
+            "/api/v1/settings",
+            "/api/v1/settings/**"
     };
 
     @Bean

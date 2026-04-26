@@ -7,6 +7,10 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.web.client.RestClient;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+
 import java.util.concurrent.Executor;
 
 /**
@@ -38,5 +42,19 @@ public class AsyncConfig {
         return RestClient.builder()
                 .defaultHeader("Accept", "application/json")
                 .build();
+    }
+
+    /**
+     * Shared ObjectMapper with Java time module registered.
+     *
+     * <p>Required by {@code UserPlanServiceImpl} for serializing plan archive
+     * snapshots to JSON. Also configures ISO-8601 date strings (not timestamps)
+     * so {@code Instant}, {@code LocalDate} etc. are human-readable in the DB.</p>
+     */
+    @Bean
+    public ObjectMapper objectMapper() {
+        return new ObjectMapper()
+                .registerModule(new JavaTimeModule())
+                .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
     }
 }

@@ -27,6 +27,7 @@ import useStore from '@/store/useStore'
 import { useCurrency } from '@/hooks/useCurrency'
 import { ReadinessRing } from '@/components/dashboard/ReadinessRing'
 import { DonutChart } from '@/components/dashboard/DonutChart'
+import { AppLoader } from '@/components/common/AppLoader'
 
 const CHART_COLORS = ['#8FD3DD', '#B8D69B', '#E5E779', '#6DB1B4', '#9CC8AA', '#C9E4E2']
 
@@ -79,6 +80,13 @@ export default function Dashboard() {
 
   const plans = isAuthenticated && savedPlans.length > 0 ? savedPlans : DEMO_PLANS
   const [selectedPlanId, setSelectedPlanId] = useState(plans[0]?.id || '')
+  const [pageLoading, setPageLoading] = useState(true)
+  const [loadingPlan, setLoadingPlan] = useState(false)
+
+  useEffect(() => {
+    const id = window.setTimeout(() => setPageLoading(false), 750)
+    return () => window.clearTimeout(id)
+  }, [])
 
   useEffect(() => {
     if (!plans.some(plan => plan.id === selectedPlanId)) {
@@ -93,8 +101,12 @@ export default function Dashboard() {
 
   const handleUpdate = () => {
     if (!selectedPlan) return
-    if (isAuthenticated) loadSavedPlan(selectedPlan.id)
-    navigate('/plan')
+    setLoadingPlan(true)
+    window.setTimeout(() => {
+      if (isAuthenticated) loadSavedPlan(selectedPlan.id)
+      navigate('/plan')
+      setLoadingPlan(false)
+    }, 1100)
   }
 
   const handleDelete = () => {
@@ -108,6 +120,15 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-[linear-gradient(180deg,#eaf6f5_0%,#f8fbf6_52%,#eef7f6_100%)]">
+      <AppLoader
+        show={pageLoading || loadingPlan}
+        label={
+          loadingPlan
+            ? (t('dashboard.update_plan') || 'Opening plan')
+            : (user?.name ? `${user.name}'s dashboard` : 'Loading dashboard')
+        }
+        sublabel={loadingPlan ? 'Preparing this plan for editing' : 'Collecting your saved planning snapshot'}
+      />
       <section className="px-4 py-6 sm:px-6 md:py-10">
         <div className="mx-auto max-w-6xl">
           <motion.div

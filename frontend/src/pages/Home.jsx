@@ -17,7 +17,7 @@ import { JourneyAnimation, MobileJourneyAnimation } from '@/components/home/Jour
 function MountainSilhouette() {
   return (
     <svg
-      className="absolute bottom-0 left-0 w-full"
+      className="absolute bottom-[4.75rem] left-0 w-full md:bottom-0"
       viewBox="0 0 1440 240"
       preserveAspectRatio="none"
     >
@@ -87,13 +87,13 @@ function HomeActionModal({ type, onClose }) {
   const isCoffee = type === 'coffee'
 
   return type ? (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-brand-deep/45 px-5 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-brand-deep/50 px-5 backdrop-blur-sm">
       <motion.div
         initial={{ opacity: 0, scale: 0.92, y: 16 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.92, y: 16 }}
         transition={{ type: 'spring', stiffness: 360, damping: 28 }}
-        className="relative w-full max-w-lg overflow-hidden rounded-[32px] border border-white/55 bg-white/92 p-6 shadow-[0_28px_70px_rgba(0,89,96,0.26)] backdrop-blur-2xl"
+        className="relative w-full max-w-lg overflow-hidden rounded-[32px] border border-white/80 bg-[#f7fbfb] p-6 shadow-[0_28px_70px_rgba(0,89,96,0.26)]"
       >
         <button
           type="button"
@@ -107,13 +107,13 @@ function HomeActionModal({ type, onClose }) {
         <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-brand text-white shadow-brand-md">
           {isContact ? <Mail size={20} /> : <Heart size={20} fill="currentColor" />}
         </div>
-        <p className="mt-5 text-xs font-semibold uppercase tracking-[0.18em] text-brand/65">
+        <p className="mt-5 text-xs font-semibold uppercase tracking-[0.18em] text-brand">
           {isContact ? t('home.contact_badge') : t('home.coffee_badge')}
         </p>
         <h3 className="mt-2 font-serif text-2xl font-bold text-brand-deep md:text-3xl">
           {isContact ? t('home.contact_title') : t('home.coffee_title')}
         </h3>
-        <p className="mt-3 text-sm leading-relaxed text-[#4e6567]">
+        <p className="mt-3 text-sm font-medium leading-relaxed text-[#334d52]">
           {isContact ? t('home.contact_copy') : t('home.coffee_copy')}
         </p>
         {isContact ? (
@@ -129,20 +129,20 @@ function HomeActionModal({ type, onClose }) {
           >
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="block">
-                <span className="mb-1.5 block text-xs font-bold uppercase tracking-[0.12em] text-brand/65">
+                <span className="mb-1.5 block text-xs font-bold uppercase tracking-[0.12em] text-brand">
                   {t('home.contact_name')}
                 </span>
                 <input name="name" className="home-modal-input" placeholder={t('home.contact_name_placeholder')} />
               </label>
               <label className="block">
-                <span className="mb-1.5 block text-xs font-bold uppercase tracking-[0.12em] text-brand/65">
+                <span className="mb-1.5 block text-xs font-bold uppercase tracking-[0.12em] text-brand">
                   {t('home.contact_email')}
                 </span>
                 <input name="email" type="email" className="home-modal-input" placeholder={t('home.contact_email_placeholder')} />
               </label>
             </div>
             <label className="block">
-              <span className="mb-1.5 block text-xs font-bold uppercase tracking-[0.12em] text-brand/65">
+              <span className="mb-1.5 block text-xs font-bold uppercase tracking-[0.12em] text-brand">
                 {t('home.contact_message')}
               </span>
               <textarea name="message" rows="4" className="home-modal-input resize-none" placeholder={t('home.contact_message_placeholder')} />
@@ -157,7 +157,7 @@ function HomeActionModal({ type, onClose }) {
           </form>
         ) : null}
         {isCoffee ? (
-          <div className="mt-5 grid gap-3 rounded-3xl border border-brand-mid bg-brand-light/70 p-4">
+          <div className="mt-5 grid gap-3 rounded-3xl border border-brand-mid bg-brand-light p-4">
             <button
               type="button"
               onClick={() => window.open('https://www.buymeacoffee.com/', '_blank', 'noopener,noreferrer')}
@@ -183,6 +183,7 @@ function HomeActionModal({ type, onClose }) {
 export default function Home() {
   const { t } = useTranslation()
   const language = useStore(s => s.language)
+  const resetPlan = useStore(s => s.resetPlan)
   const [modalType, setModalType] = useState(null)
   const [heroInView, setHeroInView] = useState(true)
   const [triangleHiddenByClick, setTriangleHiddenByClick] = useState(false)
@@ -214,34 +215,23 @@ export default function Home() {
     document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
+  const startFreshPlan = () => {
+    resetPlan()
+  }
+
   return (
     <div className="min-h-screen">
       {/* ── Hero ─────────────────────────────────────────────────── */}
-      <section ref={heroRef} className="relative min-h-[88vh] md:min-h-[86vh] flex items-center overflow-hidden bg-[linear-gradient(180deg,#c7e5e8_0%,#d8eeee_42%,#f8f2e8_68%,#b6dadd_100%)]">
+      <section ref={heroRef} className="relative flex min-h-[100svh] items-start overflow-hidden bg-[linear-gradient(180deg,#c7e5e8_0%,#d8eeee_42%,#f8f2e8_68%,#b6dadd_100%)] md:min-h-[86vh] md:items-center">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_20%,rgba(255,255,255,0.88),transparent_30%),radial-gradient(circle_at_74%_34%,rgba(255,255,255,0.36),transparent_28%)]" />
 
         <MountainSilhouette />
         <CloudDrift />
 
-        <div className="relative z-10 max-w-6xl mx-auto px-6 pb-24 pt-36 md:pb-16 md:pt-28 w-full">
+        <div className="relative z-10 max-w-6xl mx-auto px-6 pb-28 pt-24 sm:pt-28 md:pb-16 md:pt-28 w-full">
           <div className="grid md:grid-cols-[1.05fr_0.95fr] gap-4 md:gap-8 items-center">
             <div className="max-w-xl">
             <div>
-              {/* Flag badge */}
-              <motion.div
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.1 }}
-                className="inline-flex items-center gap-2.5 rounded-full border border-white/55 bg-white/28 px-4 py-2 mb-8 text-brand-deep shadow-[0_12px_34px_rgba(0,89,96,0.10)] backdrop-blur-xl"
-              >
-                <span className="text-lg">🇧🇩</span>
-                <span className="text-brand/70 text-sm">→</span>
-                <span className="text-lg">🇳🇿</span>
-                <span className="text-brand-deep/80 text-sm font-semibold ml-1">
-                  {t('home.flag_badge')}
-                </span>
-              </motion.div>
-
               {/* Bengali-forward headline */}
               {language === 'BN' ? (
                 <>
@@ -264,14 +254,6 @@ export default function Home() {
                 </>
               ) : (
                 <>
-                  <motion.p
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.2 }}
-                    className="text-brand text-base mb-3 font-semibold"
-                  >
-                    Start clear. Go deeper when you are ready.
-                  </motion.p>
                   <motion.h1
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -299,6 +281,7 @@ export default function Home() {
               >
                 <Link
                   to="/plan"
+                  onClick={startFreshPlan}
                   className="inline-flex w-auto self-start items-center gap-2 rounded-full bg-brand px-6 py-3.5 text-base font-bold text-white shadow-[0_18px_42px_rgba(0,149,161,0.28)] transition-colors hover:bg-brand-deep glass-pill-hover-dark sm:px-8 sm:py-4"
                 >
                   {t('home.cta_start')}
@@ -471,7 +454,7 @@ export default function Home() {
                 <button
                   type="button"
                   onClick={() => setModalType('contact')}
-                  className="inline-flex items-center justify-center gap-2 rounded-full border border-brand/30 bg-white/68 px-6 py-3 font-bold text-brand-deep shadow-[0_14px_34px_rgba(0,89,96,0.08)] backdrop-blur-sm transition-all hover:bg-white active:scale-95"
+                  className="inline-flex items-center justify-center gap-2 rounded-full border border-brand/30 bg-white/80 px-6 py-3 font-bold text-brand-deep shadow-[0_14px_34px_rgba(0,89,96,0.08)] backdrop-blur-sm transition-all hover:bg-white active:scale-95"
                 >
                   <Mail size={16} className="text-brand" />
                   {t('home.contact_title')}
@@ -491,7 +474,7 @@ export default function Home() {
       </section>
 
       {/* ── Ready to plan CTA — bottom of page ────────────────── */}
-      <section className="bg-[#9DC2C2] py-16 md:py-20">
+      <section className="bg-[linear-gradient(180deg,#b9d8d8_0%,#9fc8c8_100%)] py-16 md:py-20">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -502,12 +485,13 @@ export default function Home() {
           <h2 className="font-serif text-3xl font-bold text-brand-deep md:text-4xl lg:text-5xl">
             Ready to plan your move?
           </h2>
-          <p className="mt-4 text-base text-brand-deep/68 md:text-lg">
+          <p className="mt-4 text-base font-medium text-brand-deep/80 md:text-lg">
             It takes 2 minutes. No account required.
           </p>
           <Link
             to="/plan"
-            className="mt-8 inline-flex items-center gap-2 rounded-full bg-white px-8 py-4 text-base font-bold text-brand-deep shadow-[0_18px_42px_rgba(0,89,96,0.14)] transition-colors hover:bg-brand-light"
+            onClick={startFreshPlan}
+            className="mt-8 inline-flex items-center gap-2 rounded-full bg-brand px-8 py-4 text-base font-bold text-white shadow-[0_18px_42px_rgba(0,89,96,0.24)] transition-colors hover:bg-brand-deep"
           >
             {t('home.cta_start')}
             <ArrowRight size={18} />

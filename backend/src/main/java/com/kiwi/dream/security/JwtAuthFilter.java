@@ -12,27 +12,27 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.util.Collections;
+import java.util.List;
 
 /**
- * JWT authentication filter that runs once per request.
+ * JWT authentication filter — runs once per request.
  *
- * <p>Flow:
- * <ol>
- *   <li>Extract Bearer token from Authorization header</li>
- *   <li>Validate JWT signature and check it is an access token</li>
- *   <li>Load user from DB and verify account is active</li>
- *   <li>Set {@link UserPrincipal} in {@link SecurityContextHolder}</li>
- * </ol>
- * Invalid or missing tokens are silently ignored — the
- * {@link DbAuthorizationManager} will reject unauthenticated requests
- * to protected endpoints.
+ * Flow:
+ *  1. Extract Bearer token from Authorization header
+ *  2. Validate JWT signature and confirm it is an access token
+ *  3. Load user from DB — verify account is active
+ *  4. Set UserPrincipal (with role) + GrantedAuthority in SecurityContextHolder
+ *     so that @PreAuthorize can evaluate role checks without extra DB calls
+ *
+ * Invalid or missing tokens are silently ignored — unauthenticated requests
+ * to protected endpoints are rejected by SecurityConfig or @PreAuthorize.
  */
 @Component
 @RequiredArgsConstructor
@@ -63,7 +63,6 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         try {
             Claims claims = jwtService.parse(token);
 
-            // Only access tokens are accepted here — refresh tokens cannot authenticate requests
             if (!jwtService.isAccessToken(claims)) {
                 log.debug("Rejected non-access token type on request to {}", request.getRequestURI());
                 filterChain.doFilter(request, response);
@@ -71,9 +70,8 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             }
 
             String userId = jwtService.extractUserId(claims);
-            String email = jwtService.extractEmail(claims);
+            String email  = jwtService.extractEmail(claims);
 
-            // Verify user still exists and is active in DB
             User user = userRepository.findById(userId).orElse(null);
             if (user == null || !user.isActive()) {
                 log.debug("User {} not found or inactive — rejecting token", userId);
@@ -81,10 +79,13 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 return;
             }
 
-            UserPrincipal principal = new UserPrincipal(userId, email);
+            UserPrincipal principal = new UserPrincipal(userId, email, user.getRole());
+
+            // Set the role as a GrantedAuthority so @PreAuthorize("hasRole('ADMIN')") works
+            var authority = new SimpleGrantedAuthority(user.getRole().name());
 
             UsernamePasswordAuthenticationToken authentication =
-                    new UsernamePasswordAuthenticationToken(principal, null, Collections.emptyList());
+                    new UsernamePasswordAuthenticationToken(principal, null, List.of(authority));
             authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
             SecurityContextHolder.getContext().setAuthentication(authentication);

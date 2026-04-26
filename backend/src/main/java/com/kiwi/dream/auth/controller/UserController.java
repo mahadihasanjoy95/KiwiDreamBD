@@ -17,19 +17,21 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/v1/users")
+@RequestMapping("/api/v1/admin/users")
 @RequiredArgsConstructor
-@Tag(name = "User Management", description = "Create and manage users, assign roles")
+@PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
+@Tag(name = "Admin — User Management", description = "Manage users: create admins, assign roles, enable/disable, delete")
 @SecurityRequirement(name = "bearerAuth")
 public class UserController {
 
     private final UserService userService;
 
     @PostMapping
-    @Operation(summary = "Create a new admin user")
+    @Operation(summary = "Create a new admin user (invite by email with temporary password)")
     @ApiResponses({
             @ApiResponse(responseCode = "201", description = "Admin created"),
             @ApiResponse(responseCode = "400", description = "Validation failed"),
@@ -74,14 +76,14 @@ public class UserController {
         return ResponseEntity.ok(CommonApiResponse.success(users));
     }
 
-    @GetMapping("/regular")
-    @Operation(summary = "List regular student users (paginated)")
+    @GetMapping("/applicants")
+    @Operation(summary = "List applicant users (paginated)")
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Regular users returned"),
+            @ApiResponse(responseCode = "200", description = "Applicant users returned"),
             @ApiResponse(responseCode = "401", description = "Not authenticated"),
             @ApiResponse(responseCode = "403", description = "Insufficient permissions")
     })
-    public ResponseEntity<CommonApiResponse<PageResponse<UserResponseDto>>> listRegularUsers(
+    public ResponseEntity<CommonApiResponse<PageResponse<UserResponseDto>>> listApplicants(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         PageResponse<UserResponseDto> users = userService.listRegularUsers(
@@ -102,13 +104,13 @@ public class UserController {
     }
 
     @PutMapping("/{id}/role")
-    @Operation(summary = "Assign a role to a user")
+    @Operation(summary = "Assign a role to a user (APPLICANT or ADMIN only — cannot promote to SUPER_ADMIN)")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Role assigned"),
             @ApiResponse(responseCode = "400", description = "Validation failed"),
             @ApiResponse(responseCode = "401", description = "Not authenticated"),
             @ApiResponse(responseCode = "403", description = "Insufficient permissions"),
-            @ApiResponse(responseCode = "404", description = "User or role not found")
+            @ApiResponse(responseCode = "404", description = "User not found")
     })
     public ResponseEntity<CommonApiResponse<UserResponseDto>> assignRole(
             @PathVariable String id,
@@ -142,13 +144,14 @@ public class UserController {
     }
 
     @DeleteMapping("/{id}")
-    @Operation(summary = "Delete a user account")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @Operation(summary = "Delete a user account (SUPER_ADMIN only)")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "User deleted"),
             @ApiResponse(responseCode = "401", description = "Not authenticated"),
-            @ApiResponse(responseCode = "403", description = "Insufficient permissions"),
+            @ApiResponse(responseCode = "403", description = "SUPER_ADMIN role required"),
             @ApiResponse(responseCode = "404", description = "User not found"),
-            @ApiResponse(responseCode = "409", description = "Protected user cannot be deleted")
+            @ApiResponse(responseCode = "409", description = "Cannot delete a SUPER_ADMIN account")
     })
     public ResponseEntity<CommonApiResponse<Void>> deleteUser(@PathVariable String id) {
         userService.deleteUser(id);

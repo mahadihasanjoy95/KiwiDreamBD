@@ -11,11 +11,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Wraps our {@link User} entity as a Spring Security {@link OidcUser}.
- *
- * <p>Used by the OIDC flow — Google with {@code openid} scope triggers this path.</p>
- */
 public class CustomOidcUser implements OidcUser {
 
     private final User user;
@@ -57,7 +52,7 @@ public class CustomOidcUser implements OidcUser {
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return List.of(new SimpleGrantedAuthority("ROLE_USER"));
+        return List.of(new SimpleGrantedAuthority(user.getRole().name()));
     }
 
     @Override

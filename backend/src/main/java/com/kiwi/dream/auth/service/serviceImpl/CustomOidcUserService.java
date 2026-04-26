@@ -1,11 +1,8 @@
 package com.kiwi.dream.auth.service.serviceImpl;
 
-import com.kiwi.dream.auth.constants.SystemRoles;
-import com.kiwi.dream.auth.entity.Role;
 import com.kiwi.dream.auth.entity.User;
 import com.kiwi.dream.auth.enums.AuthProvider;
-import com.kiwi.dream.auth.exception.RoleNotFoundException;
-import com.kiwi.dream.auth.repository.RoleRepository;
+import com.kiwi.dream.auth.enums.UserRole;
 import com.kiwi.dream.auth.repository.UserRepository;
 import com.kiwi.dream.security.CustomOidcUser;
 import lombok.RequiredArgsConstructor;
@@ -17,17 +14,12 @@ import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/**
- * Handles the OIDC user-info step for OIDC-capable providers such as Google
- * when the {@code openid} scope is requested.
- */
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class CustomOidcUserService extends OidcUserService {
 
     private final UserRepository userRepository;
-    private final RoleRepository roleRepository;
 
     @Override
     @Transactional
@@ -54,17 +46,14 @@ public class CustomOidcUserService extends OidcUserService {
                     return existing;
                 })
                 .orElseGet(() -> {
-                    Role userRole = roleRepository.findByName(SystemRoles.USER)
-                            .orElseThrow(() -> new RoleNotFoundException(SystemRoles.USER));
-
                     User newUser = new User();
                     newUser.setEmail(email.toLowerCase().trim());
                     newUser.setGoogleId(googleId);
                     newUser.setName(name != null ? name : "User");
                     newUser.setAuthProvider(AuthProvider.GOOGLE);
+                    newUser.setRole(UserRole.ROLE_APPLICANT);
                     newUser.setActive(true);
                     newUser.setEmailVerified(true);
-                    newUser.getRoles().add(userRole);
 
                     User saved = userRepository.save(newUser);
                     log.info("Created new user via Google OIDC: {}", email);

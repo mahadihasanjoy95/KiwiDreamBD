@@ -8,12 +8,13 @@ import org.springframework.data.domain.Pageable;
 
 public interface UserService {
     UserResponseDto createAdmin(CreateAdminRequestDto requestDto);
+    UserResponseDto activateAdminInvite(String token);
     PageResponse<UserResponseDto> listUsers(Pageable pageable);
     PageResponse<UserResponseDto> listAdminUsers(Pageable pageable);
     PageResponse<UserResponseDto> listRegularUsers(Pageable pageable);
     UserResponseDto getUserById(String userId);
     UserResponseDto assignRole(String userId, AssignUserRoleRequestDto requestDto);
-    UserResponseDto enableUser(String userId);
-    UserResponseDto disableUser(String userId);
+    UserResponseDto activateUser(String userId);
+    UserResponseDto deactivateUser(String userId);
     void deleteUser(String userId);
 }

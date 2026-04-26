@@ -24,7 +24,7 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/v1/admin/users")
 @RequiredArgsConstructor
 @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
-@Tag(name = "Admin — User Management", description = "Manage users: create admins, assign roles, enable/disable, delete")
+@Tag(name = "Admin — User Management", description = "Manage users: create admins, assign roles, activate/deactivate, delete")
 @SecurityRequirement(name = "bearerAuth")
 public class UserController {
 
@@ -119,28 +119,28 @@ public class UserController {
                 userService.assignRole(id, requestDto)));
     }
 
-    @PatchMapping("/{id}/enable")
-    @Operation(summary = "Enable a user account")
+    @PatchMapping("/{id}/activate")
+    @Operation(summary = "Activate a user account")
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "User enabled"),
+            @ApiResponse(responseCode = "200", description = "User activated"),
             @ApiResponse(responseCode = "401", description = "Not authenticated"),
             @ApiResponse(responseCode = "403", description = "Insufficient permissions"),
             @ApiResponse(responseCode = "404", description = "User not found")
     })
-    public ResponseEntity<CommonApiResponse<UserResponseDto>> enableUser(@PathVariable String id) {
-        return ResponseEntity.ok(CommonApiResponse.success("User enabled", userService.enableUser(id)));
+    public ResponseEntity<CommonApiResponse<UserResponseDto>> activateUser(@PathVariable String id) {
+        return ResponseEntity.ok(CommonApiResponse.success("User activated", userService.activateUser(id)));
     }
 
-    @PatchMapping("/{id}/disable")
-    @Operation(summary = "Disable a user account")
+    @PatchMapping("/{id}/deactivate")
+    @Operation(summary = "Deactivate a user account")
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "User disabled"),
+            @ApiResponse(responseCode = "200", description = "User deactivated"),
             @ApiResponse(responseCode = "401", description = "Not authenticated"),
             @ApiResponse(responseCode = "403", description = "Insufficient permissions"),
             @ApiResponse(responseCode = "404", description = "User not found")
     })
-    public ResponseEntity<CommonApiResponse<UserResponseDto>> disableUser(@PathVariable String id) {
-        return ResponseEntity.ok(CommonApiResponse.success("User disabled", userService.disableUser(id)));
+    public ResponseEntity<CommonApiResponse<UserResponseDto>> deactivateUser(@PathVariable String id) {
+        return ResponseEntity.ok(CommonApiResponse.success("User deactivated", userService.deactivateUser(id)));
     }
 
     @DeleteMapping("/{id}")

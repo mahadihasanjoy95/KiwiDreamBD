@@ -215,7 +215,7 @@ public class AuthServiceImpl implements AuthService {
                     Map.of(
                             "name",     user.getName(),
                             "email",    user.getEmail(),
-                            "loginUrl", frontendUrl + "/login"
+                            "loginUrl", frontendUrl + "/signin"
                     )
             ));
             log.info("Social login reminder sent to Google-only account: {}", email);
@@ -266,6 +266,42 @@ public class AuthServiceImpl implements AuthService {
         passwordResetTokenRepository.save(prt);
 
         log.info("Password successfully reset for user: {}", user.getEmail());
+    }
+
+    @Override
+    @Transactional
+    public UserResponseDto updateProfilePicture(String userId, String pictureUrl) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException(userId));
+        user.setProfilePicture(pictureUrl.isBlank() ? null : pictureUrl.trim());
+        return toUserResponse(userRepository.save(user));
+    }
+
+    @Override
+    @Transactional
+    public void deactivateSelf(String userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException(userId));
+        if (user.getRole() == UserRole.ROLE_SUPER_ADMIN) {
+            throw new ProtectedSuperAdminOperationException();
+        }
+        user.setActive(false);
+        userRepository.save(user);
+        refreshTokenRepository.revokeAllByUserId(userId);
+        log.info("User deactivated self: {}", user.getEmail());
+    }
+
+    @Override
+    @Transactional
+    public void deleteSelf(String userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException(userId));
+        if (user.getRole() == UserRole.ROLE_SUPER_ADMIN) {
+            throw new ProtectedSuperAdminOperationException();
+        }
+        refreshTokenRepository.deleteAllByUserId(userId);
+        userRepository.delete(user);
+        log.info("User deleted own account: {}", userId);
     }
 
     // ──────────────────────────────────────────────────────────────────────────

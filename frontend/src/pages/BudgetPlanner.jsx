@@ -10,6 +10,8 @@ import { MonthlyPlan } from '@/components/budget/MonthlyPlan'
 import { MovingCost } from '@/components/budget/MovingCost'
 import { LivingFund } from '@/components/budget/LivingFund'
 import { AppLoader } from '@/components/common/AppLoader'
+import { Alert } from '@/components/common/Alert'
+import { useToast } from '@/components/common/ToastProvider'
 import { LIFESTYLE_TYPES } from '@/data/templates'
 import { CITIES } from '@/data/cities'
 import { CHECKLIST_GROUPS } from '@/data/checklist'
@@ -308,6 +310,7 @@ function PlannerChecklistPanel() {
 export default function BudgetPlanner() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const { showToast } = useToast()
   const wizardStep = useStore(s => s.wizardStep)
   const activeTab = useStore(s => s.activeTab)
   const setActiveTab = useStore(s => s.setActiveTab)
@@ -532,6 +535,14 @@ export default function BudgetPlanner() {
                   </div>
                 </div>
 
+                <Alert
+                  tone={isAuthenticated ? 'success' : 'info'}
+                  title={isAuthenticated ? t('auth.save_alert_ready_title') : t('auth.save_alert_login_title')}
+                  className="mt-5"
+                >
+                  <p>{isAuthenticated ? t('auth.save_alert_ready_copy') : t('auth.save_alert_login_copy')}</p>
+                </Alert>
+
                 <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <p className="text-xs text-[#6a8284]">
                     {t('auth.plan_snapshot', {
@@ -556,7 +567,20 @@ export default function BudgetPlanner() {
                           setSavingPlan(true)
                           window.setTimeout(() => {
                             const result = saveCurrentPlan()
-                            if (result.ok) navigate('/dashboard')
+                            if (result.ok) {
+                              showToast({
+                                tone: 'success',
+                                title: t('auth.save_toast_title'),
+                                message: t('auth.save_toast_copy', { plan: result.plan.planName }),
+                              })
+                              navigate('/dashboard')
+                            } else {
+                              showToast({
+                                tone: 'error',
+                                title: t('auth.save_toast_error_title'),
+                                message: t('auth.save_toast_error_copy'),
+                              })
+                            }
                             setSavingPlan(false)
                           }, 1400)
                         }}

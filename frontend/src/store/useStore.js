@@ -4,6 +4,7 @@ import { getTemplate } from '@/data/templates'
 import { DEFAULT_MOVING_ITEMS } from '@/data/movingCosts'
 import i18n from 'i18next'
 import { calcSurvivalMonths, getAffordabilityStatus } from '@/utils/affordability'
+import { changeMyPassword, getMyProfile, loginUser, logoutUser, registerUser, updateMyProfile, updateMyProfilePicture } from '@/api/auth'
 
 export const MONEY_LIMITS = {
   monthlyCategoryNZD: 10000,
@@ -16,6 +17,18 @@ function clampMoney(value, max) {
   const parsed = Number.parseFloat(value)
   if (!Number.isFinite(parsed)) return 0
   return Math.min(Math.max(parsed, 0), max)
+}
+
+function normalizeUser(user) {
+  if (!user) return null
+  return {
+    ...user,
+    provider: user.authProvider || user.provider || 'LOCAL',
+    phone: user.phoneNumber || user.phone || '',
+    profilePicture: user.profilePicture || user.profilePictureUrl || '',
+    preferredLanguage: user.preferredLanguage || 'EN',
+    preferredCurrency: user.preferredCurrency || 'NZD',
+  }
 }
 
 const useStore = create(
@@ -33,50 +46,119 @@ const useStore = create(
         i18n.changeLanguage(l.toLowerCase())
       },
 
-      // ── Demo auth state ───────────────────────────────────────
+      // ── Auth state ────────────────────────────────────────────
       isAuthenticated: false,
       user: null,
+      accessToken: null,
+      refreshToken: null,
+      tokenType: 'Bearer',
       savedPlans: [],
 
-      loginDemo: ({ name, email, provider = 'LOCAL' } = {}) => {
-        const displayName = name?.trim() || 'Guest User'
-        const displayEmail = email?.trim() || 'guest@kiwidreambd.demo'
+      setAuthSession: async (tokens) => {
+        if (!tokens?.accessToken || !tokens?.refreshToken) {
+          throw new Error('Invalid auth response from server')
+        }
+
         set({
           isAuthenticated: true,
-          user: {
-            name: displayName,
-            email: displayEmail,
-            provider,
-            city: null,
-            phone: '',
-            preferredLanguage: get().language,
-            preferredCurrency: get().currency,
-            bio: 'Planning my New Zealand move with KiwiDream BD.',
-          },
+          accessToken: tokens.accessToken,
+          refreshToken: tokens.refreshToken,
+          tokenType: tokens.tokenType || 'Bearer',
         })
-      },
 
-      socialLoginDemo: (provider) => {
-        const labelMap = {
-          GOOGLE: 'Google Guest',
-          APPLE: 'Apple Guest',
-          FACEBOOK: 'Facebook Guest',
+        const profile = await getMyProfile(tokens.accessToken)
+        const user = normalizeUser(profile)
+        set({
+          user,
+          currency: user?.preferredCurrency || get().currency,
+          language: user?.preferredLanguage || get().language,
+        })
+        if (user?.preferredLanguage) {
+          i18n.changeLanguage(user.preferredLanguage.toLowerCase())
         }
-        get().loginDemo({
-          name: labelMap[provider] || 'Guest User',
-          email: `guest.${String(provider || 'local').toLowerCase()}@kiwidreambd.demo`,
-          provider,
+        return user
+      },
+
+      login: async ({ email, password }) => {
+        const tokens = await loginUser({ email, password })
+        return get().setAuthSession(tokens)
+      },
+
+      register: async ({ name, email, password }) => {
+        await registerUser({ name, email, password })
+        const tokens = await loginUser({ email, password })
+        return get().setAuthSession(tokens)
+      },
+
+      logout: async () => {
+        const { refreshToken, accessToken } = get()
+        if (refreshToken && accessToken) {
+          try {
+            await logoutUser(refreshToken, accessToken)
+          } catch {
+            // Local sign-out should still complete if the token is already expired or revoked.
+          }
+        }
+        set({
+          isAuthenticated: false,
+          user: null,
+          accessToken: null,
+          refreshToken: null,
+          tokenType: 'Bearer',
         })
       },
 
-      logoutDemo: () => set({
+      clearAuthSession: () => set({
         isAuthenticated: false,
         user: null,
+        accessToken: null,
+        refreshToken: null,
+        tokenType: 'Bearer',
       }),
 
-      updateProfileDemo: (payload) => set((state) => ({
-        user: state.user ? { ...state.user, ...payload } : state.user,
-      })),
+      fetchProfile: async () => {
+        const { accessToken } = get()
+        if (!accessToken) return null
+        const profile = await getMyProfile(accessToken)
+        const user = normalizeUser(profile)
+        set({ isAuthenticated: true, user })
+        return user
+      },
+
+      updateProfile: async (payload) => {
+        const { accessToken } = get()
+        if (!accessToken) throw new Error('You need to sign in first')
+        const profile = await updateMyProfile(accessToken, {
+          name: payload.name,
+          phoneNumber: payload.phone || payload.phoneNumber || null,
+          targetMoveDate: payload.targetMoveDate || null,
+          currentSavingsBdt: payload.currentSavingsBdt === '' ? null : payload.currentSavingsBdt,
+          monthlyIncomeBdt: payload.monthlyIncomeBdt === '' ? null : payload.monthlyIncomeBdt,
+          preferredCurrency: payload.preferredCurrency,
+          preferredLanguage: payload.preferredLanguage,
+        })
+        const user = normalizeUser(profile)
+        set({ user })
+        return user
+      },
+
+      updateProfilePicture: async (pictureUrl) => {
+        const { accessToken } = get()
+        if (!accessToken) throw new Error('You need to sign in first')
+        const profile = await updateMyProfilePicture(accessToken, pictureUrl)
+        const user = normalizeUser(profile)
+        set({ user })
+        return user
+      },
+
+      changePassword: async ({ currentPassword, newPassword }) => {
+        const { accessToken } = get()
+        if (!accessToken) throw new Error('You need to sign in first')
+        await changeMyPassword(accessToken, {
+          currentPassword: currentPassword || null,
+          newPassword,
+        })
+      },
 
       // ── Plan wizard state ────────────────────────────────────
       selectedLifestyle: null,
@@ -300,6 +382,9 @@ const useStore = create(
         language: state.language,
         isAuthenticated: state.isAuthenticated,
         user: state.user,
+        accessToken: state.accessToken,
+        refreshToken: state.refreshToken,
+        tokenType: state.tokenType,
         savedPlans: state.savedPlans,
         selectedLifestyle: state.selectedLifestyle,
         selectedCity: state.selectedCity,

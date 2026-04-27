@@ -30,12 +30,25 @@ public class PlanningProfileController {
     // ── Public endpoints ──────────────────────────────────────────────────────
 
     @GetMapping
-    @Operation(summary = "List all active planning profiles ordered by display order")
+    @Operation(summary = "List all active planning profiles ordered by display order (public)")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Profiles returned")
     })
     public ResponseEntity<CommonApiResponse<List<PlanningProfileResponseDto>>> listActive() {
         return ResponseEntity.ok(CommonApiResponse.success(profileService.listActive()));
+    }
+
+    @GetMapping("/all")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
+    @SecurityRequirement(name = "bearerAuth")
+    @Operation(summary = "List ALL planning profiles including inactive ones (ADMIN only)")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "All profiles returned"),
+            @ApiResponse(responseCode = "401", description = "Not authenticated"),
+            @ApiResponse(responseCode = "403", description = "Insufficient permissions")
+    })
+    public ResponseEntity<CommonApiResponse<List<PlanningProfileResponseDto>>> listAll() {
+        return ResponseEntity.ok(CommonApiResponse.success(profileService.listAll()));
     }
 
     @GetMapping("/{id}")

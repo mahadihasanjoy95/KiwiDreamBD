@@ -21,7 +21,19 @@ export default function OAuthCallback() {
     }
 
     setAuthSession({ accessToken, refreshToken, tokenType: 'Bearer' })
-      .then(() => navigate('/dashboard', { replace: true }))
+      .then((user) => {
+        const isAdminIntent = sessionStorage.getItem('admin_oauth_intent') === '1'
+        sessionStorage.removeItem('admin_oauth_intent')
+
+        const role = String(user?.role || '').replace('ROLE_', '')
+        const isAdmin = role === 'ADMIN' || role === 'SUPER_ADMIN'
+
+        if (isAdminIntent && isAdmin) {
+          navigate('/admin/Joy&Priota', { replace: true })
+        } else {
+          navigate('/dashboard', { replace: true })
+        }
+      })
       .catch((err) => {
         clearAuthSession()
         setError(err.message || 'Unable to finish Google sign-in.')

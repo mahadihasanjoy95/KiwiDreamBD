@@ -458,14 +458,14 @@ export default function BudgetPlanner() {
               onClick={rechooseLifestyle}
               className="flex items-center gap-1.5 rounded-full border border-brand-mid bg-white px-3 py-1.5 font-semibold text-brand transition-colors hover:bg-brand-light"
             >
-              {LIFESTYLE_ICON_SVG[lifestyle.code] && (
-                <img
-                  src={LIFESTYLE_ICON_SVG[lifestyle.code]}
-                  alt=""
-                  aria-hidden="true"
-                  className="h-5 w-5 shrink-0 object-contain"
-                />
-              )}
+              {/* API icon first, then static fallback */}
+              <img
+                src={lifestyle.iconSvgUrl || LIFESTYLE_ICON_SVG[lifestyle.code] || LIFESTYLE_ICON_SVG['SOLO_STUDENT']}
+                alt=""
+                aria-hidden="true"
+                className="h-5 w-5 shrink-0 object-contain"
+                onError={e => { e.currentTarget.src = LIFESTYLE_ICON_SVG[lifestyle.code] || soloStudentSvg }}
+              />
               <span>{language === 'BN' ? (lifestyle.nameBn || lifestyle.nameEn) : lifestyle.nameEn}</span>
             </button>
             <span className="text-gray-300">→</span>
@@ -474,14 +474,14 @@ export default function BudgetPlanner() {
               onClick={rechooseCity}
               className="flex items-center gap-1.5 rounded-full border border-brand-mid bg-white px-3 py-1.5 font-semibold text-brand transition-colors hover:bg-brand-light"
             >
-              {CITY_ICON_SVG[city.code] && (
-                <img
-                  src={CITY_ICON_SVG[city.code]}
-                  alt=""
-                  aria-hidden="true"
-                  className="h-5 w-5 shrink-0 object-contain"
-                />
-              )}
+              {/* API icon first, then static fallback */}
+              <img
+                src={city.iconSvgUrl || CITY_ICON_SVG[city.code] || aucklandSvg}
+                alt=""
+                aria-hidden="true"
+                className="h-5 w-5 shrink-0 object-contain"
+                onError={e => { e.currentTarget.src = CITY_ICON_SVG[city.code] || aucklandSvg }}
+              />
               <span>{language === 'BN' ? (city.nameBn || city.nameEn) : city.nameEn}</span>
             </button>
           </motion.div>

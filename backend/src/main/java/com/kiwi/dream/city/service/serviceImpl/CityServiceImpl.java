@@ -16,6 +16,8 @@ import com.kiwi.dream.country.repository.CountryRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -44,6 +46,21 @@ public class CityServiceImpl implements CityService {
     @Transactional(readOnly = true)
     public CityResponseDto getById(String countryId, String cityId) {
         return cityMapper.toDto(loadOrThrow(countryId, cityId));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<CityResponseDto> listAllAdmin(String search, Pageable pageable) {
+        String term = (search == null || search.isBlank()) ? "" : search.trim();
+        return cityRepository.findAllForAdmin(term, pageable).map(cityMapper::toDto);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<CityResponseDto> listByCountryAdmin(String countryId, String search, Pageable pageable) {
+        requireCountryExists(countryId);
+        String term = (search == null || search.isBlank()) ? "" : search.trim();
+        return cityRepository.findByCountryIdForAdmin(countryId, term, pageable).map(cityMapper::toDto);
     }
 
     @Override

@@ -9,56 +9,65 @@ import heroCharactersSvg from '@/assets/svg/hero-characters.svg'
 import comfortableSoloSvg from '@/assets/svg/comfortable-solo.svg'
 import familyPlanningSvg from '@/assets/svg/family-planning.svg'
 
-// ── Visual identity keyed by API profile code ────────────────────────────────
+// ── Static fallback SVGs and tags keyed by API profile code ─────────────────
 const PROFILE_META = {
-  SOLO_STUDENT: {
-    gradient: 'linear-gradient(145deg, #4c1d95 0%, #6d28d9 50%, #7c3aed 100%)',
-    glow: 'rgba(124,58,237,0.55)',
-    border: '#7c3aed',
-    tags: ['Survival mode', 'Shared flat', 'Every NZD counts'],
-    svg: birdSvg,
-  },
-  STUDENT_COUPLE: {
-    gradient: 'linear-gradient(145deg, #0c4a6e 0%, #0369a1 50%, #0ea5e9 100%)',
-    glow: 'rgba(14,165,233,0.55)',
-    border: '#0ea5e9',
-    tags: ['Setting up home', 'Shared costs', 'Cook together'],
-    svg: heroCharactersSvg,
-  },
-  WORKER: {
-    gradient: 'linear-gradient(145deg, #064e3b 0%, #047857 50%, #10b981 100%)',
-    glow: 'rgba(16,185,129,0.55)',
-    border: '#10b981',
-    tags: ['Better suburb', 'Dining out', 'More comfort'],
-    svg: comfortableSoloSvg,
-  },
-  FAMILY: {
-    gradient: 'linear-gradient(145deg, #7c1d4d 0%, #be185d 50%, #f43f5e 100%)',
-    glow: 'rgba(244,63,94,0.55)',
-    border: '#f43f5e',
-    tags: ['Kids in mind', 'Long-term plan', 'Family suburb'],
-    svg: familyPlanningSvg,
-  },
-  VISITOR: {
-    gradient: 'linear-gradient(145deg, #1e3a5f 0%, #1d4ed8 50%, #3b82f6 100%)',
-    glow: 'rgba(59,130,246,0.55)',
-    border: '#3b82f6',
-    tags: ['Short stay', 'Explore NZ', 'Flexible plan'],
-    svg: birdSvg,
-  },
+  SOLO_STUDENT:    { tags: ['Survival mode', 'Shared flat', 'Every NZD counts'], svg: birdSvg },
+  STUDENT_COUPLE:  { tags: ['Setting up home', 'Shared costs', 'Cook together'], svg: heroCharactersSvg },
+  WORKER:          { tags: ['Better suburb', 'Dining out', 'More comfort'],       svg: comfortableSoloSvg },
+  FAMILY:          { tags: ['Kids in mind', 'Long-term plan', 'Family suburb'],   svg: familyPlanningSvg },
+  VISITOR:         { tags: ['Short stay', 'Explore NZ', 'Flexible plan'],         svg: birdSvg },
 }
 
-// Fallback gradient for unknown profile codes
-const FALLBACK_META = {
-  gradient: 'linear-gradient(145deg, #374151 0%, #6b7280 100%)',
-  glow: 'rgba(107,114,128,0.4)',
-  border: '#6b7280',
-  tags: [],
-  svg: birdSvg,
+const FALLBACK_META = { tags: [], svg: birdSvg }
+
+// Static colors used only when the API returns no colorHex
+const STATIC_COLORS = {
+  SOLO_STUDENT:   { gradient: 'linear-gradient(145deg, #4c1d95 0%, #6d28d9 50%, #7c3aed 100%)', glow: 'rgba(124,58,237,0.55)',  border: '#7c3aed' },
+  STUDENT_COUPLE: { gradient: 'linear-gradient(145deg, #0c4a6e 0%, #0369a1 50%, #0ea5e9 100%)', glow: 'rgba(14,165,233,0.55)',  border: '#0ea5e9' },
+  WORKER:         { gradient: 'linear-gradient(145deg, #064e3b 0%, #047857 50%, #10b981 100%)', glow: 'rgba(16,185,129,0.55)',  border: '#10b981' },
+  FAMILY:         { gradient: 'linear-gradient(145deg, #7c1d4d 0%, #be185d 50%, #f43f5e 100%)', glow: 'rgba(244,63,94,0.55)',   border: '#f43f5e' },
+  VISITOR:        { gradient: 'linear-gradient(145deg, #1e3a5f 0%, #1d4ed8 50%, #3b82f6 100%)', glow: 'rgba(59,130,246,0.55)', border: '#3b82f6' },
+}
+const FALLBACK_COLORS = { gradient: 'linear-gradient(145deg, #374151 0%, #6b7280 100%)', glow: 'rgba(107,114,128,0.4)', border: '#6b7280' }
+
+/**
+ * Derive gradient / glow / border from a hex color string.
+ * Returns null if hex is falsy or malformed.
+ */
+function hexToVisuals(hex) {
+  if (!hex) return null
+  const clean = hex.replace('#', '')
+  if (clean.length !== 6) return null
+  const r = parseInt(clean.slice(0, 2), 16)
+  const g = parseInt(clean.slice(2, 4), 16)
+  const b = parseInt(clean.slice(4, 6), 16)
+  // dark anchor (35% brightness) → mid (70%) → the hex itself
+  const d = (n, f) => Math.round(n * f)
+  const dark = `rgb(${d(r,0.30)},${d(g,0.30)},${d(b,0.30)})`
+  const mid  = `rgb(${d(r,0.65)},${d(g,0.65)},${d(b,0.65)})`
+  return {
+    gradient: `linear-gradient(145deg, ${dark} 0%, ${mid} 50%, ${hex} 100%)`,
+    glow:     `rgba(${r},${g},${b},0.55)`,
+    border:   hex,
+  }
 }
 
-function getMeta(code) {
-  return PROFILE_META[code] || FALLBACK_META
+/**
+ * Returns full visual tokens for a profile.
+ * Priority: API colorHex → static fallback colors.
+ * Icon priority:          API iconSvgUrl → static SVG asset.
+ */
+function getProfileVisuals(profile) {
+  const staticMeta   = PROFILE_META[profile.code]   || FALLBACK_META
+  const staticColors = STATIC_COLORS[profile.code]  || FALLBACK_COLORS
+  const dynamic      = hexToVisuals(profile.colorHex)
+  return {
+    gradient: dynamic?.gradient || staticColors.gradient,
+    glow:     dynamic?.glow     || staticColors.glow,
+    border:   dynamic?.border   || staticColors.border,
+    iconSrc:  profile.iconSvgUrl || staticMeta.svg,
+    tags:     staticMeta.tags,
+  }
 }
 
 const containerV = {
@@ -112,20 +121,24 @@ export function LifestyleCards({ profiles = [] }) {
       <div className="relative">
         {/* ── Ambient glow ── */}
         <AnimatePresence>
-          {hoveredId && (
-            <motion.div
-              key={hoveredId}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.4 }}
-              className="pointer-events-none absolute inset-0 -z-10 rounded-3xl"
-              style={{
-                background: `radial-gradient(ellipse 60% 50% at 50% 0%, ${getMeta(hoveredId).glow} 0%, transparent 70%)`,
-                filter: 'blur(20px)',
-              }}
-            />
-          )}
+          {hoveredId && (() => {
+            const hp = profiles.find(p => p.code === hoveredId)
+            const hv = hp ? getProfileVisuals(hp) : FALLBACK_COLORS
+            return (
+              <motion.div
+                key={hoveredId}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.4 }}
+                className="pointer-events-none absolute inset-0 -z-10 rounded-3xl"
+                style={{
+                  background: `radial-gradient(ellipse 60% 50% at 50% 0%, ${hv.glow} 0%, transparent 70%)`,
+                  filter: 'blur(20px)',
+                }}
+              />
+            )
+          })()}
         </AnimatePresence>
 
         {/* ── Header ── */}
@@ -152,11 +165,14 @@ export function LifestyleCards({ profiles = [] }) {
           className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5"
         >
           {profiles.map((profile) => {
-            const meta = getMeta(profile.code)
+            const visuals    = getProfileVisuals(profile)
             const isSelected = selectedLifestyle === profile.code
-            const isHovered = hoveredId === profile.code
-            const minNZD = Number(profile.monthlyBudgetRangeMinNzd) || 0
-            const maxNZD = Number(profile.monthlyBudgetRangeMaxNzd) || 0
+            const isHovered  = hoveredId === profile.code
+            const minNZD     = Number(profile.monthlyBudgetRangeMinNzd) || 0
+            const maxNZD     = Number(profile.monthlyBudgetRangeMaxNzd) || 0
+            const displayTags = (profile.tags && Array.isArray(profile.tags) && profile.tags.length > 0)
+              ? profile.tags
+              : visuals.tags
 
             return (
               <motion.button
@@ -170,17 +186,17 @@ export function LifestyleCards({ profiles = [] }) {
                 className="relative flex flex-col text-left rounded-[28px] overflow-hidden cursor-pointer focus:outline-none"
                 style={{
                   boxShadow: isSelected
-                    ? `0 0 0 2.5px ${meta.border}, 0 20px 50px ${meta.glow}`
+                    ? `0 0 0 2.5px ${visuals.border}, 0 20px 50px ${visuals.glow}`
                     : isHovered
-                    ? `0 20px 50px ${meta.glow}, 0 0 0 1px ${meta.border}44`
+                    ? `0 20px 50px ${visuals.glow}, 0 0 0 1px ${visuals.border}44`
                     : '0 4px 24px rgba(76,29,149,0.08)',
                   transition: 'box-shadow 0.3s ease',
                 }}
               >
-                {/* ── Gradient top zone ── */}
+                {/* ── Gradient top zone — color from API ── */}
                 <div
                   className="relative flex flex-col items-center justify-center pt-8 pb-6 px-4"
-                  style={{ background: meta.gradient, minHeight: 160 }}
+                  style={{ background: visuals.gradient, minHeight: 160 }}
                 >
                   <div className="absolute inset-0 opacity-30" style={{ background: 'radial-gradient(ellipse at 30% 30%, rgba(255,255,255,0.15) 0%, transparent 60%)' }} />
 
@@ -190,7 +206,12 @@ export function LifestyleCards({ profiles = [] }) {
                     className="mb-3 relative z-10"
                     style={{ filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.25))' }}
                   >
-                    <img src={meta.svg} alt="" className="w-16 h-16 md:w-20 md:h-20 object-contain" />
+                    <img
+                      src={visuals.iconSrc}
+                      alt=""
+                      className="w-16 h-16 md:w-20 md:h-20 object-contain"
+                      onError={e => { e.currentTarget.src = birdSvg }}
+                    />
                   </motion.div>
 
                   <p className="relative z-10 text-sm font-bold text-white text-center leading-tight drop-shadow">
@@ -208,7 +229,7 @@ export function LifestyleCards({ profiles = [] }) {
                         exit={{ scale: 0, opacity: 0 }}
                         transition={{ type: 'spring', stiffness: 400, damping: 20 }}
                         className="absolute top-3 right-3 w-7 h-7 rounded-full flex items-center justify-center shadow-lg"
-                        style={{ background: meta.border }}
+                        style={{ background: visuals.border }}
                       >
                         <Check size={14} className="text-white" strokeWidth={3} />
                       </motion.div>
@@ -223,13 +244,13 @@ export function LifestyleCards({ profiles = [] }) {
                   </p>
 
                   <div className="flex flex-wrap gap-1.5">
-                    {(profile.tags || meta.tags || []).slice(0, 3).map(tag => (
+                    {displayTags.slice(0, 3).map(tag => (
                       <span
                         key={tag}
                         className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
                         style={{
-                          background: isSelected || isHovered ? `${meta.border}18` : '#f3f0ff',
-                          color: isSelected || isHovered ? meta.border : '#7c6fa0',
+                          background: isSelected || isHovered ? `${visuals.border}18` : '#f3f0ff',
+                          color: isSelected || isHovered ? visuals.border : '#7c6fa0',
                         }}
                       >
                         {tag}
@@ -239,14 +260,14 @@ export function LifestyleCards({ profiles = [] }) {
 
                   <div className="mt-auto pt-3 border-t border-gray-100 flex items-center justify-between">
                     <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">Monthly</span>
-                    <span className="text-xs font-bold" style={{ color: isSelected || isHovered ? meta.border : '#6b7280' }}>
+                    <span className="text-xs font-bold" style={{ color: isSelected || isHovered ? visuals.border : '#6b7280' }}>
                       {minNZD > 0 ? `${format(minNZD)}–${format(maxNZD)}` : '—'}
                     </span>
                   </div>
                 </div>
 
                 {isSelected && (
-                  <motion.div layoutId="selectedBar" className="h-1" style={{ background: meta.gradient }} />
+                  <motion.div layoutId="selectedBar" className="h-1" style={{ background: visuals.gradient }} />
                 )}
               </motion.button>
             )

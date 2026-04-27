@@ -37,6 +37,15 @@ public class PlanningProfileServiceImpl implements PlanningProfileService {
 
     @Override
     @Transactional(readOnly = true)
+    public List<PlanningProfileResponseDto> listAll() {
+        return profileRepository.findAllByOrderByDisplayOrderAsc()
+                .stream()
+                .map(profileMapper::toDto)
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public PlanningProfileResponseDto getById(String id) {
         return profileMapper.toDto(loadOrThrow(id));
     }

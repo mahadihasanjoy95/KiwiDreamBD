@@ -8,7 +8,11 @@ import java.util.List;
 
 public interface PlanningProfileService {
 
+    /** Public: only active profiles, ordered by displayOrder. */
     List<PlanningProfileResponseDto> listActive();
+
+    /** Admin: all profiles (active and inactive), ordered by displayOrder. */
+    List<PlanningProfileResponseDto> listAll();
 
     PlanningProfileResponseDto getById(String id);
 

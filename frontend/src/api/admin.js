@@ -1,4 +1,4 @@
-import { apiRequest } from '@/api/client'
+import { API_BASE_URL, apiRequest } from '@/api/client'
 
 // ─── User Management ──────────────────────────────────────────────────────────
 
@@ -74,7 +74,20 @@ export function deleteCountry(accessToken, id) {
 
 // ─── City Management ──────────────────────────────────────────────────────────
 
-/** Load all cities for a single country */
+/**
+ * Admin: list ALL cities across all countries, paginated, includes inactive.
+ * Returns a Spring Page object: { content, totalElements, totalPages, number, size }
+ * @param {string} accessToken
+ * @param {{ page?: number, size?: number, countryId?: string, search?: string }} opts
+ */
+export function listAllCities(accessToken, { page = 0, size = 20, countryId, search } = {}) {
+  const params = new URLSearchParams({ page, size })
+  if (countryId) params.append('countryId', countryId)
+  if (search) params.append('search', search)
+  return apiRequest(`/api/v1/admin/cities?${params}`, { token: accessToken })
+}
+
+/** Load all cities for a single country (public, active-only) */
 export function listCitiesByCountry(countryId) {
   return apiRequest(`/api/v1/countries/${countryId}/cities`)
 }
@@ -111,8 +124,9 @@ export function deleteCity(accessToken, countryId, cityId) {
 
 // ─── Planning Profile Management ──────────────────────────────────────────────
 
-export function listProfiles() {
-  return apiRequest('/api/v1/planning-profiles')
+/** Admin: returns ALL profiles (active + inactive). Requires admin JWT. */
+export function listProfiles(accessToken) {
+  return apiRequest('/api/v1/planning-profiles/all', { token: accessToken })
 }
 
 export function createProfile(accessToken, payload) {
@@ -143,4 +157,31 @@ export function deleteProfile(accessToken, id) {
     method: 'DELETE',
     token: accessToken,
   })
+}
+
+// ─── File Upload ──────────────────────────────────────────────────────────────
+
+/**
+ * Upload an icon image (SVG / PNG / JPG / WebP / ICO) to S3.
+ * Returns { url } — the public HTTPS URL of the uploaded file.
+ */
+export async function uploadIcon(accessToken, file) {
+  const formData = new FormData()
+  formData.append('file', file)
+
+  const response = await fetch(`${API_BASE_URL}/api/v1/admin/upload/icon`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      // Do NOT set Content-Type — browser sets it automatically with boundary for multipart
+    },
+    body: formData,
+  })
+
+  const payload = await response.json().catch(() => null)
+  if (!response.ok || payload?.success === false) {
+    const msg = payload?.error?.message || payload?.message || 'Upload failed'
+    throw new Error(msg)
+  }
+  return payload?.data // { url: string }
 }

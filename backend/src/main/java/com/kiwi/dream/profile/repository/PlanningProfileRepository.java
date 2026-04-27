@@ -12,4 +12,7 @@ public interface PlanningProfileRepository extends JpaRepository<PlanningProfile
     boolean existsByCode(String code);
 
     List<PlanningProfile> findByActiveTrueOrderByDisplayOrderAsc();
+
+    /** Admin: all profiles regardless of active status, ordered by displayOrder. */
+    List<PlanningProfile> findAllByOrderByDisplayOrderAsc();
 }

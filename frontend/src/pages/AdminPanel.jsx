@@ -34,7 +34,7 @@ import logoTigerNew from '@/assets/images/logo_tiger_new.png'
 import {
   activateUser, createAdminUser, deactivateUser, listAdminUsers,
   listCountries, createCountry, updateCountry, toggleCountryActive, deleteCountry,
-  listCitiesByCountry, createCity, updateCity, toggleCityActive, deleteCity,
+  listAllCities, listCitiesByCountry, createCity, updateCity, toggleCityActive, deleteCity,
   listProfiles, createProfile, updateProfile, toggleProfileActive, deleteProfile,
 } from '@/api/admin'
 import useStore from '@/store/useStore'
@@ -111,10 +111,18 @@ const INITIAL_TEMPLATES = [
 ]
 
 const CATALOG_ITEMS = [
-  { id: 'countries', labelKey: 'countries', value: 1, Icon: Globe2 },
-  { id: 'cities', labelKey: 'cities', value: 5, Icon: Building2 },
-  { id: 'profiles', labelKey: 'profiles', value: 4, Icon: BadgeCheck },
-  { id: 'templates', labelKey: 'templates', value: 4, Icon: ListChecks },
+  { id: 'countries', labelKey: 'countries', Icon: Globe2 },
+  { id: 'cities', labelKey: 'cities', Icon: Building2 },
+  { id: 'profiles', labelKey: 'profiles', Icon: BadgeCheck },
+  { id: 'templates', labelKey: 'templates', Icon: ListChecks },
+]
+
+// Curated swatch palette for country / city / profile color pickers
+const COLOR_PALETTE = [
+  '#0095A1', '#00C9BD', '#142334', '#4C1D95',
+  '#7C3AED', '#A78BFA', '#2563EB', '#0EA5E9',
+  '#10B981', '#059669', '#F59E0B', '#EF4444',
+  '#EC4899', '#F97316', '#64748B', '#0F172A',
 ]
 
 const TABS = [
@@ -136,6 +144,48 @@ function formatNZD(value) {
     currency: 'NZD',
     maximumFractionDigits: 0,
   }).format(value)
+}
+
+/**
+ * Reusable color picker: curated palette swatches + custom hex input.
+ * Props: value (hex string), onChange (hex => void)
+ */
+function ColorPicker({ value, onChange }) {
+  return (
+    <div className="space-y-2">
+      {/* Palette swatches */}
+      <div className="flex flex-wrap gap-1.5">
+        {COLOR_PALETTE.map(color => (
+          <button
+            key={color}
+            type="button"
+            title={color}
+            onClick={() => onChange(color)}
+            className="h-7 w-7 rounded-lg border-2 transition-all hover:scale-110"
+            style={{
+              backgroundColor: color,
+              borderColor: value?.toUpperCase() === color.toUpperCase() ? '#142334' : 'transparent',
+              boxShadow: value?.toUpperCase() === color.toUpperCase() ? '0 0 0 2px #fff, 0 0 0 4px #142334' : undefined,
+            }}
+          />
+        ))}
+      </div>
+      {/* Custom hex + preview */}
+      <div className="flex items-center gap-2">
+        <span
+          className="h-9 w-9 shrink-0 rounded-lg border border-brand-mid/60 shadow-sm"
+          style={{ backgroundColor: value || '#0095A1' }}
+        />
+        <input
+          maxLength={7}
+          value={value || ''}
+          onChange={e => onChange(e.target.value)}
+          placeholder="#0095A1"
+          className="h-9 flex-1 rounded-xl border border-brand-mid/60 bg-white/80 px-3 text-sm font-mono font-bold text-brand-deep outline-none focus:border-brand"
+        />
+      </div>
+    </div>
+  )
 }
 
 function StatusBadge({ status }) {
@@ -218,7 +268,8 @@ export default function AdminPanel() {
   const location = useLocation()
   const user = useStore(s => s.user)
   const logout = useStore(s => s.logout)
-  const updateProfile = useStore(s => s.updateProfile)
+  // Renamed to avoid shadowing the admin API's updateProfile import from admin.js
+  const updateMyAccountProfile = useStore(s => s.updateProfile)
   const updateProfilePicture = useStore(s => s.updateProfilePicture)
   const changePassword = useStore(s => s.changePassword)
   const accessToken = useStore(s => s.accessToken)
@@ -229,6 +280,8 @@ export default function AdminPanel() {
   const [countries, setCountries] = useState([])
   const [countriesLoading, setCountriesLoading] = useState(true)
   const [countriesError, setCountriesError] = useState('')
+  const [countryPage, setCountryPage] = useState(0)
+  const COUNTRY_PAGE_SIZE = 20
   const [countryModal, setCountryModal] = useState(null) // null | { mode: 'add'|'edit', data?: {} }
   const [countryForm, setCountryForm] = useState({})
   const [countrySubmitting, setCountrySubmitting] = useState(false)
@@ -237,6 +290,10 @@ export default function AdminPanel() {
   const [cities, setCities] = useState([])
   const [citiesLoading, setCitiesLoading] = useState(true)
   const [citiesError, setCitiesError] = useState('')
+  const [cityPage, setCityPage] = useState(0)
+  const [cityTotalPages, setCityTotalPages] = useState(0)
+  const [cityTotalElements, setCityTotalElements] = useState(0)
+  const CITY_PAGE_SIZE = 20
   const [cityModal, setCityModal] = useState(null)   // null | { mode:'add'|'edit', countryId, cityId? }
   const [cityForm, setCityForm] = useState({})
   const [citySubmitting, setCitySubmitting] = useState(false)
@@ -245,6 +302,8 @@ export default function AdminPanel() {
   const [profiles, setProfiles] = useState([])
   const [profilesLoading, setProfilesLoading] = useState(true)
   const [profilesError, setProfilesError] = useState('')
+  const [profilePage, setProfilePage] = useState(0)
+  const PROFILE_PAGE_SIZE = 20
   const [profileModal, setProfileModal] = useState(null) // null | { mode:'add'|'edit', id? }
   const [profileForm, setProfileForm] = useState({})
   const [profileSubmitting, setProfileSubmitting] = useState(false)
@@ -287,21 +346,21 @@ export default function AdminPanel() {
     setAccountForm(user || {})
   }, [user])
 
-  // ── Load all cities across all countries on mount ──────────────────────────
+  // ── Load all cities via admin endpoint (paginated, includes inactive) ────────
   useEffect(() => {
     let cancelled = false
     async function loadCities() {
+      if (!accessToken) return
       setCitiesLoading(true)
       setCitiesError('')
       try {
-        // countries is already loading — wait for it, or fetch independently
-        const allCountries = await listCountries()
-        const results = await Promise.all(
-          (Array.isArray(allCountries) ? allCountries : []).map(c =>
-            listCitiesByCountry(c.id).then(data => Array.isArray(data) ? data : []).catch(() => [])
-          )
-        )
-        if (!cancelled) setCities(results.flat())
+        const page = await listAllCities(accessToken, { page: cityPage, size: CITY_PAGE_SIZE })
+        if (!cancelled) {
+          // page is a Spring Page: { content, totalElements, totalPages, number, size }
+          setCities(page?.content || [])
+          setCityTotalPages(page?.totalPages || 0)
+          setCityTotalElements(page?.totalElements || 0)
+        }
       } catch (err) {
         if (!cancelled) setCitiesError(err.message || 'Failed to load cities')
       } finally {
@@ -310,7 +369,7 @@ export default function AdminPanel() {
     }
     loadCities()
     return () => { cancelled = true }
-  }, [])
+  }, [accessToken, cityPage]) // re-fetch when page changes
 
   // ── Load all planning profiles ────────────────────────────────────
   useEffect(() => {
@@ -319,7 +378,7 @@ export default function AdminPanel() {
       setProfilesLoading(true)
       setProfilesError('')
       try {
-        const data = await listProfiles()
+        const data = await listProfiles(accessToken)
         if (!cancelled) setProfiles(Array.isArray(data) ? data : [])
       } catch (err) {
         if (!cancelled) setProfilesError(err.message || 'Failed to load profiles')
@@ -405,15 +464,29 @@ export default function AdminPanel() {
   }, [adminUsers, search])
 
   const filteredCountries = useMemo(() => {
-    return filterRows(countries, ['name', 'code', 'status'])
+    const term = search.trim().toLowerCase()
+    if (!term) return countries
+    return countries.filter(c =>
+      [c.nameEn, c.nameBn, c.code, c.currencyCode].join(' ').toLowerCase().includes(term)
+    )
   }, [countries, search])
 
   const filteredCities = useMemo(() => {
-    return filterRows(cities, ['name', 'country', 'weeklyCost', 'status'])
+    // Cities come paginated from backend — search filters current page client-side
+    // For full cross-page search, change the cityPage + pass search to backend
+    const term = search.trim().toLowerCase()
+    if (!term) return cities
+    return cities.filter(c =>
+      [c.nameEn, c.nameBn, c.code, c.countryCode, c.taglineEn].join(' ').toLowerCase().includes(term)
+    )
   }, [cities, search])
 
   const filteredProfiles = useMemo(() => {
-    return filterRows(profiles, ['name', 'budgetRange', 'status'])
+    const term = search.trim().toLowerCase()
+    if (!term) return profiles
+    return profiles.filter(p =>
+      [p.nameEn, p.nameBn, p.code].join(' ').toLowerCase().includes(term)
+    )
   }, [profiles, search])
 
   const filteredTemplates = useMemo(() => {
@@ -761,7 +834,7 @@ export default function AdminPanel() {
     setAccountFeedback(null)
     setAccountSaving(true)
     try {
-      await updateProfile(accountForm)
+      await updateMyAccountProfile(accountForm)
       if (accountForm.profilePicture) {
         await updateProfilePicture(accountForm.profilePicture)
       }
@@ -955,7 +1028,15 @@ export default function AdminPanel() {
             </div>
 
             {activeTab === 'overview' && (
-              <OverviewPanel t={t} plans={plans} users={users} contents={contents} />
+              <OverviewPanel
+                t={t}
+                plans={plans}
+                users={users}
+                contents={contents}
+                countries={countries}
+                cities={cities}
+                profiles={profiles}
+              />
             )}
 
             {activeTab === 'countries' && (
@@ -978,6 +1059,9 @@ export default function AdminPanel() {
                 deleteConfirm={deleteConfirm}
                 onConfirmDelete={handleDeleteCountry}
                 onCancelDelete={() => setDeleteConfirm(null)}
+                page={countryPage}
+                pageSize={COUNTRY_PAGE_SIZE}
+                onPageChange={setCountryPage}
               />
             )}
 
@@ -988,6 +1072,11 @@ export default function AdminPanel() {
                 countries={countries}
                 loading={citiesLoading}
                 error={citiesError}
+                totalElements={cityTotalElements}
+                totalPages={cityTotalPages}
+                page={cityPage}
+                pageSize={CITY_PAGE_SIZE}
+                onPageChange={setCityPage}
                 onToggleStatus={toggleCityStatus}
                 onAdd={openAddCity}
                 onEdit={openEditCity}
@@ -1011,6 +1100,9 @@ export default function AdminPanel() {
                 profiles={filteredProfiles}
                 loading={profilesLoading}
                 error={profilesError}
+                page={profilePage}
+                pageSize={PROFILE_PAGE_SIZE}
+                onPageChange={setProfilePage}
                 onToggleStatus={toggleProfileStatus}
                 onAdd={openAddProfile}
                 onEdit={openEditProfile}
@@ -1101,40 +1193,135 @@ export default function AdminPanel() {
   )
 }
 
-function OverviewPanel({ t, plans, users, contents }) {
-  const latestPlans = plans.slice(0, 3)
+// ─── Shared Pagination Bar ────────────────────────────────────────────────────
+// Works in two modes:
+//  1. Backend pagination: pass totalPages + page + onPageChange (cities)
+//  2. Client pagination:  pass rows + pageSize + page + onPageChange (countries, profiles)
+function PaginationBar({ page, totalPages, pageSize, rows, onPageChange, label = 'items' }) {
+  const resolvedTotal = totalPages ?? (rows ? Math.ceil(rows.length / pageSize) : 0)
+  if (resolvedTotal <= 1) return null
+
+  const start = rows ? page * pageSize + 1 : null
+  const end   = rows ? Math.min((page + 1) * pageSize, rows.length) : null
+  const total = rows ? rows.length : null
+
+  return (
+    <div className="mt-4 flex flex-col items-center gap-3 sm:flex-row sm:justify-between">
+      <p className="text-xs font-semibold text-brand-deep/50">
+        {rows
+          ? `Showing ${start}–${end} of ${total} ${label}`
+          : `Page ${page + 1} of ${resolvedTotal}`}
+      </p>
+      <div className="flex items-center gap-1.5">
+        <button
+          onClick={() => onPageChange(0)}
+          disabled={page === 0}
+          className="flex h-8 w-8 items-center justify-center rounded-xl border border-brand-mid bg-white text-brand text-xs font-bold hover:bg-brand-light disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          aria-label="First page"
+        >
+          «
+        </button>
+        <button
+          onClick={() => onPageChange(page - 1)}
+          disabled={page === 0}
+          className="flex h-8 w-8 items-center justify-center rounded-xl border border-brand-mid bg-white text-brand text-xs font-bold hover:bg-brand-light disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          aria-label="Previous page"
+        >
+          ‹
+        </button>
+        {/* Page number buttons (show up to 5 around current) */}
+        {Array.from({ length: resolvedTotal }, (_, i) => i)
+          .filter(i => Math.abs(i - page) <= 2)
+          .map(i => (
+            <button
+              key={i}
+              onClick={() => onPageChange(i)}
+              className={`flex h-8 w-8 items-center justify-center rounded-xl border text-xs font-bold transition-colors ${
+                i === page
+                  ? 'border-brand bg-brand text-white shadow-sm'
+                  : 'border-brand-mid bg-white text-brand hover:bg-brand-light'
+              }`}
+            >
+              {i + 1}
+            </button>
+          ))}
+        <button
+          onClick={() => onPageChange(page + 1)}
+          disabled={page >= resolvedTotal - 1}
+          className="flex h-8 w-8 items-center justify-center rounded-xl border border-brand-mid bg-white text-brand text-xs font-bold hover:bg-brand-light disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          aria-label="Next page"
+        >
+          ›
+        </button>
+        <button
+          onClick={() => onPageChange(resolvedTotal - 1)}
+          disabled={page >= resolvedTotal - 1}
+          className="flex h-8 w-8 items-center justify-center rounded-xl border border-brand-mid bg-white text-brand text-xs font-bold hover:bg-brand-light disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          aria-label="Last page"
+        >
+          »
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function OverviewPanel({ t, plans, users, contents, countries, cities, profiles }) {
+  const latestPlans = [...plans].slice(0, 4)
+  const _countries = countries || []
+  const _cities = cities || []
+  const _profiles = profiles || []
+
+  const catalogCounts = [
+    { id: 'countries', Icon: Globe2, value: _countries.length, labelKey: 'countries', activeCount: _countries.filter(c => c.active !== false).length },
+    { id: 'cities', Icon: Building2, value: _cities.length, labelKey: 'cities', activeCount: _cities.filter(c => c.active !== false).length },
+    { id: 'profiles', Icon: BadgeCheck, value: _profiles.length, labelKey: 'profiles', activeCount: _profiles.filter(p => p.active !== false).length },
+    { id: 'templates', Icon: ListChecks, value: plans.length, labelKey: 'templates', activeCount: plans.filter(p => p.status === 'PUBLISHED').length },
+  ]
+
+  const applicantCount = users.filter(u => u.role === 'APPLICANT').length
+  const activeUserCount = users.filter(u => u.role === 'APPLICANT' && u.status === 'ACTIVE').length
+  const draftPlans = plans.filter(p => p.status === 'DRAFT').length
+  const draftContent = contents.filter(c => c.status === 'DRAFT').length
+  const inactiveUsers = users.filter(u => u.status === 'INACTIVE' || u.status === 'DEACTIVATED').length
 
   return (
     <div className="grid gap-5">
-      <SectionTitle
-        kicker={t('admin.overview_kicker')}
-        title={t('admin.overview_title')}
-      />
+      <div>
+        <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-brand/60">System snapshot</p>
+        <h2 className="mt-2 font-serif text-2xl font-bold text-brand-deep">Overview</h2>
+      </div>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {CATALOG_ITEMS.map(({ id, labelKey, value, Icon }) => (
-          <div key={id} className="rounded-2xl border border-brand-mid/40 bg-white/78 p-4">
+      {/* Catalog count cards */}
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {catalogCounts.map(({ id, Icon, value, labelKey, activeCount }) => (
+          <div key={id} className="rounded-2xl border border-brand-mid/40 bg-white p-4 hover:shadow-[0_4px_20px_rgba(0,149,161,0.08)] transition-shadow">
             <div className="flex items-center justify-between gap-3">
               <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-brand-light text-brand">
                 <Icon size={18} />
               </span>
-              <span className="text-2xl font-black text-brand-deep">{value}</span>
+              <span className="text-3xl font-black text-brand-deep">{value}</span>
             </div>
             <p className="mt-3 text-sm font-extrabold text-brand-deep">{t(`admin.catalog.${labelKey}`)}</p>
+            <p className="mt-0.5 text-xs font-semibold text-brand-deep/50">{activeCount} active</p>
           </div>
         ))}
       </div>
 
+      {/* Activity queue + latest plans */}
       <div className="grid gap-5 xl:grid-cols-[1.2fr_0.8fr]">
-        <div className="rounded-2xl border border-white/80 bg-white/78 p-4">
+        {/* Latest plans */}
+        <div className="rounded-2xl border border-white/80 bg-white p-5">
           <h3 className="text-base font-black text-brand-deep">{t('admin.latest_master_plans')}</h3>
           <div className="mt-4 grid gap-3">
-            {latestPlans.map(plan => (
-              <div key={plan.id} className="flex flex-col gap-3 rounded-2xl border border-brand-mid/35 bg-brand-light/34 p-4 sm:flex-row sm:items-center sm:justify-between">
+            {latestPlans.length === 0 ? (
+              <p className="py-6 text-center text-sm font-semibold text-brand-deep/40">No master plans yet.</p>
+            ) : latestPlans.map(plan => (
+              <div key={plan.id} className="flex flex-col gap-3 rounded-2xl border border-brand-mid/35 bg-brand-light/40 p-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <p className="font-extrabold text-brand-deep">{plan.title}</p>
-                  <p className="mt-1 text-sm font-medium text-brand-deep/58">
-                    {plan.city} · {plan.profile} · {formatNZD(plan.monthlyCost)}
+                  <p className="font-extrabold text-brand-deep text-sm">{plan.title || plan.nameEn}</p>
+                  <p className="mt-0.5 text-xs font-semibold text-brand-deep/55">
+                    {[plan.city, plan.profile, plan.monthlyCost ? formatNZD(plan.monthlyCost) : null].filter(Boolean).join(' · ')}
                   </p>
                 </div>
                 <StatusBadge status={plan.status} />
@@ -1143,15 +1330,61 @@ function OverviewPanel({ t, plans, users, contents }) {
           </div>
         </div>
 
-        <div className="rounded-2xl border border-white/80 bg-white/78 p-4">
+        {/* Admin queue */}
+        <div className="rounded-2xl border border-white/80 bg-white p-5">
           <h3 className="text-base font-black text-brand-deep">{t('admin.admin_queue')}</h3>
           <div className="mt-4 grid gap-3">
-            <QueueItem Icon={FilePlus2} label={t('admin.queue.master_drafts')} value={plans.filter(plan => plan.status === 'DRAFT').length} />
-            <QueueItem Icon={Newspaper} label={t('admin.queue.content_drafts')} value={contents.filter(item => item.status === 'DRAFT').length} />
-            <QueueItem Icon={Users} label={t('admin.queue.inactive_users')} value={users.filter(user => user.status === 'INACTIVE').length} />
+            <QueueItem Icon={FilePlus2} label={t('admin.queue.master_drafts')} value={draftPlans} />
+            <QueueItem Icon={Newspaper} label={t('admin.queue.content_drafts')} value={draftContent} />
+            <QueueItem Icon={Users} label={t('admin.queue.inactive_users')} value={inactiveUsers} />
+          </div>
+          <div className="mt-4 grid gap-3 border-t border-brand-mid/30 pt-4">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-extrabold text-brand-deep/60">Total applicants</span>
+              <span className="text-sm font-black text-brand-deep">{applicantCount}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-extrabold text-brand-deep/60">Active applicants</span>
+              <span className="text-sm font-black text-safe">{activeUserCount}</span>
+            </div>
           </div>
         </div>
       </div>
+
+      {/* Country / city quick summary */}
+      {(_countries.length > 0 || _cities.length > 0) && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          {/* Countries */}
+          <div className="rounded-2xl border border-brand-mid/40 bg-white p-5">
+            <h3 className="text-sm font-black text-brand-deep mb-3">Countries</h3>
+            <div className="grid gap-2">
+              {_countries.map(country => (
+                <div key={country.id} className="flex items-center gap-3">
+                  <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: country.colorHex || '#0095A1' }} />
+                  <span className="text-sm font-semibold text-brand-deep">{country.flagEmoji} {country.nameEn}</span>
+                  <StatusBadge status={country.active !== false ? 'ACTIVE' : 'INACTIVE'} />
+                </div>
+              ))}
+            </div>
+          </div>
+          {/* Cities distribution */}
+          <div className="rounded-2xl border border-brand-mid/40 bg-white p-5">
+            <h3 className="text-sm font-black text-brand-deep mb-3">Cities ({_cities.length} total)</h3>
+            <div className="grid gap-2">
+              {_cities.slice(0, 6).map(city => (
+                <div key={city.id} className="flex items-center gap-3">
+                  <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: city.colorHex || '#0095A1' }} />
+                  <span className="text-sm font-semibold text-brand-deep flex-1">{city.nameEn}</span>
+                  <StatusBadge status={city.active !== false ? 'ACTIVE' : 'INACTIVE'} />
+                </div>
+              ))}
+              {_cities.length > 6 && (
+                <p className="text-xs font-semibold text-brand-deep/40">+{_cities.length - 6} more</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -1197,6 +1430,7 @@ function CountriesPanel({
   onToggleStatus, onAdd, onEdit, onDelete,
   modal, form, onFormChange, onSubmit, submitting, formError, onCloseModal,
   deleteConfirm, onConfirmDelete, onCancelDelete,
+  page = 0, pageSize = 20, onPageChange,
 }) {
   const role = useStore(s => s.user?.role)
   // Any admin can delete content entities (countries, cities, profiles, plans, content)
@@ -1205,13 +1439,21 @@ function CountriesPanel({
 
   const field = (key, value) => onFormChange(prev => ({ ...prev, [key]: value }))
 
+  // Client-side pagination for countries (few rows, all loaded at once)
+  const pagedCountries = countries.slice(page * pageSize, (page + 1) * pageSize)
+
   return (
     <div className="relative">
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-brand/60">Destination Setup</p>
-          <h2 className="mt-2 font-serif text-2xl font-bold text-brand-deep">Country management</h2>
+          <h2 className="mt-2 font-serif text-2xl font-bold text-brand-deep">
+            Country management
+            {!loading && countries.length > 0 && (
+              <span className="ml-2 text-sm font-semibold text-brand-deep/40">({countries.length})</span>
+            )}
+          </h2>
         </div>
         <button
           type="button"
@@ -1255,7 +1497,7 @@ function CountriesPanel({
               </tr>
             </thead>
             <tbody className="divide-y divide-brand-mid/35">
-              {countries.map(country => (
+              {pagedCountries.map(country => (
                 <tr key={country.id} className="hover:bg-brand-light/20 transition-colors">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
@@ -1317,6 +1559,17 @@ function CountriesPanel({
           </table>
         )}
       </div>
+
+      {/* Pagination (client-side) */}
+      {!loading && (
+        <PaginationBar
+          rows={countries}
+          page={page}
+          pageSize={pageSize}
+          onPageChange={onPageChange}
+          label="countries"
+        />
+      )}
 
       {/* Add / Edit Modal */}
       {modal && (
@@ -1396,21 +1649,7 @@ function CountriesPanel({
                 </div>
                 <div>
                   <label className="mb-1 block text-xs font-extrabold uppercase tracking-wide text-brand-deep/60">Theme Color</label>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="color"
-                      value={form.colorHex || '#0095A1'}
-                      onChange={e => field('colorHex', e.target.value)}
-                      className="h-10 w-12 cursor-pointer rounded-xl border border-brand-mid/60 p-1"
-                    />
-                    <input
-                      maxLength={7}
-                      value={form.colorHex || ''}
-                      onChange={e => field('colorHex', e.target.value)}
-                      placeholder="#0095A1"
-                      className="h-10 flex-1 rounded-xl border border-brand-mid/60 bg-white/80 px-3 text-sm font-mono outline-none focus:border-brand"
-                    />
-                  </div>
+                  <ColorPicker value={form.colorHex || '#0095A1'} onChange={v => field('colorHex', v)} />
                 </div>
                 <div>
                   <label className="mb-1 block text-xs font-extrabold uppercase tracking-wide text-brand-deep/60">Display Order</label>
@@ -1487,6 +1726,7 @@ function CountriesPanel({
 
 function CitiesPanel({
   t, cities, countries, loading, error,
+  totalElements = 0, totalPages = 0, page = 0, pageSize = 20, onPageChange,
   onToggleStatus, onAdd, onEdit, onDelete,
   modal, form, onFormChange, onSubmit, submitting, formError, onCloseModal,
   deleteCityConfirm, onConfirmDeleteCity, onCancelDeleteCity,
@@ -1496,8 +1736,12 @@ function CitiesPanel({
   const isAdmin = ['ADMIN', 'SUPER_ADMIN', 'ROLE_ADMIN', 'ROLE_SUPER_ADMIN'].includes(String(role || ''))
   const field = (key, value) => onFormChange(prev => ({ ...prev, [key]: value }))
 
-  // Build country name lookup
+  // Build country name lookup (from the countries list for the country selector in modal)
   const countryMap = Object.fromEntries((countries || []).map(c => [c.id, c]))
+
+  // cities is already the current page's content from backend
+  const startItem = page * pageSize + 1
+  const endItem   = Math.min((page + 1) * pageSize, totalElements || cities.length)
 
   return (
     <div className="relative">
@@ -1505,7 +1749,17 @@ function CitiesPanel({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-brand/60">Destination Setup</p>
-          <h2 className="mt-2 font-serif text-2xl font-bold text-brand-deep">City management</h2>
+          <h2 className="mt-2 font-serif text-2xl font-bold text-brand-deep">
+            City management
+            {!loading && totalElements > 0 && (
+              <span className="ml-2 text-sm font-semibold text-brand-deep/40">({totalElements} total)</span>
+            )}
+          </h2>
+          {!loading && totalElements > pageSize && (
+            <p className="text-xs text-brand-deep/40 mt-0.5">
+              Showing {startItem}–{endItem} of {totalElements} cities
+            </p>
+          )}
         </div>
         <button
           type="button"
@@ -1613,6 +1867,16 @@ function CitiesPanel({
         )}
       </div>
 
+      {/* Backend-paginated pagination bar */}
+      {!loading && totalPages > 1 && (
+        <PaginationBar
+          page={page}
+          totalPages={totalPages}
+          onPageChange={onPageChange}
+          label="cities"
+        />
+      )}
+
       {/* Add / Edit Modal */}
       {modal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
@@ -1663,10 +1927,7 @@ function CitiesPanel({
                 </div>
                 <div>
                   <label className="mb-1 block text-xs font-extrabold uppercase tracking-wide text-brand-deep/60">Theme Color</label>
-                  <div className="flex items-center gap-2">
-                    <input type="color" value={form.colorHex || '#0095A1'} onChange={e => field('colorHex', e.target.value)} className="h-10 w-12 cursor-pointer rounded-xl border border-brand-mid/60 p-1" />
-                    <input maxLength={7} value={form.colorHex || ''} onChange={e => field('colorHex', e.target.value)} placeholder="#0095A1" className="h-10 flex-1 rounded-xl border border-brand-mid/60 bg-white/80 px-3 text-sm font-mono outline-none focus:border-brand" />
-                  </div>
+                  <ColorPicker value={form.colorHex || '#0095A1'} onChange={v => field('colorHex', v)} />
                 </div>
               </div>
 
@@ -1760,19 +2021,92 @@ function CitiesPanel({
   )
 }
 
+// Default person silhouette SVG shown when no iconSvgUrl is provided
+const DEFAULT_PROFILE_ICON = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2'/%3E%3Ccircle cx='12' cy='7' r='4'/%3E%3C/svg%3E`
+
+/** Format a CODE-style string: uppercase, spaces → underscores, only A-Z 0-9 _ */
+function formatCode(raw) {
+  return raw.toUpperCase().replace(/ /g, '_').replace(/[^A-Z0-9_]/g, '')
+}
+
+/** Normalise a hex color: ensure it starts with # and uppercases letters */
+function normalizeHex(raw) {
+  const trimmed = raw.trim()
+  if (!trimmed) return ''
+  const withHash = trimmed.startsWith('#') ? trimmed : `#${trimmed}`
+  return withHash.toUpperCase()
+}
+
 function ProfilesPanel({
   t, profiles, loading, error,
+  page = 0, pageSize = 20, onPageChange,
   onToggleStatus, onAdd, onEdit, onDelete,
   modal, form, onFormChange, onSubmit, submitting, formError, onCloseModal,
   deleteConfirm, onConfirmDelete, onCancelDelete,
 }) {
   const role = useStore(s => s.user?.role)
+  const accessToken = useStore(s => s.accessToken)
   const isAdmin = ['ADMIN', 'SUPER_ADMIN', 'ROLE_ADMIN', 'ROLE_SUPER_ADMIN'].includes(String(role || ''))
   const field = (key, value) => onFormChange(prev => ({ ...prev, [key]: value }))
 
-  // tags as comma-separated string in form
-  const tagsString = Array.isArray(form.tags) ? form.tags.join(', ') : (form.tags || '')
-  const handleTagsChange = (raw) => field('tags', raw.split(',').map(s => s.trim()).filter(Boolean))
+  // Client-side pagination
+  const pagedProfiles = profiles.slice(page * pageSize, (page + 1) * pageSize)
+
+  // ── Tag pill input ─────────────────────────────────────────────────────────
+  const [tagInput, setTagInput] = useState('')
+  const [uploadingIcon, setUploadingIcon] = useState(false)
+  const [uploadError, setUploadError] = useState('')
+  const fileInputRef = useRef(null)
+
+  const currentTags = Array.isArray(form.tags) ? form.tags : []
+
+  const commitTag = (raw) => {
+    const trimmed = raw.trim().replace(/,+$/, '').trim()
+    if (!trimmed) return
+    if (!currentTags.includes(trimmed)) {
+      field('tags', [...currentTags, trimmed])
+    }
+    setTagInput('')
+  }
+
+  const removeTag = (tag) => field('tags', currentTags.filter(t => t !== tag))
+
+  const handleTagKeyDown = (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); commitTag(tagInput) }
+    if (e.key === 'Backspace' && !tagInput && currentTags.length > 0) {
+      field('tags', currentTags.slice(0, -1))
+    }
+  }
+
+  const handleTagChange = (e) => {
+    const val = e.target.value
+    if (val.endsWith(',')) { commitTag(val); return }
+    setTagInput(val)
+  }
+
+  // ── Icon upload ─────────────────────────────────────────────────────────────
+  const handleIconFileChange = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploadError('')
+    setUploadingIcon(true)
+    try {
+      const { uploadIcon } = await import('@/api/admin')
+      const result = await uploadIcon(accessToken, file)
+      if (result?.url) field('iconSvgUrl', result.url)
+    } catch (err) {
+      setUploadError(err.message || 'Upload failed. Check your file and try again.')
+    } finally {
+      setUploadingIcon(false)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+  }
+
+  // Live preview values
+  const previewColor = form.colorHex || '#7C3AED'
+  const previewIcon  = form.iconSvgUrl || DEFAULT_PROFILE_ICON
+  const previewName  = form.nameEn || 'Profile Name'
+  const previewCode  = form.code || 'CODE'
 
   return (
     <div className="relative">
@@ -1781,11 +2115,12 @@ function ProfilesPanel({
         <div>
           <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-brand/60">Audience setup</p>
           <h2 className="mt-2 font-serif text-2xl font-bold text-brand-deep">Planning profile management</h2>
+          <p className="mt-1 text-sm text-brand-deep/50">Only active profiles are shown to applicants on the planner.</p>
         </div>
         <button
           type="button"
           onClick={onAdd}
-          className="inline-flex h-10 items-center gap-2 rounded-full bg-brand px-4 text-sm font-extrabold text-white shadow-[0_8px_24px_rgba(0,149,161,0.22)] hover:bg-brand-deep transition-colors"
+          className="inline-flex h-10 items-center gap-2 rounded-full bg-brand px-5 text-sm font-extrabold text-white shadow-[0_8px_24px_rgba(0,149,161,0.22)] hover:bg-brand-deep transition-colors"
         >
           <Plus size={16} /> Add profile
         </button>
@@ -1797,6 +2132,7 @@ function ProfilesPanel({
         </div>
       )}
 
+      {/* Profile Cards Grid */}
       <div className="mt-5">
         {loading ? (
           <div className="flex items-center justify-center gap-2 py-16 text-brand">
@@ -1804,220 +2140,531 @@ function ProfilesPanel({
             <span className="text-sm font-semibold">Loading profiles…</span>
           </div>
         ) : profiles.length === 0 ? (
-          <div className="py-16 text-center text-sm font-semibold text-brand-deep/50">
-            No planning profiles found. Add your first profile.
+          <div className="py-16 text-center">
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-light text-brand">
+              <Plus size={24} />
+            </div>
+            <p className="text-sm font-bold text-brand-deep/60">No planning profiles yet</p>
+            <p className="mt-1 text-xs text-brand-deep/40">Add your first profile to let applicants start planning</p>
           </div>
         ) : (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {profiles.map(profile => (
-              <div
-                key={profile.id}
-                className="relative rounded-2xl border border-brand-mid/40 bg-white p-5 hover:shadow-[0_4px_20px_rgba(124,58,237,0.08)] transition-shadow"
-              >
-                {/* Color accent bar */}
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {pagedProfiles.map(profile => {
+              const color = profile.colorHex || '#7C3AED'
+              const icon  = profile.iconSvgUrl || DEFAULT_PROFILE_ICON
+              return (
                 <div
-                  className="absolute left-0 top-4 bottom-4 w-1 rounded-r-full"
-                  style={{ backgroundColor: profile.colorHex || '#7C3AED' }}
-                />
-
-                <div className="pl-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <span
-                        className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-white text-xs font-black"
-                        style={{ backgroundColor: profile.colorHex || '#7C3AED' }}
-                      >
-                        {profile.code?.slice(0, 2)}
-                      </span>
-                      <div>
-                        <p className="font-black text-sm text-brand-deep leading-tight">{profile.nameEn}</p>
-                        {profile.nameBn && <p className="text-xs text-brand-deep/50">{profile.nameBn}</p>}
-                      </div>
+                  key={profile.id}
+                  className="group relative overflow-hidden rounded-2xl border border-brand-mid/30 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_28px_rgba(124,58,237,0.12)] transition-shadow"
+                >
+                  {/* Gradient header strip */}
+                  <div
+                    className="flex items-center gap-3 px-4 py-4"
+                    style={{ background: `linear-gradient(135deg, ${color}ee 0%, ${color}99 100%)` }}
+                  >
+                    <div
+                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl shadow-md"
+                      style={{ backgroundColor: `${color}cc` }}
+                    >
+                      <img
+                        src={icon}
+                        alt=""
+                        className="h-7 w-7 object-contain"
+                        onError={e => { e.currentTarget.src = DEFAULT_PROFILE_ICON }}
+                      />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-black text-sm text-white leading-tight drop-shadow">{profile.nameEn}</p>
+                      {profile.nameBn && (
+                        <p className="truncate text-[11px] text-white/70 mt-0.5">{profile.nameBn}</p>
+                      )}
                     </div>
                     <StatusBadge status={profile.active ? 'ACTIVE' : 'INACTIVE'} />
                   </div>
 
-                  {profile.shortDetailsEn && (
-                    <p className="mt-2 text-xs font-semibold text-brand-deep/60 line-clamp-2">{profile.shortDetailsEn}</p>
-                  )}
-
-                  <div className="mt-3 flex flex-wrap gap-2 text-xs font-semibold text-brand-deep/60">
-                    {profile.monthlyBudgetRangeMinNzd && profile.monthlyBudgetRangeMaxNzd && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-brand-light px-2 py-0.5">
-                        NZD {Number(profile.monthlyBudgetRangeMinNzd).toLocaleString()}–{Number(profile.monthlyBudgetRangeMaxNzd).toLocaleString()}/mo
+                  {/* Body */}
+                  <div className="px-4 py-3">
+                    {/* Code pill */}
+                    <div className="mb-2 flex items-center gap-2">
+                      <span
+                        className="rounded-full px-2 py-0.5 text-[10px] font-black tracking-wider text-white"
+                        style={{ backgroundColor: color }}
+                      >
+                        {profile.code}
                       </span>
-                    )}
-                    {profile.defaultPersonCount && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-brand-light px-2 py-0.5">
-                        {profile.defaultPersonCount} person{profile.defaultPersonCount > 1 ? 's' : ''}
-                      </span>
-                    )}
-                    {profile.displayOrder && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-brand-light px-2 py-0.5">
-                        Order {profile.displayOrder}
-                      </span>
-                    )}
-                  </div>
-
-                  {Array.isArray(profile.tags) && profile.tags.length > 0 && (
-                    <div className="mt-2 flex flex-wrap gap-1">
-                      {profile.tags.slice(0, 3).map(tag => (
-                        <span key={tag} className="rounded-full bg-brand/10 px-2 py-0.5 text-xs font-bold text-brand">
-                          {tag}
-                        </span>
-                      ))}
                     </div>
-                  )}
 
-                  <div className="mt-4 flex items-center gap-2 border-t border-brand-mid/30 pt-3">
-                    <button
-                      type="button"
-                      onClick={() => onToggleStatus(profile.id)}
-                      title={profile.active ? 'Deactivate' : 'Activate'}
-                      className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-brand-mid bg-white text-brand hover:border-brand transition-colors"
-                    >
-                      <Archive size={14} />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => onEdit(profile)}
-                      title="Edit"
-                      className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-brand-mid bg-white text-brand hover:border-brand transition-colors"
-                    >
-                      <Pencil size={14} />
-                    </button>
-                    {isAdmin && (
+                    {profile.shortDetailsEn && (
+                      <p className="text-xs font-semibold text-brand-deep/60 line-clamp-2 leading-relaxed">{profile.shortDetailsEn}</p>
+                    )}
+
+                    <div className="mt-3 flex flex-wrap gap-1.5 text-xs font-semibold text-brand-deep/60">
+                      {profile.monthlyBudgetRangeMinNzd && profile.monthlyBudgetRangeMaxNzd && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-brand-light px-2 py-0.5">
+                          NZD {Number(profile.monthlyBudgetRangeMinNzd).toLocaleString()}–{Number(profile.monthlyBudgetRangeMaxNzd).toLocaleString()}/mo
+                        </span>
+                      )}
+                      {profile.defaultPersonCount > 0 && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-brand-light px-2 py-0.5">
+                          {profile.defaultPersonCount} person{profile.defaultPersonCount > 1 ? 's' : ''}
+                        </span>
+                      )}
+                      <span className="inline-flex items-center gap-1 rounded-full bg-brand-light px-2 py-0.5">
+                        Order {profile.displayOrder ?? 0}
+                      </span>
+                    </div>
+
+                    {Array.isArray(profile.tags) && profile.tags.length > 0 && (
+                      <div className="mt-2 flex flex-wrap gap-1">
+                        {profile.tags.slice(0, 4).map(tag => (
+                          <span
+                            key={tag}
+                            className="rounded-full px-2 py-0.5 text-[10px] font-bold"
+                            style={{ backgroundColor: `${color}18`, color }}
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Actions */}
+                    <div className="mt-4 flex items-center gap-2 border-t border-brand-mid/25 pt-3">
                       <button
                         type="button"
-                        onClick={() => onDelete(profile.id)}
-                        title="Delete"
-                        className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-red-200 bg-red-50 text-red-500 hover:border-red-400 hover:bg-red-100 transition-colors"
+                        onClick={() => onToggleStatus(profile.id)}
+                        title={profile.active ? 'Deactivate (hides from applicants)' : 'Activate (shows to applicants)'}
+                        className={`inline-flex h-8 w-8 items-center justify-center rounded-full border transition-colors ${
+                          profile.active
+                            ? 'border-amber-200 bg-amber-50 text-amber-600 hover:bg-amber-100'
+                            : 'border-emerald-200 bg-emerald-50 text-emerald-600 hover:bg-emerald-100'
+                        }`}
                       >
-                        <Trash2 size={14} />
+                        <Archive size={14} />
                       </button>
-                    )}
+                      <button
+                        type="button"
+                        onClick={() => onEdit(profile)}
+                        title="Edit profile"
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-brand-mid bg-white text-brand hover:border-brand hover:bg-brand-light transition-colors"
+                      >
+                        <Pencil size={14} />
+                      </button>
+                      {isAdmin && (
+                        <button
+                          type="button"
+                          onClick={() => onDelete(profile.id)}
+                          title="Delete profile"
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-red-200 bg-red-50 text-red-500 hover:border-red-400 hover:bg-red-100 transition-colors"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      )}
+                      <span className="ml-auto text-[10px] font-semibold text-brand-deep/30">
+                        {profile.active ? 'Visible to applicants' : 'Hidden from applicants'}
+                      </span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         )}
       </div>
 
-      {/* Add / Edit Modal */}
+      {/* Pagination (client-side) */}
+      {!loading && (
+        <PaginationBar
+          rows={profiles}
+          page={page}
+          pageSize={pageSize}
+          onPageChange={onPageChange}
+          label="profiles"
+        />
+      )}
+
+      {/* ── Add / Edit Modal ────────────────────────────────────────────────────── */}
       {modal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <div className="w-full max-w-xl rounded-3xl border border-white/70 bg-white shadow-[0_32px_80px_rgba(0,89,96,0.18)] overflow-y-auto max-h-[90vh]">
-            <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-brand-mid/30">
-              <h3 className="font-serif text-xl font-bold text-brand-deep">
-                {modal.mode === 'add' ? 'Add new planning profile' : 'Edit planning profile'}
-              </h3>
-              <button onClick={onCloseModal} className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-brand-mid hover:bg-brand-light text-brand-deep">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 backdrop-blur-sm p-0 sm:items-center sm:p-4">
+          <div className="w-full max-w-2xl rounded-t-3xl sm:rounded-3xl border border-white/70 bg-white shadow-[0_32px_80px_rgba(0,89,96,0.22)] flex flex-col max-h-[96vh] sm:max-h-[92vh]">
+
+            {/* Modal Header */}
+            <div className="flex shrink-0 items-center justify-between px-6 pt-6 pb-4 border-b border-brand-mid/30">
+              <div>
+                <p className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-brand/50">
+                  {modal.mode === 'add' ? 'Create new' : 'Edit'}
+                </p>
+                <h3 className="font-serif text-xl font-bold text-brand-deep leading-tight">
+                  Planning Profile
+                </h3>
+              </div>
+              <button
+                onClick={onCloseModal}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-brand-mid hover:bg-brand-light text-brand-deep transition-colors"
+              >
                 <X size={16} />
               </button>
             </div>
-            <form onSubmit={onSubmit} className="px-6 py-5 grid gap-4">
+
+            {/* Live Preview Banner */}
+            <div
+              className="shrink-0 mx-6 mt-5 rounded-2xl overflow-hidden shadow-[0_4px_16px_rgba(0,0,0,0.12)]"
+              style={{ background: `linear-gradient(135deg, ${previewColor}f0 0%, ${previewColor}a0 100%)` }}
+            >
+              <div className="flex items-center gap-4 px-5 py-4">
+                <div
+                  className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl shadow-md"
+                  style={{ backgroundColor: `${previewColor}cc` }}
+                >
+                  <img
+                    src={previewIcon}
+                    alt=""
+                    className="h-8 w-8 object-contain"
+                    onError={e => { e.currentTarget.src = DEFAULT_PROFILE_ICON }}
+                  />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-extrabold uppercase tracking-widest text-white/60 mb-0.5">Live preview</p>
+                  <p className="font-black text-base text-white leading-tight truncate">{previewName}</p>
+                </div>
+                <span
+                  className="shrink-0 rounded-full px-2.5 py-1 text-[10px] font-black tracking-wider text-white/90"
+                  style={{ backgroundColor: 'rgba(0,0,0,0.25)' }}
+                >
+                  {previewCode}
+                </span>
+              </div>
+            </div>
+
+            {/* Scrollable form body */}
+            <form onSubmit={onSubmit} className="overflow-y-auto flex-1 px-6 py-5 space-y-5">
               {formError && (
-                <div className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700">
+                <div className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
                   <ShieldAlert size={15} className="shrink-0" /> {formError}
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="mb-1 block text-xs font-extrabold uppercase tracking-wide text-brand-deep/60">Code *</label>
-                  <input
-                    required maxLength={50}
-                    value={form.code || ''}
-                    onChange={e => field('code', e.target.value.toUpperCase())}
-                    disabled={modal.mode === 'edit'}
-                    placeholder="SOLO_STUDENT"
-                    className="h-10 w-full rounded-xl border border-brand-mid/60 bg-white/80 px-3 text-sm font-bold text-brand-deep outline-none focus:border-brand disabled:bg-brand-light/40 disabled:text-brand-deep/40"
-                  />
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs font-extrabold uppercase tracking-wide text-brand-deep/60">Theme Color</label>
-                  <div className="flex items-center gap-2">
-                    <input type="color" value={form.colorHex || '#7C3AED'} onChange={e => field('colorHex', e.target.value)} className="h-10 w-12 cursor-pointer rounded-xl border border-brand-mid/60 p-1" />
-                    <input maxLength={7} value={form.colorHex || ''} onChange={e => field('colorHex', e.target.value)} placeholder="#7C3AED" className="h-10 flex-1 rounded-xl border border-brand-mid/60 bg-white/80 px-3 text-sm font-mono outline-none focus:border-brand" />
+              {/* ── IDENTITY ── */}
+              <section>
+                <p className="mb-3 text-[10px] font-extrabold uppercase tracking-[0.2em] text-brand-deep/40">Identity</p>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  {/* Code */}
+                  <div>
+                    <label className="mb-1.5 flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-wide text-brand-deep/60">
+                      Code
+                      <span className="text-red-500">*</span>
+                      {modal.mode === 'edit' && (
+                        <span className="ml-auto rounded-full bg-brand-light px-2 py-0.5 text-[9px] font-bold text-brand-deep/50 normal-case tracking-normal">Locked</span>
+                      )}
+                    </label>
+                    <input
+                      required
+                      maxLength={50}
+                      value={form.code || ''}
+                      onChange={e => field('code', formatCode(e.target.value))}
+                      disabled={modal.mode === 'edit'}
+                      placeholder="SOLO_STUDENT"
+                      className="h-11 w-full rounded-xl border border-brand-mid/60 bg-white px-3 text-sm font-black text-brand-deep font-mono outline-none focus:border-brand focus:ring-2 focus:ring-brand/10 disabled:bg-brand-light/50 disabled:text-brand-deep/35 transition"
+                    />
+                    <p className="mt-1 text-[10px] text-brand-deep/35">Auto-uppercase. Spaces become underscores.</p>
+                  </div>
+
+                  {/* Theme Color */}
+                  <div>
+                    <label className="mb-1.5 block text-xs font-extrabold uppercase tracking-wide text-brand-deep/60">Theme Color</label>
+                    <ColorPicker value={form.colorHex || '#7C3AED'} onChange={v => field('colorHex', v)} />
                   </div>
                 </div>
-              </div>
+              </section>
 
-              <div>
-                <label className="mb-1 block text-xs font-extrabold uppercase tracking-wide text-brand-deep/60">Name (English) *</label>
-                <input required maxLength={150} value={form.nameEn || ''} onChange={e => field('nameEn', e.target.value)} placeholder="Solo Student" className="h-10 w-full rounded-xl border border-brand-mid/60 bg-white/80 px-3 text-sm font-semibold text-brand-deep outline-none focus:border-brand" />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-extrabold uppercase tracking-wide text-brand-deep/60">Name (Bengali) *</label>
-                <input required maxLength={300} value={form.nameBn || ''} onChange={e => field('nameBn', e.target.value)} placeholder="একক শিক্ষার্থী" className="h-10 w-full rounded-xl border border-brand-mid/60 bg-white/80 px-3 text-sm font-semibold text-brand-deep outline-none focus:border-brand" />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-extrabold uppercase tracking-wide text-brand-deep/60">Short Details (English)</label>
-                <textarea rows={2} value={form.shortDetailsEn || ''} onChange={e => field('shortDetailsEn', e.target.value)} placeholder="Tight budget, survival mode — one person" className="w-full rounded-xl border border-brand-mid/60 bg-white/80 px-3 py-2 text-sm font-semibold text-brand-deep outline-none focus:border-brand resize-none" />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-extrabold uppercase tracking-wide text-brand-deep/60">Short Details (Bengali)</label>
-                <textarea rows={2} value={form.shortDetailsBn || ''} onChange={e => field('shortDetailsBn', e.target.value)} className="w-full rounded-xl border border-brand-mid/60 bg-white/80 px-3 py-2 text-sm font-semibold text-brand-deep outline-none focus:border-brand resize-none" />
-              </div>
+              {/* ── ICON ── */}
+              <section>
+                <p className="mb-3 text-[10px] font-extrabold uppercase tracking-[0.2em] text-brand-deep/40">Icon</p>
+                <div className="rounded-2xl border border-brand-mid/40 bg-brand-light/30 p-4 space-y-3">
+                  <div className="flex items-center gap-4">
+                    {/* Live icon preview */}
+                    <div
+                      className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl shadow-md"
+                      style={{ background: `linear-gradient(135deg, ${previewColor} 0%, ${previewColor}99 100%)` }}
+                    >
+                      {uploadingIcon ? (
+                        <Loader2 size={22} className="animate-spin text-white/80" />
+                      ) : (
+                        <img
+                          src={previewIcon}
+                          alt="Icon preview"
+                          className="h-10 w-10 object-contain"
+                          onError={e => { e.currentTarget.src = DEFAULT_PROFILE_ICON }}
+                        />
+                      )}
+                    </div>
 
-              <p className="text-xs font-extrabold uppercase tracking-wide text-brand-deep/40 -mb-2">Monthly Budget Range (NZD)</p>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="mb-1 block text-xs font-semibold text-brand-deep/60">Min/month</label>
-                  <input type="number" min={0} value={form.monthlyBudgetRangeMinNzd || ''} onChange={e => field('monthlyBudgetRangeMinNzd', e.target.value)} placeholder="1200" className="h-10 w-full rounded-xl border border-brand-mid/60 bg-white/80 px-3 text-sm font-bold text-brand-deep outline-none focus:border-brand" />
+                    <div className="flex-1 space-y-2">
+                      {/* Upload from file */}
+                      <div>
+                        <p className="mb-1.5 text-xs font-extrabold uppercase tracking-wide text-brand-deep/60">
+                          Upload file <span className="normal-case font-semibold text-brand-deep/35">— SVG, PNG, JPG, WebP, ICO (max 5 MB)</span>
+                        </p>
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          accept="image/svg+xml,image/png,image/jpeg,image/webp,image/x-icon,image/gif"
+                          className="hidden"
+                          onChange={handleIconFileChange}
+                        />
+                        <button
+                          type="button"
+                          disabled={uploadingIcon}
+                          onClick={() => fileInputRef.current?.click()}
+                          className="inline-flex h-9 items-center gap-2 rounded-xl border border-brand-mid bg-white px-4 text-xs font-extrabold text-brand hover:bg-brand-light disabled:opacity-50 transition-colors shadow-sm"
+                        >
+                          {uploadingIcon ? (
+                            <><Loader2 size={13} className="animate-spin" /> Uploading…</>
+                          ) : (
+                            <><Plus size={13} /> Choose file</>
+                          )}
+                        </button>
+                        {uploadError && (
+                          <p className="mt-1 text-[10px] font-semibold text-red-600">{uploadError}</p>
+                        )}
+                      </div>
+
+                      {/* OR: Paste public URL */}
+                      <div>
+                        <p className="mb-1.5 text-xs font-extrabold uppercase tracking-wide text-brand-deep/60">
+                          Or paste public URL
+                        </p>
+                        <input
+                          type="url"
+                          maxLength={1000}
+                          value={form.iconSvgUrl || ''}
+                          onChange={e => { field('iconSvgUrl', e.target.value); setUploadError('') }}
+                          placeholder="https://example.com/icon.svg"
+                          className="h-9 w-full rounded-xl border border-brand-mid/60 bg-white px-3 text-xs font-semibold text-brand-deep outline-none focus:border-brand focus:ring-2 focus:ring-brand/10 transition"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {form.iconSvgUrl && (
+                    <div className="flex items-center justify-between rounded-xl border border-brand-mid/40 bg-white px-3 py-2">
+                      <p className="truncate text-[10px] font-semibold text-brand-deep/50 mr-2">{form.iconSvgUrl}</p>
+                      <button
+                        type="button"
+                        onClick={() => { field('iconSvgUrl', ''); setUploadError('') }}
+                        className="shrink-0 rounded-full p-1 text-brand-deep/40 hover:bg-red-50 hover:text-red-500 transition-colors"
+                        title="Remove icon"
+                      >
+                        <X size={12} />
+                      </button>
+                    </div>
+                  )}
+                  {!form.iconSvgUrl && (
+                    <p className="text-[10px] text-brand-deep/35 leading-relaxed">
+                      No icon set — the default person silhouette will be used on the client.
+                    </p>
+                  )}
                 </div>
-                <div>
-                  <label className="mb-1 block text-xs font-semibold text-brand-deep/60">Max/month</label>
-                  <input type="number" min={0} value={form.monthlyBudgetRangeMaxNzd || ''} onChange={e => field('monthlyBudgetRangeMaxNzd', e.target.value)} placeholder="1800" className="h-10 w-full rounded-xl border border-brand-mid/60 bg-white/80 px-3 text-sm font-bold text-brand-deep outline-none focus:border-brand" />
-                </div>
-              </div>
+              </section>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="mb-1 block text-xs font-extrabold uppercase tracking-wide text-brand-deep/60">People count</label>
-                  <input type="number" min={1} value={form.defaultPersonCount || 1} onChange={e => field('defaultPersonCount', parseInt(e.target.value) || 1)} className="h-10 w-full rounded-xl border border-brand-mid/60 bg-white/80 px-3 text-sm font-bold text-brand-deep outline-none focus:border-brand" />
+              {/* ── CONTENT ── */}
+              <section>
+                <p className="mb-3 text-[10px] font-extrabold uppercase tracking-[0.2em] text-brand-deep/40">Content</p>
+                <div className="grid gap-4">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div>
+                      <label className="mb-1.5 block text-xs font-extrabold uppercase tracking-wide text-brand-deep/60">Name (English) <span className="text-red-500">*</span></label>
+                      <input
+                        required maxLength={150}
+                        value={form.nameEn || ''}
+                        onChange={e => field('nameEn', e.target.value)}
+                        placeholder="Solo Student"
+                        className="h-11 w-full rounded-xl border border-brand-mid/60 bg-white px-3 text-sm font-semibold text-brand-deep outline-none focus:border-brand focus:ring-2 focus:ring-brand/10 transition"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1.5 block text-xs font-extrabold uppercase tracking-wide text-brand-deep/60">Name (Bengali) <span className="text-red-500">*</span></label>
+                      <input
+                        required maxLength={300}
+                        value={form.nameBn || ''}
+                        onChange={e => field('nameBn', e.target.value)}
+                        placeholder="একক শিক্ষার্থী"
+                        className="h-11 w-full rounded-xl border border-brand-mid/60 bg-white px-3 text-sm font-semibold text-brand-deep outline-none focus:border-brand focus:ring-2 focus:ring-brand/10 transition"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-xs font-extrabold uppercase tracking-wide text-brand-deep/60">Short Details (English)</label>
+                    <textarea
+                      rows={2}
+                      value={form.shortDetailsEn || ''}
+                      onChange={e => field('shortDetailsEn', e.target.value)}
+                      placeholder="Tight budget, survival mode — one person"
+                      className="w-full rounded-xl border border-brand-mid/60 bg-white px-3 py-2.5 text-sm font-semibold text-brand-deep outline-none focus:border-brand focus:ring-2 focus:ring-brand/10 resize-none transition"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-xs font-extrabold uppercase tracking-wide text-brand-deep/60">Short Details (Bengali)</label>
+                    <textarea
+                      rows={2}
+                      value={form.shortDetailsBn || ''}
+                      onChange={e => field('shortDetailsBn', e.target.value)}
+                      placeholder="টাইট বাজেট, একা বেঁচে থাকার পরিকল্পনা"
+                      className="w-full rounded-xl border border-brand-mid/60 bg-white px-3 py-2.5 text-sm font-semibold text-brand-deep outline-none focus:border-brand focus:ring-2 focus:ring-brand/10 resize-none transition"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="mb-1 block text-xs font-extrabold uppercase tracking-wide text-brand-deep/60">Display Order</label>
-                  <input type="number" min={1} value={form.displayOrder || 1} onChange={e => field('displayOrder', parseInt(e.target.value) || 1)} className="h-10 w-full rounded-xl border border-brand-mid/60 bg-white/80 px-3 text-sm font-bold text-brand-deep outline-none focus:border-brand" />
+              </section>
+
+              {/* ── SETTINGS ── */}
+              <section>
+                <p className="mb-3 text-[10px] font-extrabold uppercase tracking-[0.2em] text-brand-deep/40">Settings & Budget</p>
+                <div className="grid gap-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="mb-1.5 block text-xs font-extrabold uppercase tracking-wide text-brand-deep/60">Min NZD/month</label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-brand-deep/40">NZ$</span>
+                        <input
+                          type="number" min={0}
+                          value={form.monthlyBudgetRangeMinNzd || ''}
+                          onChange={e => field('monthlyBudgetRangeMinNzd', e.target.value)}
+                          placeholder="1200"
+                          className="h-11 w-full rounded-xl border border-brand-mid/60 bg-white pl-9 pr-3 text-sm font-bold text-brand-deep outline-none focus:border-brand focus:ring-2 focus:ring-brand/10 transition"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="mb-1.5 block text-xs font-extrabold uppercase tracking-wide text-brand-deep/60">Max NZD/month</label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-brand-deep/40">NZ$</span>
+                        <input
+                          type="number" min={0}
+                          value={form.monthlyBudgetRangeMaxNzd || ''}
+                          onChange={e => field('monthlyBudgetRangeMaxNzd', e.target.value)}
+                          placeholder="1800"
+                          className="h-11 w-full rounded-xl border border-brand-mid/60 bg-white pl-9 pr-3 text-sm font-bold text-brand-deep outline-none focus:border-brand focus:ring-2 focus:ring-brand/10 transition"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="mb-1.5 block text-xs font-extrabold uppercase tracking-wide text-brand-deep/60">People covered</label>
+                      <input
+                        type="number" min={1}
+                        value={form.defaultPersonCount || 1}
+                        onChange={e => field('defaultPersonCount', parseInt(e.target.value) || 1)}
+                        className="h-11 w-full rounded-xl border border-brand-mid/60 bg-white px-3 text-sm font-bold text-brand-deep outline-none focus:border-brand focus:ring-2 focus:ring-brand/10 transition"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1.5 block text-xs font-extrabold uppercase tracking-wide text-brand-deep/60">Display order</label>
+                      <input
+                        type="number" min={1}
+                        value={form.displayOrder || 1}
+                        onChange={e => field('displayOrder', parseInt(e.target.value) || 1)}
+                        className="h-11 w-full rounded-xl border border-brand-mid/60 bg-white px-3 text-sm font-bold text-brand-deep outline-none focus:border-brand focus:ring-2 focus:ring-brand/10 transition"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-xs font-extrabold uppercase tracking-wide text-brand-deep/60">
+                      Tags
+                      <span className="ml-1.5 normal-case font-semibold text-brand-deep/35">— type then press comma or Enter to add</span>
+                    </label>
+                    {/* Pill container + input field together */}
+                    <div
+                      className="flex min-h-[44px] flex-wrap items-center gap-1.5 rounded-xl border border-brand-mid/60 bg-white px-3 py-2 focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/10 transition cursor-text"
+                      onClick={() => document.getElementById('tag-input-field')?.focus()}
+                    >
+                      {currentTags.map(tag => (
+                        <span
+                          key={tag}
+                          className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-bold"
+                          style={{ backgroundColor: `${previewColor}18`, color: previewColor }}
+                        >
+                          {tag}
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); removeTag(tag) }}
+                            className="ml-0.5 rounded-full hover:opacity-60 transition-opacity"
+                            aria-label={`Remove ${tag}`}
+                          >
+                            <X size={10} />
+                          </button>
+                        </span>
+                      ))}
+                      <input
+                        id="tag-input-field"
+                        type="text"
+                        value={tagInput}
+                        onChange={handleTagChange}
+                        onKeyDown={handleTagKeyDown}
+                        onBlur={() => commitTag(tagInput)}
+                        placeholder={currentTags.length === 0 ? 'student, solo, budget…' : ''}
+                        className="min-w-[120px] flex-1 bg-transparent text-sm font-semibold text-brand-deep outline-none placeholder:text-brand-deep/30"
+                      />
+                    </div>
+                    <p className="mt-1 text-[10px] text-brand-deep/35">Press comma, Enter, or click away to add a tag. Backspace removes the last tag.</p>
+                  </div>
                 </div>
-              </div>
+              </section>
+            </form>
 
-              <div>
-                <label className="mb-1 block text-xs font-extrabold uppercase tracking-wide text-brand-deep/60">Tags (comma-separated)</label>
-                <input
-                  value={tagsString}
-                  onChange={e => handleTagsChange(e.target.value)}
-                  placeholder="student, solo, budget"
-                  className="h-10 w-full rounded-xl border border-brand-mid/60 bg-white/80 px-3 text-sm font-semibold text-brand-deep outline-none focus:border-brand"
-                />
-              </div>
-
-              <div className="flex items-center justify-end gap-3 pt-2">
-                <button type="button" onClick={onCloseModal} className="h-10 px-5 rounded-full border border-brand-mid text-sm font-extrabold text-brand-deep hover:bg-brand-light transition-colors">Cancel</button>
-                <button type="submit" disabled={submitting} className="inline-flex h-10 items-center gap-2 rounded-full bg-brand px-5 text-sm font-extrabold text-white hover:bg-brand-deep disabled:opacity-60 transition-colors">
+            {/* Modal Footer */}
+            <div className="shrink-0 flex items-center justify-between gap-3 border-t border-brand-mid/30 px-6 py-4">
+              <p className="text-[11px] text-brand-deep/35 hidden sm:block">
+                {modal.mode === 'add' ? 'Profile will be active immediately after creation.' : 'Changes take effect immediately on the client.'}
+              </p>
+              <div className="flex items-center gap-3 ml-auto">
+                <button
+                  type="button"
+                  onClick={onCloseModal}
+                  className="h-10 px-5 rounded-full border border-brand-mid text-sm font-extrabold text-brand-deep hover:bg-brand-light transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  form="profile-form-inner"
+                  onClick={onSubmit}
+                  disabled={submitting}
+                  className="inline-flex h-10 items-center gap-2 rounded-full bg-brand px-6 text-sm font-extrabold text-white hover:bg-brand-deep disabled:opacity-60 transition-colors shadow-[0_4px_14px_rgba(0,149,161,0.25)]"
+                >
                   {submitting ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} />}
                   {modal.mode === 'add' ? 'Create profile' : 'Save changes'}
                 </button>
               </div>
-            </form>
+            </div>
           </div>
         </div>
       )}
 
       {/* Delete Confirmation */}
       {deleteConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <div className="w-full max-w-sm rounded-3xl border border-white/70 bg-white p-6 shadow-[0_32px_80px_rgba(0,89,96,0.18)]">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-red-50 text-red-500"><Trash2 size={22} /></div>
-            <h3 className="mt-4 font-serif text-lg font-bold text-brand-deep">Delete profile?</h3>
-            <p className="mt-2 text-sm font-semibold text-brand-deep/60">
-              This is permanent and will fail if master plans are linked to this profile.
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="w-full max-w-sm rounded-3xl border border-white/70 bg-white p-6 shadow-[0_32px_80px_rgba(0,89,96,0.22)]">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-red-50 text-red-500">
+              <Trash2 size={22} />
+            </div>
+            <h3 className="mt-4 font-serif text-lg font-bold text-brand-deep">Delete this profile?</h3>
+            <p className="mt-2 text-sm font-semibold text-brand-deep/60 leading-relaxed">
+              This is permanent. The delete will be blocked if any master plans are linked to this profile.
             </p>
             <div className="mt-5 flex items-center gap-3">
-              <button onClick={onCancelDelete} className="flex-1 h-10 rounded-full border border-brand-mid text-sm font-extrabold text-brand-deep hover:bg-brand-light">Cancel</button>
-              <button onClick={() => onConfirmDelete(deleteConfirm)} className="flex-1 h-10 rounded-full bg-red-500 text-sm font-extrabold text-white hover:bg-red-600">Delete</button>
+              <button
+                onClick={onCancelDelete}
+                className="flex-1 h-10 rounded-full border border-brand-mid text-sm font-extrabold text-brand-deep hover:bg-brand-light transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => onConfirmDelete(deleteConfirm)}
+                className="flex-1 h-10 rounded-full bg-red-500 text-sm font-extrabold text-white hover:bg-red-600 transition-colors"
+              >
+                Delete
+              </button>
             </div>
           </div>
         </div>
@@ -2322,6 +2969,9 @@ function UsersPanel({
   error,
 }) {
   const isAdmins = mode === 'admins'
+  const [usersPage, setUsersPage] = useState(0)
+  const USERS_PAGE_SIZE = 20
+  const pagedUsers = users.slice(usersPage * USERS_PAGE_SIZE, (usersPage + 1) * USERS_PAGE_SIZE)
 
   return (
     <div>
@@ -2415,7 +3065,7 @@ function UsersPanel({
                 </td>
               </tr>
             )}
-            {!loading && users.map(user => (
+            {!loading && pagedUsers.map(user => (
               <tr key={user.id}>
                 <td className="px-4 py-4">
                   <p className="font-extrabold text-brand-deep">{user.name}</p>
@@ -2439,6 +3089,15 @@ function UsersPanel({
           </tbody>
         </table>
       </div>
+      {!loading && (
+        <PaginationBar
+          rows={users}
+          page={usersPage}
+          pageSize={USERS_PAGE_SIZE}
+          onPageChange={setUsersPage}
+          label={isAdmins ? 'admins' : 'users'}
+        />
+      )}
     </div>
   )
 }

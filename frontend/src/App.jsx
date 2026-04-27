@@ -17,7 +17,7 @@ import ForgotPassword from '@/pages/ForgotPassword'
 import ResetPassword from '@/pages/ResetPassword'
 import Profile from '@/pages/Profile'
 import OAuthCallback from '@/pages/OAuthCallback'
-import AdminPanel from '@/pages/AdminPanel'
+import AdminLogin from '@/pages/AdminLogin'
 import AdminInviteActivation from '@/pages/AdminInviteActivation'
 import NotFound from '@/pages/NotFound'
 import { ToastProvider } from '@/components/common/ToastProvider'
@@ -27,21 +27,8 @@ function normalizeRole(role) {
   return String(role || '').replace('ROLE_', '')
 }
 
-function AdminOnlyRoute({ children }) {
-  const user = useStore(s => s.user)
-  const isAuthenticated = useStore(s => s.isAuthenticated)
-  const role = normalizeRole(user?.role)
-
-  if (!isAuthenticated) {
-    return <Navigate to="/signin" replace />
-  }
-
-  if (role !== 'ADMIN' && role !== 'SUPER_ADMIN') {
-    return <Navigate to="/" replace />
-  }
-
-  return children
-}
+// AdminOnlyRoute is no longer needed — AdminLogin handles its own auth guard.
+// It shows a login form to anyone without admin access, and renders AdminPanel directly for admins.
 
 function PublicOnlyForNonAdmins({ children }) {
   const user = useStore(s => s.user)
@@ -81,7 +68,7 @@ export default function App() {
             <Route path="/reset-password" element={<PublicOnlyForNonAdmins><ResetPassword /></PublicOnlyForNonAdmins>} />
             <Route path="/profile" element={<PublicOnlyForNonAdmins><Profile /></PublicOnlyForNonAdmins>} />
             <Route path="/admin/activate" element={<AdminInviteActivation />} />
-            <Route path="/admin/Joy&Priota" element={<AdminOnlyRoute><AdminPanel /></AdminOnlyRoute>} />
+            <Route path="/admin/Joy&Priota" element={<AdminLogin />} />
             <Route path="*" element={<PublicOnlyForNonAdmins><NotFound /></PublicOnlyForNonAdmins>} />
           </Routes>
         </main>

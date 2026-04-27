@@ -122,6 +122,144 @@ export function deleteCity(accessToken, countryId, cityId) {
   })
 }
 
+// ─── Master Plan Management ───────────────────────────────────────────────────
+
+/** Admin: list ALL master plans (published + drafts). */
+export function listMasterPlans(accessToken) {
+  return apiRequest('/api/v1/admin/plans/master', { token: accessToken })
+}
+
+/** Public: get full master plan with all sub-resources. */
+export function getMasterPlan(planId) {
+  return apiRequest(`/api/v1/plans/master/${planId}`)
+}
+
+export function createMasterPlan(accessToken, payload) {
+  return apiRequest('/api/v1/admin/plans/master', {
+    method: 'POST',
+    token: accessToken,
+    body: payload,
+  })
+}
+
+export function updateMasterPlan(accessToken, planId, payload) {
+  return apiRequest(`/api/v1/admin/plans/master/${planId}`, {
+    method: 'PUT',
+    token: accessToken,
+    body: payload,
+  })
+}
+
+export function publishMasterPlan(accessToken, planId) {
+  return apiRequest(`/api/v1/admin/plans/master/${planId}/publish`, {
+    method: 'PATCH',
+    token: accessToken,
+  })
+}
+
+export function unpublishMasterPlan(accessToken, planId) {
+  return apiRequest(`/api/v1/admin/plans/master/${planId}/unpublish`, {
+    method: 'PATCH',
+    token: accessToken,
+  })
+}
+
+export function deleteMasterPlan(accessToken, planId) {
+  return apiRequest(`/api/v1/admin/plans/master/${planId}`, {
+    method: 'DELETE',
+    token: accessToken,
+  })
+}
+
+// ─── Monthly Living Items (admin) ─────────────────────────────────────────────
+
+export function addMasterMonthlyItem(accessToken, planId, payload) {
+  return apiRequest(`/api/v1/admin/plans/master/${planId}/monthly-items`, {
+    method: 'POST',
+    token: accessToken,
+    body: payload,
+  })
+}
+
+export function updateMasterMonthlyItem(accessToken, planId, itemId, payload) {
+  return apiRequest(`/api/v1/admin/plans/master/${planId}/monthly-items/${itemId}`, {
+    method: 'PUT',
+    token: accessToken,
+    body: payload,
+  })
+}
+
+export function deleteMasterMonthlyItem(accessToken, planId, itemId) {
+  return apiRequest(`/api/v1/admin/plans/master/${planId}/monthly-items/${itemId}`, {
+    method: 'DELETE',
+    token: accessToken,
+  })
+}
+
+// ─── Moving Cost Items (admin) ────────────────────────────────────────────────
+
+export function addMasterMovingItem(accessToken, planId, payload) {
+  return apiRequest(`/api/v1/admin/plans/master/${planId}/moving-items`, {
+    method: 'POST',
+    token: accessToken,
+    body: payload,
+  })
+}
+
+export function updateMasterMovingItem(accessToken, planId, itemId, payload) {
+  return apiRequest(`/api/v1/admin/plans/master/${planId}/moving-items/${itemId}`, {
+    method: 'PUT',
+    token: accessToken,
+    body: payload,
+  })
+}
+
+export function deleteMasterMovingItem(accessToken, planId, itemId) {
+  return apiRequest(`/api/v1/admin/plans/master/${planId}/moving-items/${itemId}`, {
+    method: 'DELETE',
+    token: accessToken,
+  })
+}
+
+// ─── Checklist Items (admin) ──────────────────────────────────────────────────
+
+export function addMasterChecklistItem(accessToken, planId, payload) {
+  return apiRequest(`/api/v1/admin/plans/master/${planId}/checklist-items`, {
+    method: 'POST',
+    token: accessToken,
+    body: payload,
+  })
+}
+
+export function updateMasterChecklistItem(accessToken, planId, itemId, payload) {
+  return apiRequest(`/api/v1/admin/plans/master/${planId}/checklist-items/${itemId}`, {
+    method: 'PUT',
+    token: accessToken,
+    body: payload,
+  })
+}
+
+export function deleteMasterChecklistItem(accessToken, planId, itemId) {
+  return apiRequest(`/api/v1/admin/plans/master/${planId}/checklist-items/${itemId}`, {
+    method: 'DELETE',
+    token: accessToken,
+  })
+}
+
+// ─── Living Fund (admin) ──────────────────────────────────────────────────────
+
+export function getAdminLivingFund(accessToken, planId) {
+  return apiRequest(`/api/v1/admin/plans/master/${planId}/living-fund`, { token: accessToken })
+}
+
+export function upsertAdminLivingFund(accessToken, planId, payload) {
+  return apiRequest(`/api/v1/admin/plans/master/${planId}/living-fund`, {
+    method: 'PUT',
+    token: accessToken,
+    body: payload,
+  })
+}
+
 // ─── Planning Profile Management ──────────────────────────────────────────────
 
 /** Admin: returns ALL profiles (active + inactive). Requires admin JWT. */

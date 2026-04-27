@@ -7,6 +7,7 @@ import Home from '@/pages/Home'
 import BudgetPlanner from '@/pages/BudgetPlanner'
 import Dashboard from '@/pages/Dashboard'
 import Guide from '@/pages/Guide'
+import ArticleDetail from '@/pages/ArticleDetail'
 import Checklist from '@/pages/Checklist'
 import CityCompare from '@/pages/CityCompare'
 import JobGuide from '@/pages/JobGuide'
@@ -56,6 +57,7 @@ export default function App() {
             <Route path="/plan"      element={<PublicOnlyForNonAdmins><BudgetPlanner /></PublicOnlyForNonAdmins>} />
             <Route path="/dashboard" element={<PublicOnlyForNonAdmins><Dashboard /></PublicOnlyForNonAdmins>} />
             <Route path="/guide"     element={<PublicOnlyForNonAdmins><Guide /></PublicOnlyForNonAdmins>} />
+            <Route path="/guide/:id" element={<PublicOnlyForNonAdmins><ArticleDetail /></PublicOnlyForNonAdmins>} />
             <Route path="/essentials" element={<PublicOnlyForNonAdmins><Guide /></PublicOnlyForNonAdmins>} />
             <Route path="/checklist" element={<PublicOnlyForNonAdmins><Checklist /></PublicOnlyForNonAdmins>} />
             <Route path="/compare" element={<PublicOnlyForNonAdmins><CityCompare /></PublicOnlyForNonAdmins>} />

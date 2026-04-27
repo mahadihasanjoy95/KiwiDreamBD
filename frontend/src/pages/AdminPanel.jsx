@@ -3,10 +3,16 @@ import { useTranslation } from 'react-i18next'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import {
   Archive,
+  ArrowLeft,
   BadgeCheck,
   BookOpenText,
   Building2,
   Check,
+  ChevronDown,
+  ChevronRight,
+  ClipboardList,
+  DollarSign,
+  Eye,
   FilePlus2,
   Globe2,
   KeyRound,
@@ -19,11 +25,13 @@ import {
   Newspaper,
   Pencil,
   Plus,
+  RefreshCw,
   Save,
   Search,
   ShieldAlert,
   ShieldCheck,
   Trash2,
+  TrendingUp,
   UserCog,
   UserCircle2,
   Users,
@@ -36,48 +44,17 @@ import {
   listCountries, createCountry, updateCountry, toggleCountryActive, deleteCountry,
   listAllCities, listCitiesByCountry, createCity, updateCity, toggleCityActive, deleteCity,
   listProfiles, createProfile, updateProfile, toggleProfileActive, deleteProfile,
+  listMasterPlans, getMasterPlan, createMasterPlan, updateMasterPlan,
+  publishMasterPlan, unpublishMasterPlan, deleteMasterPlan,
+  addMasterMonthlyItem, updateMasterMonthlyItem, deleteMasterMonthlyItem,
+  addMasterMovingItem, updateMasterMovingItem, deleteMasterMovingItem,
+  addMasterChecklistItem, updateMasterChecklistItem, deleteMasterChecklistItem,
+  getAdminLivingFund, upsertAdminLivingFund,
 } from '@/api/admin'
 import useStore from '@/store/useStore'
 import { cn } from '@/utils/cn'
 
-const INITIAL_MASTER_PLANS = [
-  {
-    id: 'mp-wlg-student',
-    title: 'Wellington Student Plan',
-    country: 'New Zealand',
-    city: 'Wellington',
-    profile: 'Student',
-    monthlyCost: 1640,
-    movingCost: 4850,
-    checklistItems: 14,
-    status: 'PUBLISHED',
-    updatedAt: '2026-04-12',
-  },
-  {
-    id: 'mp-akl-couple',
-    title: 'Auckland Student Couple',
-    country: 'New Zealand',
-    city: 'Auckland',
-    profile: 'Student with spouse',
-    monthlyCost: 3180,
-    movingCost: 7150,
-    checklistItems: 16,
-    status: 'DRAFT',
-    updatedAt: '2026-04-18',
-  },
-  {
-    id: 'mp-chc-worker',
-    title: 'Christchurch Worker Starter',
-    country: 'New Zealand',
-    city: 'Christchurch',
-    profile: 'Worker',
-    monthlyCost: 2290,
-    movingCost: 5450,
-    checklistItems: 12,
-    status: 'PUBLISHED',
-    updatedAt: '2026-04-20',
-  },
-]
+const CHECKLIST_CATEGORIES = ['DOCUMENTS', 'FINANCIAL', 'ACCOMMODATION', 'COMMUNICATION', 'HEALTH', 'CUSTOM']
 
 const INITIAL_CONTENT = [
   { id: 'ird-guide', title: 'IRD number guide', type: 'Essentials', status: 'PUBLISHED', updatedAt: '2026-04-14' },
@@ -205,7 +182,7 @@ function StatusBadge({ status }) {
             : 'bg-slate-100 text-slate-600 ring-1 ring-slate-200'
       )}
     >
-      {t(`admin.status.${status.toLowerCase()}`)}
+      {t(`admin.status.${(status || 'draft').toLowerCase()}`)}
     </span>
   )
 }
@@ -275,8 +252,19 @@ export default function AdminPanel() {
   const accessToken = useStore(s => s.accessToken)
   const [activeTab, setActiveTab] = useState('overview')
   const [search, setSearch] = useState('')
-  const [plans, setPlans] = useState(INITIAL_MASTER_PLANS)
+  // ── Master Plans ──────────────────────────────────────────────────────────
+  const [plans, setPlans] = useState([])
+  const [plansLoading, setPlansLoading] = useState(true)
+  const [plansError, setPlansError] = useState('')
+  const [planModal, setPlanModal] = useState(null)    // null | { mode: 'add'|'edit', id? }
+  const [planForm, setPlanForm] = useState({})
+  const [planSubmitting, setPlanSubmitting] = useState(false)
+  const [planFormError, setPlanFormError] = useState('')
+  const [deletePlanConfirm, setDeletePlanConfirm] = useState(null)  // planId | null
   const [contents, setContents] = useState(INITIAL_CONTENT)
+  const [contentModal, setContentModal] = useState(null)
+  const [contentForm, setContentForm] = useState({})
+  const [deleteContentConfirm, setDeleteContentConfirm] = useState(null)
   const [countries, setCountries] = useState([])
   const [countriesLoading, setCountriesLoading] = useState(true)
   const [countriesError, setCountriesError] = useState('')
@@ -390,11 +378,45 @@ export default function AdminPanel() {
     return () => { cancelled = true }
   }, [])
 
+  // ── Load master plans ─────────────────────────────────────────────────────
+  const loadMasterPlans = async () => {
+    if (!accessToken) return
+    setPlansLoading(true)
+    setPlansError('')
+    try {
+      const data = await listMasterPlans(accessToken)
+      setPlans(Array.isArray(data) ? data : [])
+    } catch (err) {
+      setPlansError(err.message || 'Failed to load master plans')
+    } finally {
+      setPlansLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    let cancelled = false
+    async function load() {
+      if (!accessToken) return
+      setPlansLoading(true)
+      setPlansError('')
+      try {
+        const data = await listMasterPlans(accessToken)
+        if (!cancelled) setPlans(Array.isArray(data) ? data : [])
+      } catch (err) {
+        if (!cancelled) setPlansError(err.message || 'Failed to load master plans')
+      } finally {
+        if (!cancelled) setPlansLoading(false)
+      }
+    }
+    load()
+    return () => { cancelled = true }
+  }, [accessToken])
+
   const applicantUsers = users.filter(user => user.role === 'APPLICANT')
   const adminUsers = users.filter(user => user.role === 'ADMIN' || user.role === 'SUPER_ADMIN')
   const activeUsers = applicantUsers.filter(user => user.status === 'ACTIVE').length
   const draftContent = contents.filter(item => item.status === 'DRAFT').length
-  const publishedPlans = plans.filter(plan => plan.status === 'PUBLISHED').length
+  const publishedPlans = plans.filter(p => p.published).length
 
   useEffect(() => {
     let cancelled = false
@@ -440,7 +462,7 @@ export default function AdminPanel() {
     const term = search.trim().toLowerCase()
     if (!term) return plans
     return plans.filter(plan =>
-      [plan.title, plan.country, plan.city, plan.profile, plan.status]
+      [plan.displayPlanName, plan.cityNameEn, plan.profileNameEn, plan.published ? 'published' : 'draft']
         .join(' ')
         .toLowerCase()
         .includes(term)
@@ -493,50 +515,103 @@ export default function AdminPanel() {
     return filterRows(templates, ['name', 'owner', 'status'])
   }, [templates, search])
 
-  const addPlan = () => {
-    const nextPlanNumber = plans.length + 1
-    setPlans(current => [
-      {
-        id: `mp-draft-${Date.now()}`,
-        title: `${t('admin.new_master_plan')} ${nextPlanNumber}`,
-        country: 'New Zealand',
-        city: 'Hamilton',
-        profile: 'Student',
-        monthlyCost: 1750,
-        movingCost: 4200,
-        checklistItems: 10,
-        status: 'DRAFT',
-        updatedAt: '2026-04-26',
-      },
-      ...current,
-    ])
+  const openAddPlan = () => {
+    setPlanForm({ countryId: '', cityId: '', planningProfileId: '', displayPlanName: '', overviewEn: '', overviewBn: '' })
+    setPlanFormError('')
+    setPlanModal({ mode: 'add' })
     setActiveTab('plans')
   }
 
-  const addContent = () => {
-    setContents(current => [
-      {
+  const openEditPlanMeta = (plan) => {
+    setPlanForm({ displayPlanName: plan.displayPlanName || '', overviewEn: plan.overviewEn || '', overviewBn: plan.overviewBn || '' })
+    setPlanFormError('')
+    setPlanModal({ mode: 'edit', id: plan.id })
+  }
+
+  const handlePlanSubmit = async (e) => {
+    e.preventDefault()
+    setPlanFormError('')
+    setPlanSubmitting(true)
+    try {
+      if (planModal.mode === 'add') {
+        const created = await createMasterPlan(accessToken, planForm)
+        setPlans(current => [created, ...current])
+      } else {
+        const { displayPlanName, overviewEn, overviewBn } = planForm
+        const updated = await updateMasterPlan(accessToken, planModal.id, { displayPlanName, overviewEn, overviewBn })
+        setPlans(current => current.map(p => p.id === planModal.id ? updated : p))
+      }
+      setPlanModal(null)
+    } catch (err) {
+      setPlanFormError(err.message || 'Failed to save plan')
+    } finally {
+      setPlanSubmitting(false)
+    }
+  }
+
+  const handleTogglePublish = async (plan) => {
+    try {
+      const updated = plan.published
+        ? await unpublishMasterPlan(accessToken, plan.id)
+        : await publishMasterPlan(accessToken, plan.id)
+      setPlans(current => current.map(p => p.id === plan.id ? updated : p))
+    } catch (err) {
+      setPlansError(err.message || 'Failed to toggle publish status')
+    }
+  }
+
+  const handleDeletePlan = async (planId) => {
+    if (!accessToken) return
+    try {
+      await deleteMasterPlan(accessToken, planId)
+      setPlans(current => current.filter(p => p.id !== planId))
+      setDeletePlanConfirm(null)
+    } catch (err) {
+      setPlansError(err.message || 'Failed to delete plan')
+      setDeletePlanConfirm(null)
+    }
+  }
+
+  const openAddContent = () => {
+    setContentForm({
+      titleEn: '', titleBn: '',
+      type: 'Essentials',
+      descriptionEn: '', descriptionBn: '',
+      contentEn: '', contentBn: '',
+      tagEn: '', tagBn: '',
+      author: '', readTimeEn: '', readTimeBn: '',
+      image: '',
+    })
+    setContentModal({ mode: 'add' })
+  }
+
+  const openEditContent = (item) => {
+    setContentForm({ ...item })
+    setContentModal({ mode: 'edit', id: item.id })
+  }
+
+  const handleContentSubmit = (e) => {
+    e.preventDefault()
+    if (contentModal.mode === 'add') {
+      const newItem = {
+        ...contentForm,
         id: `content-${Date.now()}`,
-        title: t('admin.new_article'),
-        type: 'Essentials',
+        title: contentForm.titleEn || 'New Article',
         status: 'DRAFT',
-        updatedAt: '2026-04-26',
-      },
-      ...current,
-    ])
-    setActiveTab('content')
+        updatedAt: new Date().toISOString().split('T')[0],
+      }
+      setContents(current => [newItem, ...current])
+    } else {
+      setContents(current => current.map(item =>
+        item.id === contentModal.id ? { ...item, ...contentForm, title: contentForm.titleEn || item.title, updatedAt: new Date().toISOString().split('T')[0] } : item
+      ))
+    }
+    setContentModal(null)
   }
 
-  const togglePlanStatus = (id) => {
-    setPlans(current => current.map(plan => (
-      plan.id === id
-        ? { ...plan, status: plan.status === 'PUBLISHED' ? 'DRAFT' : 'PUBLISHED', updatedAt: '2026-04-26' }
-        : plan
-    )))
-  }
-
-  const removePlan = (id) => {
-    setPlans(current => current.filter(plan => plan.id !== id))
+  const handleDeleteContent = (id) => {
+    setContents(current => current.filter(item => item.id !== id))
+    setDeleteContentConfirm(null)
   }
 
   const toggleContentStatus = (id) => {
@@ -937,7 +1012,7 @@ export default function AdminPanel() {
             <div className="flex flex-wrap gap-3">
               <button
                 type="button"
-                onClick={addContent}
+                onClick={() => { setActiveTab('content'); openAddContent(); }}
                 className="inline-flex h-12 items-center justify-center gap-2 rounded-full border border-brand-mid bg-white/76 px-5 text-sm font-extrabold text-brand-deep shadow-sm hover:border-brand"
               >
                 <BookOpenText size={17} />
@@ -945,7 +1020,7 @@ export default function AdminPanel() {
               </button>
               <button
                 type="button"
-                onClick={addPlan}
+                onClick={openAddPlan}
                 className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-brand px-5 text-sm font-extrabold text-white shadow-[0_16px_36px_rgba(0,149,161,0.22)] hover:bg-brand-deep"
               >
                 <Plus size={17} />
@@ -1121,11 +1196,29 @@ export default function AdminPanel() {
             )}
 
             {activeTab === 'plans' && (
-              <PlansPanel
+              <MasterPlansPanel
                 t={t}
                 plans={filteredPlans}
-                onToggleStatus={togglePlanStatus}
-                onRemove={removePlan}
+                loading={plansLoading}
+                error={plansError}
+                countries={countries}
+                profiles={profiles}
+                accessToken={accessToken}
+                onRefresh={loadMasterPlans}
+                modal={planModal}
+                form={planForm}
+                onFormChange={setPlanForm}
+                onSubmit={handlePlanSubmit}
+                submitting={planSubmitting}
+                formError={planFormError}
+                onCloseModal={() => setPlanModal(null)}
+                deleteConfirm={deletePlanConfirm}
+                onConfirmDelete={handleDeletePlan}
+                onCancelDelete={() => setDeletePlanConfirm(null)}
+                onAdd={openAddPlan}
+                onEditMeta={openEditPlanMeta}
+                onDelete={(id) => setDeletePlanConfirm(id)}
+                onTogglePublish={handleTogglePublish}
               />
             )}
 
@@ -1138,6 +1231,17 @@ export default function AdminPanel() {
                 t={t}
                 contents={filteredContent}
                 onToggleStatus={toggleContentStatus}
+                onAdd={openAddContent}
+                onEdit={openEditContent}
+                onDelete={(id) => setDeleteContentConfirm(id)}
+                modal={contentModal}
+                form={contentForm}
+                onFormChange={setContentForm}
+                onSubmit={handleContentSubmit}
+                onCloseModal={() => setContentModal(null)}
+                deleteConfirm={deleteContentConfirm}
+                onConfirmDelete={handleDeleteContent}
+                onCancelDelete={() => setDeleteContentConfirm(null)}
               />
             )}
 
@@ -1319,12 +1423,12 @@ function OverviewPanel({ t, plans, users, contents, countries, cities, profiles 
             ) : latestPlans.map(plan => (
               <div key={plan.id} className="flex flex-col gap-3 rounded-2xl border border-brand-mid/35 bg-brand-light/40 p-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <p className="font-extrabold text-brand-deep text-sm">{plan.title || plan.nameEn}</p>
+                  <p className="font-extrabold text-brand-deep text-sm">{plan.displayPlanName || plan.title || plan.nameEn}</p>
                   <p className="mt-0.5 text-xs font-semibold text-brand-deep/55">
-                    {[plan.city, plan.profile, plan.monthlyCost ? formatNZD(plan.monthlyCost) : null].filter(Boolean).join(' · ')}
+                    {[plan.cityName, plan.profileName, plan.monthlyTotalNzd ? formatNZD(plan.monthlyTotalNzd) : null].filter(Boolean).join(' · ')}
                   </p>
                 </div>
-                <StatusBadge status={plan.status} />
+                <StatusBadge status={plan.published ? 'PUBLISHED' : 'DRAFT'} />
               </div>
             ))}
           </div>
@@ -2673,82 +2777,1081 @@ function ProfilesPanel({
   )
 }
 
-function PlansPanel({ t, plans, onToggleStatus, onRemove }) {
+// ─── Master Plans Panel ───────────────────────────────────────────────────────
+function MasterPlansPanel({
+  t, plans, loading, error, countries, profiles, accessToken,
+  onRefresh,
+  modal, form, onFormChange, onSubmit, submitting, formError, onCloseModal,
+  deleteConfirm, onConfirmDelete, onCancelDelete,
+  onAdd, onEditMeta, onDelete, onTogglePublish,
+}) {
+  // ── Detail view state ──────────────────────────────────────────────────────
+  const [viewMode, setViewMode] = useState('list')       // 'list' | 'detail'
+  const [detailPlan, setDetailPlan] = useState(null)     // full PlanResponseDto
+  const [loadingDetail, setLoadingDetail] = useState(false)
+  const [detailError, setDetailError] = useState('')
+  const [activeDetailTab, setActiveDetailTab] = useState('monthly')
+
+  // ── Cascading city dropdown in create modal ────────────────────────────────
+  const [formCities, setFormCities] = useState([])
+  const [loadingFormCities, setLoadingFormCities] = useState(false)
+
+  useEffect(() => {
+    if (!form.countryId) { setFormCities([]); return }
+    setLoadingFormCities(true)
+    listCitiesByCountry(form.countryId)
+      .then(d => setFormCities(Array.isArray(d) ? d : []))
+      .catch(() => setFormCities([]))
+      .finally(() => setLoadingFormCities(false))
+  }, [form.countryId])
+
+  // ── Monthly item state ─────────────────────────────────────────────────────
+  const [monthlyModal, setMonthlyModal] = useState(null)
+  const [monthlyForm, setMonthlyForm] = useState({})
+  const [monthlySubmitting, setMonthlySubmitting] = useState(false)
+  const [monthlyError, setMonthlyError] = useState('')
+  const [deleteMonthlyConfirm, setDeleteMonthlyConfirm] = useState(null)
+
+  // ── Moving item state ──────────────────────────────────────────────────────
+  const [movingModal, setMovingModal] = useState(null)
+  const [movingForm, setMovingForm] = useState({})
+  const [movingSubmitting, setMovingSubmitting] = useState(false)
+  const [movingError, setMovingError] = useState('')
+  const [deleteMovingConfirm, setDeleteMovingConfirm] = useState(null)
+
+  // ── Checklist item state ───────────────────────────────────────────────────
+  const [checklistModal, setChecklistModal] = useState(null)
+  const [checklistForm, setChecklistForm] = useState({})
+  const [checklistSubmitting, setChecklistSubmitting] = useState(false)
+  const [checklistError, setChecklistError] = useState('')
+  const [deleteChecklistConfirm, setDeleteChecklistConfirm] = useState(null)
+
+  // ── Living fund state ──────────────────────────────────────────────────────
+  const [fundForm, setFundForm] = useState({})
+  const [fundSubmitting, setFundSubmitting] = useState(false)
+  const [fundError, setFundError] = useState('')
+  const [fundSaved, setFundSaved] = useState(false)
+
+  // ── Load full plan detail ──────────────────────────────────────────────────
+  const openDetail = async (plan) => {
+    setViewMode('detail')
+    setActiveDetailTab('monthly')
+    setDetailError('')
+    setLoadingDetail(true)
+    try {
+      const full = await getMasterPlan(plan.id)
+      setDetailPlan(full)
+      setFundForm({
+        minimumAmountNzd: full.livingFund?.minimumAmountNzd ?? '',
+        recommendedAmountNzd: full.livingFund?.recommendedAmountNzd ?? '',
+        explanationEn: full.livingFund?.explanationEn ?? '',
+        explanationBn: full.livingFund?.explanationBn ?? '',
+        disclaimerEn: full.livingFund?.disclaimerEn ?? '',
+        disclaimerBn: full.livingFund?.disclaimerBn ?? '',
+      })
+    } catch (err) {
+      setDetailError(err.message || 'Failed to load plan details')
+    } finally {
+      setLoadingDetail(false)
+    }
+  }
+
+  const refreshDetail = async () => {
+    if (!detailPlan) return
+    setLoadingDetail(true)
+    try {
+      const full = await getMasterPlan(detailPlan.id)
+      setDetailPlan(full)
+    } catch { /* ignore */ }
+    finally { setLoadingDetail(false) }
+  }
+
+  const backToList = () => {
+    setViewMode('list')
+    setDetailPlan(null)
+    setDetailError('')
+  }
+
+  // ── Monthly item handlers ──────────────────────────────────────────────────
+  const handleMonthlySubmit = async (e) => {
+    e.preventDefault()
+    setMonthlyError('')
+    setMonthlySubmitting(true)
+    try {
+      if (monthlyModal.mode === 'add') {
+        await addMasterMonthlyItem(accessToken, detailPlan.id, {
+          nameEn: monthlyForm.nameEn,
+          nameBn: monthlyForm.nameBn || '',
+          estimatedAmountNzd: Number(monthlyForm.estimatedAmountNzd) || 0,
+          noteEn: monthlyForm.noteEn || '',
+          noteBn: monthlyForm.noteBn || '',
+          displayOrder: Number(monthlyForm.displayOrder) || 0,
+        })
+      } else {
+        await updateMasterMonthlyItem(accessToken, detailPlan.id, monthlyModal.id, {
+          nameEn: monthlyForm.nameEn,
+          nameBn: monthlyForm.nameBn || '',
+          estimatedAmountNzd: Number(monthlyForm.estimatedAmountNzd) || 0,
+          noteEn: monthlyForm.noteEn || '',
+          noteBn: monthlyForm.noteBn || '',
+          displayOrder: Number(monthlyForm.displayOrder) || 0,
+        })
+      }
+      await refreshDetail()
+      setMonthlyModal(null)
+    } catch (err) {
+      setMonthlyError(err.message || 'Failed to save item')
+    } finally {
+      setMonthlySubmitting(false)
+    }
+  }
+
+  const handleDeleteMonthly = async (itemId) => {
+    try {
+      await deleteMasterMonthlyItem(accessToken, detailPlan.id, itemId)
+      await refreshDetail()
+      setDeleteMonthlyConfirm(null)
+    } catch (err) {
+      setMonthlyError(err.message || 'Failed to delete item')
+    }
+  }
+
+  // ── Moving item handlers ───────────────────────────────────────────────────
+  const handleMovingSubmit = async (e) => {
+    e.preventDefault()
+    setMovingError('')
+    setMovingSubmitting(true)
+    try {
+      if (movingModal.mode === 'add') {
+        await addMasterMovingItem(accessToken, detailPlan.id, {
+          itemNameEn: movingForm.itemNameEn,
+          itemNameBn: movingForm.itemNameBn || '',
+          estimatedAmountNzd: Number(movingForm.estimatedAmountNzd) || 0,
+          noteEn: movingForm.noteEn || '',
+          noteBn: movingForm.noteBn || '',
+          displayOrder: Number(movingForm.displayOrder) || 0,
+        })
+      } else {
+        await updateMasterMovingItem(accessToken, detailPlan.id, movingModal.id, {
+          itemNameEn: movingForm.itemNameEn,
+          itemNameBn: movingForm.itemNameBn || '',
+          estimatedAmountNzd: Number(movingForm.estimatedAmountNzd) || 0,
+          noteEn: movingForm.noteEn || '',
+          noteBn: movingForm.noteBn || '',
+          displayOrder: Number(movingForm.displayOrder) || 0,
+        })
+      }
+      await refreshDetail()
+      setMovingModal(null)
+    } catch (err) {
+      setMovingError(err.message || 'Failed to save item')
+    } finally {
+      setMovingSubmitting(false)
+    }
+  }
+
+  const handleDeleteMoving = async (itemId) => {
+    try {
+      await deleteMasterMovingItem(accessToken, detailPlan.id, itemId)
+      await refreshDetail()
+      setDeleteMovingConfirm(null)
+    } catch (err) {
+      setMovingError(err.message || 'Failed to delete item')
+    }
+  }
+
+  // ── Checklist item handlers ────────────────────────────────────────────────
+  const handleChecklistSubmit = async (e) => {
+    e.preventDefault()
+    setChecklistError('')
+    setChecklistSubmitting(true)
+    try {
+      if (checklistModal.mode === 'add') {
+        await addMasterChecklistItem(accessToken, detailPlan.id, {
+          category: checklistForm.category || 'DOCUMENTS',
+          itemTextEn: checklistForm.itemTextEn,
+          itemTextBn: checklistForm.itemTextBn || '',
+          quantity: Number(checklistForm.quantity) || 1,
+          noteEn: checklistForm.noteEn || '',
+          noteBn: checklistForm.noteBn || '',
+          displayOrder: Number(checklistForm.displayOrder) || 0,
+        })
+      } else {
+        await updateMasterChecklistItem(accessToken, detailPlan.id, checklistModal.id, {
+          category: checklistForm.category || 'DOCUMENTS',
+          itemTextEn: checklistForm.itemTextEn,
+          itemTextBn: checklistForm.itemTextBn || '',
+          quantity: Number(checklistForm.quantity) || 1,
+          noteEn: checklistForm.noteEn || '',
+          noteBn: checklistForm.noteBn || '',
+          displayOrder: Number(checklistForm.displayOrder) || 0,
+        })
+      }
+      await refreshDetail()
+      setChecklistModal(null)
+    } catch (err) {
+      setChecklistError(err.message || 'Failed to save item')
+    } finally {
+      setChecklistSubmitting(false)
+    }
+  }
+
+  const handleDeleteChecklist = async (itemId) => {
+    try {
+      await deleteMasterChecklistItem(accessToken, detailPlan.id, itemId)
+      await refreshDetail()
+      setDeleteChecklistConfirm(null)
+    } catch (err) {
+      setChecklistError(err.message || 'Failed to delete item')
+    }
+  }
+
+  // ── Living fund handler ────────────────────────────────────────────────────
+  const handleFundSubmit = async (e) => {
+    e.preventDefault()
+    setFundError('')
+    setFundSaved(false)
+    setFundSubmitting(true)
+    try {
+      await upsertAdminLivingFund(accessToken, detailPlan.id, {
+        minimumAmountNzd: Number(fundForm.minimumAmountNzd) || null,
+        recommendedAmountNzd: Number(fundForm.recommendedAmountNzd) || null,
+        explanationEn: fundForm.explanationEn || '',
+        explanationBn: fundForm.explanationBn || '',
+        disclaimerEn: fundForm.disclaimerEn || '',
+        disclaimerBn: fundForm.disclaimerBn || '',
+      })
+      await refreshDetail()
+      setFundSaved(true)
+      setTimeout(() => setFundSaved(false), 3000)
+    } catch (err) {
+      setFundError(err.message || 'Failed to save living fund')
+    } finally {
+      setFundSubmitting(false)
+    }
+  }
+
+  // ── Helper: name resolver ──────────────────────────────────────────────────
+  const getCityName = (plan) =>
+    plan.city?.nameEn || plan.cityNameEn || plan.cityId || '—'
+  const getProfileName = (plan) =>
+    plan.planningProfile?.nameEn || plan.profileNameEn || plan.planningProfileId || '—'
+  const getCountryName = (plan) =>
+    plan.country?.nameEn || plan.countryNameEn || '—'
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // LIST VIEW
+  // ─────────────────────────────────────────────────────────────────────────
+  if (viewMode === 'list') return (
+    <div>
+      {/* Header */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-brand/60">Plan Templates</p>
+          <h2 className="mt-2 font-serif text-2xl font-bold text-brand-deep">
+            Master Plans
+            {!loading && plans.length > 0 && (
+              <span className="ml-2 text-sm font-semibold text-brand-deep/40">
+                ({plans.length} total · {plans.filter(p => p.published).length} published)
+              </span>
+            )}
+          </h2>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={onRefresh}
+            className="inline-flex h-10 items-center gap-2 rounded-full border border-brand-mid bg-white px-4 text-sm font-bold text-brand hover:border-brand"
+          >
+            <RefreshCw size={15} />
+            Refresh
+          </button>
+          <button
+            type="button"
+            onClick={onAdd}
+            className="inline-flex h-10 items-center gap-2 rounded-full bg-brand px-4 text-sm font-extrabold text-white shadow-[0_8px_24px_rgba(0,149,161,0.22)] hover:bg-brand-deep"
+          >
+            <Plus size={16} /> Add Master Plan
+          </button>
+        </div>
+      </div>
+
+      {/* Error */}
+      {error && (
+        <div className="mt-4 flex items-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+          <ShieldAlert size={16} className="shrink-0" />{error}
+        </div>
+      )}
+
+      {/* Table */}
+      <div className="mt-5 overflow-x-auto rounded-2xl border border-brand-mid/40 bg-white">
+        {loading ? (
+          <div className="flex items-center justify-center gap-2 py-16 text-brand">
+            <Loader2 size={22} className="animate-spin" />
+            <span className="text-sm font-semibold">Loading master plans…</span>
+          </div>
+        ) : plans.length === 0 ? (
+          <div className="flex flex-col items-center gap-4 py-16 text-center">
+            <FilePlus2 size={40} className="text-brand-soft" />
+            <p className="font-serif text-lg font-bold text-brand-deep">No master plans yet</p>
+            <p className="max-w-sm text-sm font-semibold text-brand-deep/50">
+              Create a master plan template for a country + city + planning profile combination.
+            </p>
+            <button onClick={onAdd} className="mt-2 inline-flex h-10 items-center gap-2 rounded-full bg-brand px-5 text-sm font-bold text-white hover:bg-brand-deep">
+              <Plus size={16} /> Create First Plan
+            </button>
+          </div>
+        ) : (
+          <table className="min-w-[860px] w-full text-left text-sm">
+            <thead className="bg-brand-light/80 text-xs uppercase tracking-[0.14em] text-brand">
+              <tr>
+                <th className="px-4 py-3">Plan Name</th>
+                <th className="px-4 py-3">Country · City · Profile</th>
+                <th className="px-4 py-3">Monthly Total</th>
+                <th className="px-4 py-3">Moving Total</th>
+                <th className="px-4 py-3">Published</th>
+                <th className="px-4 py-3">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-brand-mid/35">
+              {plans.map(plan => (
+                <tr key={plan.id} className="hover:bg-brand-light/20 transition-colors align-middle">
+                  <td className="px-4 py-4">
+                    <p className="font-extrabold text-brand-deep">{plan.displayPlanName}</p>
+                    <p className="mt-0.5 text-xs font-semibold text-brand-deep/45">
+                      {plan.updatedAt ? new Date(plan.updatedAt).toLocaleDateString() : ''}
+                    </p>
+                  </td>
+                  <td className="px-4 py-4">
+                    <p className="font-semibold text-brand-deep/70">
+                      {getCountryName(plan)} · {getCityName(plan)}
+                    </p>
+                    <p className="mt-0.5 text-xs font-semibold text-brand-deep/45">{getProfileName(plan)}</p>
+                  </td>
+                  <td className="px-4 py-4 font-black text-brand-deep">
+                    {plan.monthlyTotalNzd != null ? formatNZD(plan.monthlyTotalNzd) : '—'}
+                  </td>
+                  <td className="px-4 py-4 font-black text-brand-deep">
+                    {plan.movingCostTotalNzd != null ? formatNZD(plan.movingCostTotalNzd) : '—'}
+                  </td>
+                  <td className="px-4 py-4">
+                    <StatusBadge status={plan.published ? 'PUBLISHED' : 'DRAFT'} />
+                  </td>
+                  <td className="px-4 py-4">
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => openDetail(plan)}
+                        title="View & Edit"
+                        className="inline-flex h-9 items-center gap-1.5 rounded-full border border-brand-mid bg-white px-3 text-xs font-bold text-brand hover:border-brand"
+                      >
+                        <Eye size={14} /> Edit
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onTogglePublish(plan)}
+                        title={plan.published ? 'Unpublish' : 'Publish'}
+                        className={cn(
+                          'inline-flex h-9 w-9 items-center justify-center rounded-full border transition-colors',
+                          plan.published
+                            ? 'border-amber-200 bg-amber-50 text-amber-600 hover:bg-amber-100'
+                            : 'border-emerald-200 bg-emerald-50 text-emerald-600 hover:bg-emerald-100'
+                        )}
+                      >
+                        {plan.published ? <Archive size={14} /> : <Check size={14} />}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onDelete(plan.id)}
+                        title="Delete"
+                        className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-red-200 bg-red-50 text-red-500 hover:bg-red-100"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {/* ── Create / Edit Plan Modal ── */}
+      {modal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <form onSubmit={onSubmit} className="flex max-h-[90vh] w-full max-w-2xl flex-col rounded-3xl bg-[#f0f9f8] shadow-2xl overflow-hidden">
+            <div className="flex items-center justify-between border-b border-brand-mid/30 px-6 py-5 bg-white">
+              <h2 className="font-serif text-xl font-bold text-brand-deep">
+                {modal.mode === 'add' ? 'Create Master Plan' : 'Edit Plan Details'}
+              </h2>
+              <button type="button" onClick={onCloseModal} className="rounded-full p-2 text-brand-deep/50 hover:bg-brand-mid/30">
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-6 space-y-5">
+              {formError && (
+                <div className="flex items-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+                  <ShieldAlert size={15} className="shrink-0" />{formError}
+                </div>
+              )}
+
+              {/* Country → City → Profile (only for create) */}
+              {modal.mode === 'add' && (
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <div>
+                    <label className="mb-1.5 block text-sm font-bold text-brand-deep/70">Country *</label>
+                    <div className="relative">
+                      <select
+                        required
+                        value={form.countryId || ''}
+                        onChange={e => onFormChange(prev => ({ ...prev, countryId: e.target.value, cityId: '' }))}
+                        className="w-full appearance-none rounded-2xl border border-brand-mid/60 bg-white px-4 py-3 pr-9 text-sm font-semibold text-brand-deep outline-none focus:border-brand"
+                      >
+                        <option value="">Select country…</option>
+                        {countries.map(c => (
+                          <option key={c.id} value={c.id}>{c.flagEmoji} {c.nameEn}</option>
+                        ))}
+                      </select>
+                      <ChevronDown size={15} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-brand-deep/40" />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="mb-1.5 block text-sm font-bold text-brand-deep/70">City *</label>
+                    <div className="relative">
+                      <select
+                        required
+                        value={form.cityId || ''}
+                        onChange={e => onFormChange(prev => ({ ...prev, cityId: e.target.value }))}
+                        disabled={!form.countryId || loadingFormCities}
+                        className="w-full appearance-none rounded-2xl border border-brand-mid/60 bg-white px-4 py-3 pr-9 text-sm font-semibold text-brand-deep outline-none focus:border-brand disabled:opacity-60"
+                      >
+                        <option value="">{loadingFormCities ? 'Loading…' : 'Select city…'}</option>
+                        {formCities.map(c => (
+                          <option key={c.id} value={c.id}>{c.nameEn}</option>
+                        ))}
+                      </select>
+                      <ChevronDown size={15} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-brand-deep/40" />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="mb-1.5 block text-sm font-bold text-brand-deep/70">Planning Profile *</label>
+                    <div className="relative">
+                      <select
+                        required
+                        value={form.planningProfileId || ''}
+                        onChange={e => onFormChange(prev => ({ ...prev, planningProfileId: e.target.value }))}
+                        className="w-full appearance-none rounded-2xl border border-brand-mid/60 bg-white px-4 py-3 pr-9 text-sm font-semibold text-brand-deep outline-none focus:border-brand"
+                      >
+                        <option value="">Select profile…</option>
+                        {profiles.map(p => (
+                          <option key={p.id} value={p.id}>{p.nameEn}</option>
+                        ))}
+                      </select>
+                      <ChevronDown size={15} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-brand-deep/40" />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Plan Name */}
+              <div>
+                <label className="mb-1.5 block text-sm font-bold text-brand-deep/70">Plan Name *</label>
+                <input
+                  required
+                  maxLength={255}
+                  value={form.displayPlanName || ''}
+                  onChange={e => onFormChange(prev => ({ ...prev, displayPlanName: e.target.value }))}
+                  placeholder="e.g. Auckland Solo Student Plan"
+                  className="w-full rounded-2xl border border-brand-mid/60 bg-white px-4 py-3 text-sm font-semibold text-brand-deep outline-none focus:border-brand"
+                />
+              </div>
+
+              {/* Overview EN / BN */}
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="mb-1.5 block text-sm font-bold text-brand-deep/70">Overview (English)</label>
+                  <textarea
+                    rows={4}
+                    value={form.overviewEn || ''}
+                    onChange={e => onFormChange(prev => ({ ...prev, overviewEn: e.target.value }))}
+                    placeholder="Brief description of this plan…"
+                    className="w-full rounded-2xl border border-brand-mid/60 bg-white px-4 py-3 text-sm font-semibold text-brand-deep outline-none focus:border-brand resize-none"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-sm font-bold text-brand-deep/70">Overview (Bengali)</label>
+                  <textarea
+                    rows={4}
+                    value={form.overviewBn || ''}
+                    onChange={e => onFormChange(prev => ({ ...prev, overviewBn: e.target.value }))}
+                    placeholder="এই পরিকল্পনার সংক্ষিপ্ত বিবরণ…"
+                    className="w-full rounded-2xl border border-brand-mid/60 bg-white px-4 py-3 text-sm font-semibold text-brand-deep outline-none focus:border-brand resize-none"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 border-t border-brand-mid/30 px-6 py-4 bg-white">
+              <button type="button" onClick={onCloseModal} className="rounded-full px-5 py-2.5 text-sm font-bold text-brand-deep hover:bg-brand-mid/30">
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={submitting}
+                className="inline-flex items-center gap-2 rounded-full bg-brand px-6 py-2.5 text-sm font-bold text-white hover:bg-brand-deep disabled:opacity-60"
+              >
+                {submitting ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+                {modal.mode === 'add' ? 'Create Plan' : 'Save Changes'}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Delete confirmation */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl text-center">
+            <Trash2 size={32} className="mx-auto mb-3 text-red-500" />
+            <h2 className="font-serif text-xl font-bold text-brand-deep">Delete Master Plan?</h2>
+            <p className="mt-2 text-sm text-brand-deep/60">
+              This permanently removes the plan and all its items. Applicant copies are unaffected.
+            </p>
+            <div className="mt-6 flex justify-center gap-3">
+              <button onClick={onCancelDelete} className="flex-1 h-10 rounded-full bg-slate-100 text-sm font-bold text-brand-deep hover:bg-slate-200">Cancel</button>
+              <button onClick={() => onConfirmDelete(deleteConfirm)} className="flex-1 h-10 rounded-full bg-red-500 text-sm font-bold text-white hover:bg-red-600">Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // DETAIL VIEW
+  // ─────────────────────────────────────────────────────────────────────────
+  const DETAIL_TABS = [
+    { id: 'monthly',   label: 'Monthly Costs',    Icon: DollarSign },
+    { id: 'moving',    label: 'Moving Costs',      Icon: TrendingUp },
+    { id: 'checklist', label: 'Checklist',         Icon: ClipboardList },
+    { id: 'fund',      label: 'Living Fund',       Icon: WalletCards },
+  ]
+
+  const plan = detailPlan
+  const monthlyItems  = plan?.monthlyItems  || []
+  const movingItems   = plan?.movingItems   || []
+  const checklistItems= plan?.checklistItems|| []
+  const monthlyTotal  = monthlyItems.reduce((s, i) => s + (Number(i.estimatedAmountNzd) || 0), 0)
+  const movingTotal   = movingItems.reduce((s, i) => s + (Number(i.estimatedAmountNzd) || 0), 0)
+
   return (
     <div>
-      <SectionTitle
-        kicker={t('admin.master_plan_kicker')}
-        title={t('admin.master_plan_title')}
-      />
-      <div className="mt-5 overflow-x-auto rounded-2xl border border-brand-mid/40 bg-white">
-        <table className="min-w-[860px] w-full text-left text-sm">
-          <thead className="bg-brand-light/80 text-xs uppercase tracking-[0.14em] text-brand">
-            <tr>
-              <th className="px-4 py-3">{t('admin.table.plan')}</th>
-              <th className="px-4 py-3">{t('admin.table.city_profile')}</th>
-              <th className="px-4 py-3">{t('admin.table.monthly')}</th>
-              <th className="px-4 py-3">{t('admin.table.moving')}</th>
-              <th className="px-4 py-3">{t('admin.table.checklist')}</th>
-              <th className="px-4 py-3">{t('admin.table.status')}</th>
-              <th className="px-4 py-3">{t('admin.table.actions')}</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-brand-mid/35">
-            {plans.map(plan => (
-              <tr key={plan.id} className="align-middle">
-                <td className="px-4 py-4">
-                  <p className="font-extrabold text-brand-deep">{plan.title}</p>
-                  <p className="mt-1 text-xs font-semibold text-brand-deep/45">{t('admin.updated_at', { date: plan.updatedAt })}</p>
-                </td>
-                <td className="px-4 py-4 font-semibold text-brand-deep/68">
-                  {plan.city} · {plan.profile}
-                </td>
-                <td className="px-4 py-4 font-black text-brand-deep">{formatNZD(plan.monthlyCost)}</td>
-                <td className="px-4 py-4 font-black text-brand-deep">{formatNZD(plan.movingCost)}</td>
-                <td className="px-4 py-4 font-semibold text-brand-deep/68">{plan.checklistItems}</td>
-                <td className="px-4 py-4"><StatusBadge status={plan.status} /></td>
-                <td className="px-4 py-4">
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => onToggleStatus(plan.id)}
-                      title={t('admin.toggle_status')}
-                      className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-brand-mid bg-white text-brand hover:border-brand"
-                    >
-                      <Archive size={16} />
-                    </button>
-                    <button
-                      type="button"
-                      title={t('admin.edit')}
-                      className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-brand-mid bg-white text-brand hover:border-brand"
-                    >
-                      <Pencil size={16} />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => onRemove(plan.id)}
-                      title={t('admin.delete')}
-                      className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-red-100 bg-red-50 text-red-600 hover:border-red-200"
-                    >
-                      <Trash2 size={16} />
+      {/* Back + breadcrumb */}
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={backToList}
+          className="inline-flex h-9 items-center gap-1.5 rounded-full border border-brand-mid bg-white px-3 text-xs font-bold text-brand hover:border-brand"
+        >
+          <ArrowLeft size={14} /> Back to Plans
+        </button>
+        <span className="text-xs text-brand-deep/40 font-semibold">
+          Master Plans <ChevronRight size={12} className="inline" /> {loadingDetail ? '…' : (plan?.displayPlanName || '—')}
+        </span>
+      </div>
+
+      {loadingDetail && (
+        <div className="flex items-center justify-center gap-2 py-16 text-brand">
+          <Loader2 size={22} className="animate-spin" />
+          <span className="text-sm font-semibold">Loading plan…</span>
+        </div>
+      )}
+
+      {detailError && (
+        <div className="mt-4 flex items-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+          <ShieldAlert size={15} className="shrink-0" />{detailError}
+        </div>
+      )}
+
+      {!loadingDetail && plan && (
+        <>
+          {/* Plan header card */}
+          <div className="mt-5 rounded-2xl border border-brand-mid/40 bg-white p-5">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h2 className="font-serif text-xl font-bold text-brand-deep">{plan.displayPlanName}</h2>
+                  <StatusBadge status={plan.published ? 'PUBLISHED' : 'DRAFT'} />
+                </div>
+                <p className="mt-1 text-sm font-semibold text-brand-deep/60">
+                  {getCountryName(plan)} · {getCityName(plan)} · {getProfileName(plan)}
+                </p>
+                {plan.overviewEn && (
+                  <p className="mt-2 text-sm text-brand-deep/55 max-w-2xl leading-relaxed">{plan.overviewEn}</p>
+                )}
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={() => onEditMeta(plan)}
+                  className="inline-flex h-9 items-center gap-1.5 rounded-full border border-brand-mid bg-white px-3 text-xs font-bold text-brand hover:border-brand"
+                >
+                  <Pencil size={13} /> Edit Details
+                </button>
+                <button
+                  onClick={() => onTogglePublish(plan)}
+                  className={cn(
+                    'inline-flex h-9 items-center gap-1.5 rounded-full border px-3 text-xs font-bold transition-colors',
+                    plan.published
+                      ? 'border-amber-200 bg-amber-50 text-amber-600 hover:bg-amber-100'
+                      : 'border-emerald-200 bg-emerald-50 text-emerald-600 hover:bg-emerald-100'
+                  )}
+                >
+                  {plan.published ? <><Archive size={13} /> Unpublish</> : <><Check size={13} /> Publish</>}
+                </button>
+              </div>
+            </div>
+
+            {/* Quick stats */}
+            <div className="mt-4 grid grid-cols-3 gap-3 border-t border-brand-mid/30 pt-4 sm:grid-cols-3">
+              <div className="text-center">
+                <p className="text-xl font-black text-brand-deep">{formatNZD(monthlyTotal)}</p>
+                <p className="text-xs font-semibold text-brand-deep/50">Monthly total</p>
+              </div>
+              <div className="text-center">
+                <p className="text-xl font-black text-brand-deep">{formatNZD(movingTotal)}</p>
+                <p className="text-xs font-semibold text-brand-deep/50">Moving total</p>
+              </div>
+              <div className="text-center">
+                <p className="text-xl font-black text-brand-deep">{checklistItems.length}</p>
+                <p className="text-xs font-semibold text-brand-deep/50">Checklist items</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Sub-resource tabs */}
+          <div className="mt-5">
+            <div className="flex gap-1 rounded-2xl border border-brand-mid/40 bg-white p-1.5">
+              {DETAIL_TABS.map(({ id, label, Icon }) => (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => setActiveDetailTab(id)}
+                  className={cn(
+                    'flex flex-1 items-center justify-center gap-1.5 rounded-xl px-3 py-2.5 text-xs font-extrabold transition-all',
+                    activeDetailTab === id
+                      ? 'bg-brand text-white shadow-sm'
+                      : 'text-brand-deep/60 hover:bg-brand-light hover:text-brand-deep'
+                  )}
+                >
+                  <Icon size={14} />
+                  <span className="hidden sm:inline">{label}</span>
+                </button>
+              ))}
+            </div>
+
+            {/* ── Monthly Items Tab ── */}
+            {activeDetailTab === 'monthly' && (
+              <PlanItemsTab
+                title="Monthly Living Costs"
+                subtitle="Recurring monthly expenses for this plan"
+                items={monthlyItems}
+                total={monthlyTotal}
+                emptyLabel="No monthly items yet"
+                onAdd={() => { setMonthlyForm({ nameEn: '', nameBn: '', estimatedAmountNzd: '', noteEn: '', noteBn: '', displayOrder: monthlyItems.length }); setMonthlyError(''); setMonthlyModal({ mode: 'add' }) }}
+                onEdit={item => { setMonthlyForm({ nameEn: item.nameEn, nameBn: item.nameBn || '', estimatedAmountNzd: item.estimatedAmountNzd, noteEn: item.noteEn || '', noteBn: item.noteBn || '', displayOrder: item.displayOrder }); setMonthlyError(''); setMonthlyModal({ mode: 'edit', id: item.id }) }}
+                onDelete={id => setDeleteMonthlyConfirm(id)}
+                renderName={item => item.nameEn}
+                renderSub={item => item.nameBn || ''}
+                error={monthlyError}
+              />
+            )}
+
+            {/* ── Moving Items Tab ── */}
+            {activeDetailTab === 'moving' && (
+              <PlanItemsTab
+                title="One-Time Moving Costs"
+                subtitle="Pre-arrival and Day 1 expenses"
+                items={movingItems}
+                total={movingTotal}
+                emptyLabel="No moving items yet"
+                onAdd={() => { setMovingForm({ itemNameEn: '', itemNameBn: '', estimatedAmountNzd: '', noteEn: '', noteBn: '', displayOrder: movingItems.length }); setMovingError(''); setMovingModal({ mode: 'add' }) }}
+                onEdit={item => { setMovingForm({ itemNameEn: item.itemNameEn, itemNameBn: item.itemNameBn || '', estimatedAmountNzd: item.estimatedAmountNzd, noteEn: item.noteEn || '', noteBn: item.noteBn || '', displayOrder: item.displayOrder }); setMovingError(''); setMovingModal({ mode: 'edit', id: item.id }) }}
+                onDelete={id => setDeleteMovingConfirm(id)}
+                renderName={item => item.itemNameEn}
+                renderSub={item => item.itemNameBn || ''}
+                error={movingError}
+              />
+            )}
+
+            {/* ── Checklist Tab ── */}
+            {activeDetailTab === 'checklist' && (
+              <div className="mt-4">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-brand/60">Pre-departure checklist</p>
+                    <h3 className="font-serif text-lg font-bold text-brand-deep">{checklistItems.length} items</h3>
+                  </div>
+                  <button
+                    onClick={() => { setChecklistForm({ category: 'DOCUMENTS', itemTextEn: '', itemTextBn: '', quantity: 1, noteEn: '', noteBn: '', displayOrder: checklistItems.length }); setChecklistError(''); setChecklistModal({ mode: 'add' }) }}
+                    className="inline-flex h-9 items-center gap-1.5 rounded-full bg-brand px-4 text-xs font-bold text-white hover:bg-brand-deep"
+                  >
+                    <Plus size={13} /> Add Item
+                  </button>
+                </div>
+                {checklistError && (
+                  <div className="mb-3 rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700">{checklistError}</div>
+                )}
+                {checklistItems.length === 0 ? (
+                  <div className="py-10 text-center text-sm font-semibold text-brand-deep/40">No checklist items yet</div>
+                ) : (
+                  <div className="space-y-2">
+                    {CHECKLIST_CATEGORIES.map(cat => {
+                      const catItems = checklistItems.filter(i => i.category === cat)
+                      if (catItems.length === 0) return null
+                      return (
+                        <div key={cat}>
+                          <p className="mb-1.5 text-[10px] font-extrabold uppercase tracking-[0.16em] text-brand-deep/40">{cat}</p>
+                          {catItems.map(item => (
+                            <div key={item.id} className="flex items-center justify-between gap-3 rounded-xl border border-brand-mid/35 bg-white/80 px-4 py-3 mb-1.5">
+                              <div className="min-w-0">
+                                <p className="font-semibold text-sm text-brand-deep truncate">{item.itemTextEn}</p>
+                                {item.itemTextBn && <p className="text-xs text-brand-deep/45 truncate">{item.itemTextBn}</p>}
+                                {item.quantity > 1 && <p className="text-xs text-brand-deep/40">Qty: {item.quantity}</p>}
+                              </div>
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                <button onClick={() => { setChecklistForm({ category: item.category, itemTextEn: item.itemTextEn, itemTextBn: item.itemTextBn || '', quantity: item.quantity, noteEn: item.noteEn || '', noteBn: item.noteBn || '', displayOrder: item.displayOrder }); setChecklistError(''); setChecklistModal({ mode: 'edit', id: item.id }) }} className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-brand-mid bg-white text-brand hover:border-brand">
+                                  <Pencil size={13} />
+                                </button>
+                                <button onClick={() => setDeleteChecklistConfirm(item.id)} className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-red-200 bg-red-50 text-red-500 hover:bg-red-100">
+                                  <Trash2 size={13} />
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── Living Fund Tab ── */}
+            {activeDetailTab === 'fund' && (
+              <div className="mt-4">
+                <div className="mb-4">
+                  <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-brand/60">Living Fund Guidance</p>
+                  <h3 className="font-serif text-lg font-bold text-brand-deep">Recommended savings guidance for applicants</h3>
+                </div>
+                {fundError && (
+                  <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700">{fundError}</div>
+                )}
+                {fundSaved && (
+                  <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 flex items-center gap-2">
+                    <Check size={15} /> Living fund saved successfully
+                  </div>
+                )}
+                <form onSubmit={handleFundSubmit} className="space-y-5 rounded-2xl border border-brand-mid/40 bg-white p-5">
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <label className="mb-1.5 block text-sm font-bold text-brand-deep/70">Minimum Amount (NZD)</label>
+                      <input
+                        type="number" min={0} step={0.01}
+                        value={fundForm.minimumAmountNzd || ''}
+                        onChange={e => setFundForm(p => ({ ...p, minimumAmountNzd: e.target.value }))}
+                        placeholder="e.g. 5000"
+                        className="w-full rounded-2xl border border-brand-mid/60 bg-white/80 px-4 py-3 text-sm font-semibold text-brand-deep outline-none focus:border-brand"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1.5 block text-sm font-bold text-brand-deep/70">Recommended Amount (NZD)</label>
+                      <input
+                        type="number" min={0} step={0.01}
+                        value={fundForm.recommendedAmountNzd || ''}
+                        onChange={e => setFundForm(p => ({ ...p, recommendedAmountNzd: e.target.value }))}
+                        placeholder="e.g. 8000"
+                        className="w-full rounded-2xl border border-brand-mid/60 bg-white/80 px-4 py-3 text-sm font-semibold text-brand-deep outline-none focus:border-brand"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <label className="mb-1.5 block text-sm font-bold text-brand-deep/70">Explanation (English)</label>
+                      <textarea rows={3} value={fundForm.explanationEn || ''} onChange={e => setFundForm(p => ({ ...p, explanationEn: e.target.value }))} placeholder="Why this amount is recommended…" className="w-full rounded-2xl border border-brand-mid/60 bg-white/80 px-4 py-3 text-sm font-semibold text-brand-deep outline-none focus:border-brand resize-none" />
+                    </div>
+                    <div>
+                      <label className="mb-1.5 block text-sm font-bold text-brand-deep/70">Explanation (Bengali)</label>
+                      <textarea rows={3} value={fundForm.explanationBn || ''} onChange={e => setFundForm(p => ({ ...p, explanationBn: e.target.value }))} className="w-full rounded-2xl border border-brand-mid/60 bg-white/80 px-4 py-3 text-sm font-semibold text-brand-deep outline-none focus:border-brand resize-none" />
+                    </div>
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <label className="mb-1.5 block text-sm font-bold text-brand-deep/70">Disclaimer (English)</label>
+                      <textarea rows={2} value={fundForm.disclaimerEn || ''} onChange={e => setFundForm(p => ({ ...p, disclaimerEn: e.target.value }))} placeholder="Exclude tuition fees from this figure…" className="w-full rounded-2xl border border-brand-mid/60 bg-white/80 px-4 py-3 text-sm font-semibold text-brand-deep outline-none focus:border-brand resize-none" />
+                    </div>
+                    <div>
+                      <label className="mb-1.5 block text-sm font-bold text-brand-deep/70">Disclaimer (Bengali)</label>
+                      <textarea rows={2} value={fundForm.disclaimerBn || ''} onChange={e => setFundForm(p => ({ ...p, disclaimerBn: e.target.value }))} className="w-full rounded-2xl border border-brand-mid/60 bg-white/80 px-4 py-3 text-sm font-semibold text-brand-deep outline-none focus:border-brand resize-none" />
+                    </div>
+                  </div>
+                  <div className="flex justify-end pt-2">
+                    <button type="submit" disabled={fundSubmitting} className="inline-flex items-center gap-2 rounded-full bg-brand px-6 py-2.5 text-sm font-bold text-white hover:bg-brand-deep disabled:opacity-60">
+                      {fundSubmitting ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
+                      Save Living Fund
                     </button>
                   </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+                </form>
+              </div>
+            )}
+          </div>
+        </>
+      )}
+
+      {/* ── Monthly Item Modal ── */}
+      {monthlyModal && (
+        <PlanItemModal
+          title={monthlyModal.mode === 'add' ? 'Add Monthly Item' : 'Edit Monthly Item'}
+          error={monthlyError}
+          submitting={monthlySubmitting}
+          onClose={() => setMonthlyModal(null)}
+          onSubmit={handleMonthlySubmit}
+        >
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className="mb-1.5 block text-sm font-bold text-brand-deep/70">Item Name (English) *</label>
+              <input required value={monthlyForm.nameEn || ''} onChange={e => setMonthlyForm(p => ({ ...p, nameEn: e.target.value }))} placeholder="e.g. Rent" className="w-full rounded-2xl border border-brand-mid/60 bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-brand" />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-bold text-brand-deep/70">Item Name (Bengali)</label>
+              <input value={monthlyForm.nameBn || ''} onChange={e => setMonthlyForm(p => ({ ...p, nameBn: e.target.value }))} placeholder="e.g. ভাড়া" className="w-full rounded-2xl border border-brand-mid/60 bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-brand" />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-bold text-brand-deep/70">Amount (NZD) *</label>
+              <input required type="number" min={0} step={0.01} value={monthlyForm.estimatedAmountNzd || ''} onChange={e => setMonthlyForm(p => ({ ...p, estimatedAmountNzd: e.target.value }))} placeholder="0.00" className="w-full rounded-2xl border border-brand-mid/60 bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-brand" />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-bold text-brand-deep/70">Display Order</label>
+              <input type="number" min={0} value={monthlyForm.displayOrder ?? ''} onChange={e => setMonthlyForm(p => ({ ...p, displayOrder: e.target.value }))} className="w-full rounded-2xl border border-brand-mid/60 bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-brand" />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-bold text-brand-deep/70">Note (English)</label>
+              <input value={monthlyForm.noteEn || ''} onChange={e => setMonthlyForm(p => ({ ...p, noteEn: e.target.value }))} placeholder="Optional note…" className="w-full rounded-2xl border border-brand-mid/60 bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-brand" />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-bold text-brand-deep/70">Note (Bengali)</label>
+              <input value={monthlyForm.noteBn || ''} onChange={e => setMonthlyForm(p => ({ ...p, noteBn: e.target.value }))} className="w-full rounded-2xl border border-brand-mid/60 bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-brand" />
+            </div>
+          </div>
+        </PlanItemModal>
+      )}
+
+      {/* ── Moving Item Modal ── */}
+      {movingModal && (
+        <PlanItemModal
+          title={movingModal.mode === 'add' ? 'Add Moving Cost Item' : 'Edit Moving Cost Item'}
+          error={movingError}
+          submitting={movingSubmitting}
+          onClose={() => setMovingModal(null)}
+          onSubmit={handleMovingSubmit}
+        >
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className="mb-1.5 block text-sm font-bold text-brand-deep/70">Item Name (English) *</label>
+              <input required value={movingForm.itemNameEn || ''} onChange={e => setMovingForm(p => ({ ...p, itemNameEn: e.target.value }))} placeholder="e.g. Flight ticket" className="w-full rounded-2xl border border-brand-mid/60 bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-brand" />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-bold text-brand-deep/70">Item Name (Bengali)</label>
+              <input value={movingForm.itemNameBn || ''} onChange={e => setMovingForm(p => ({ ...p, itemNameBn: e.target.value }))} placeholder="e.g. বিমান টিকেট" className="w-full rounded-2xl border border-brand-mid/60 bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-brand" />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-bold text-brand-deep/70">Amount (NZD) *</label>
+              <input required type="number" min={0} step={0.01} value={movingForm.estimatedAmountNzd || ''} onChange={e => setMovingForm(p => ({ ...p, estimatedAmountNzd: e.target.value }))} placeholder="0.00" className="w-full rounded-2xl border border-brand-mid/60 bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-brand" />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-bold text-brand-deep/70">Display Order</label>
+              <input type="number" min={0} value={movingForm.displayOrder ?? ''} onChange={e => setMovingForm(p => ({ ...p, displayOrder: e.target.value }))} className="w-full rounded-2xl border border-brand-mid/60 bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-brand" />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-bold text-brand-deep/70">Note (English)</label>
+              <input value={movingForm.noteEn || ''} onChange={e => setMovingForm(p => ({ ...p, noteEn: e.target.value }))} placeholder="Optional note…" className="w-full rounded-2xl border border-brand-mid/60 bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-brand" />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-bold text-brand-deep/70">Note (Bengali)</label>
+              <input value={movingForm.noteBn || ''} onChange={e => setMovingForm(p => ({ ...p, noteBn: e.target.value }))} className="w-full rounded-2xl border border-brand-mid/60 bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-brand" />
+            </div>
+          </div>
+        </PlanItemModal>
+      )}
+
+      {/* ── Checklist Item Modal ── */}
+      {checklistModal && (
+        <PlanItemModal
+          title={checklistModal.mode === 'add' ? 'Add Checklist Item' : 'Edit Checklist Item'}
+          error={checklistError}
+          submitting={checklistSubmitting}
+          onClose={() => setChecklistModal(null)}
+          onSubmit={handleChecklistSubmit}
+        >
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="sm:col-span-2">
+              <label className="mb-1.5 block text-sm font-bold text-brand-deep/70">Category *</label>
+              <div className="relative">
+                <select value={checklistForm.category || 'DOCUMENTS'} onChange={e => setChecklistForm(p => ({ ...p, category: e.target.value }))} className="w-full appearance-none rounded-2xl border border-brand-mid/60 bg-white px-4 py-3 pr-9 text-sm font-semibold text-brand-deep outline-none focus:border-brand">
+                  {CHECKLIST_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+                <ChevronDown size={15} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-brand-deep/40" />
+              </div>
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-bold text-brand-deep/70">Item Text (English) *</label>
+              <input required value={checklistForm.itemTextEn || ''} onChange={e => setChecklistForm(p => ({ ...p, itemTextEn: e.target.value }))} placeholder="e.g. Get IRD number" className="w-full rounded-2xl border border-brand-mid/60 bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-brand" />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-bold text-brand-deep/70">Item Text (Bengali)</label>
+              <input value={checklistForm.itemTextBn || ''} onChange={e => setChecklistForm(p => ({ ...p, itemTextBn: e.target.value }))} className="w-full rounded-2xl border border-brand-mid/60 bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-brand" />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-bold text-brand-deep/70">Quantity</label>
+              <input type="number" min={1} value={checklistForm.quantity || 1} onChange={e => setChecklistForm(p => ({ ...p, quantity: e.target.value }))} className="w-full rounded-2xl border border-brand-mid/60 bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-brand" />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-bold text-brand-deep/70">Display Order</label>
+              <input type="number" min={0} value={checklistForm.displayOrder ?? ''} onChange={e => setChecklistForm(p => ({ ...p, displayOrder: e.target.value }))} className="w-full rounded-2xl border border-brand-mid/60 bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-brand" />
+            </div>
+          </div>
+        </PlanItemModal>
+      )}
+
+      {/* ── Delete sub-item confirmations ── */}
+      {(deleteMonthlyConfirm || deleteMovingConfirm || deleteChecklistConfirm) && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl text-center">
+            <Trash2 size={28} className="mx-auto mb-3 text-red-500" />
+            <h2 className="font-serif text-lg font-bold text-brand-deep">Delete item?</h2>
+            <p className="mt-1 text-sm text-brand-deep/60">This action cannot be undone.</p>
+            <div className="mt-5 flex justify-center gap-3">
+              <button
+                onClick={() => { setDeleteMonthlyConfirm(null); setDeleteMovingConfirm(null); setDeleteChecklistConfirm(null) }}
+                className="flex-1 h-10 rounded-full bg-slate-100 text-sm font-bold text-brand-deep hover:bg-slate-200"
+              >Cancel</button>
+              <button
+                onClick={() => {
+                  if (deleteMonthlyConfirm)  handleDeleteMonthly(deleteMonthlyConfirm)
+                  if (deleteMovingConfirm)   handleDeleteMoving(deleteMovingConfirm)
+                  if (deleteChecklistConfirm) handleDeleteChecklist(deleteChecklistConfirm)
+                }}
+                className="flex-1 h-10 rounded-full bg-red-500 text-sm font-bold text-white hover:bg-red-600"
+              >Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
 
-function ContentPanel({ t, contents, onToggleStatus }) {
+// ── Shared sub-component: plan items tab (monthly + moving) ───────────────────
+function PlanItemsTab({ title, subtitle, items, total, emptyLabel, onAdd, onEdit, onDelete, renderName, renderSub, error }) {
+  return (
+    <div className="mt-4">
+      <div className="mb-4 flex items-start justify-between">
+        <div>
+          <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-brand/60">{subtitle}</p>
+          <h3 className="font-serif text-lg font-bold text-brand-deep">
+            {title}
+            {items.length > 0 && (
+              <span className="ml-2 text-sm font-semibold text-brand-deep/40">
+                · Total: {formatNZD(total)}
+              </span>
+            )}
+          </h3>
+        </div>
+        <button onClick={onAdd} className="inline-flex h-9 items-center gap-1.5 rounded-full bg-brand px-4 text-xs font-bold text-white hover:bg-brand-deep">
+          <Plus size={13} /> Add Item
+        </button>
+      </div>
+      {error && (
+        <div className="mb-3 rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700">{error}</div>
+      )}
+      {items.length === 0 ? (
+        <div className="py-10 text-center text-sm font-semibold text-brand-deep/40">{emptyLabel}</div>
+      ) : (
+        <div className="space-y-2">
+          {items.map((item, idx) => (
+            <div key={item.id} className="flex items-center justify-between gap-3 rounded-xl border border-brand-mid/35 bg-white/80 px-4 py-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-light text-xs font-black text-brand">{idx + 1}</span>
+                <div className="min-w-0">
+                  <p className="font-semibold text-sm text-brand-deep truncate">{renderName(item)}</p>
+                  {renderSub(item) && <p className="text-xs text-brand-deep/40 truncate">{renderSub(item)}</p>}
+                </div>
+              </div>
+              <div className="flex items-center gap-3 shrink-0">
+                <span className="font-black text-sm text-brand-deep">{formatNZD(item.estimatedAmountNzd)}</span>
+                <button onClick={() => onEdit(item)} className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-brand-mid bg-white text-brand hover:border-brand">
+                  <Pencil size={13} />
+                </button>
+                <button onClick={() => onDelete(item.id)} className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-red-200 bg-red-50 text-red-500 hover:bg-red-100">
+                  <Trash2 size={13} />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Shared sub-component: modal wrapper for plan items ────────────────────────
+function PlanItemModal({ title, error, submitting, onClose, onSubmit, children }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+      <form onSubmit={onSubmit} className="flex max-h-[90vh] w-full max-w-xl flex-col rounded-3xl bg-[#f0f9f8] shadow-2xl overflow-hidden">
+        <div className="flex items-center justify-between border-b border-brand-mid/30 px-6 py-4 bg-white">
+          <h2 className="font-serif text-lg font-bold text-brand-deep">{title}</h2>
+          <button type="button" onClick={onClose} className="rounded-full p-2 text-brand-deep/50 hover:bg-brand-mid/30">
+            <X size={18} />
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto p-6">
+          {error && (
+            <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700">{error}</div>
+          )}
+          {children}
+        </div>
+        <div className="flex items-center justify-end gap-3 border-t border-brand-mid/30 px-6 py-4 bg-white">
+          <button type="button" onClick={onClose} className="rounded-full px-5 py-2.5 text-sm font-bold text-brand-deep hover:bg-brand-mid/30">Cancel</button>
+          <button type="submit" disabled={submitting} className="inline-flex items-center gap-2 rounded-full bg-brand px-6 py-2.5 text-sm font-bold text-white hover:bg-brand-deep disabled:opacity-60">
+            {submitting ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} />}
+            Save
+          </button>
+        </div>
+      </form>
+    </div>
+  )
+}
+
+function ContentPanel({
+  t, contents, onToggleStatus, onAdd, onEdit, onDelete,
+  modal, form, onFormChange, onSubmit, onCloseModal,
+  deleteConfirm, onConfirmDelete, onCancelDelete
+}) {
   return (
     <div>
       <SectionTitle
         kicker={t('admin.content_kicker')}
         title={t('admin.content_title')}
+        action={
+          <button onClick={onAdd} className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-brand px-5 text-sm font-bold text-white hover:bg-brand-deep">
+            <Plus size={18} />
+            {t('admin.add_new_content', 'Add Content')}
+          </button>
+        }
       />
       <div className="mt-5 grid gap-3">
         {contents.map(item => (
@@ -2762,26 +3865,127 @@ function ContentPanel({ t, contents, onToggleStatus }) {
                 {item.type} · {t('admin.updated_at', { date: item.updatedAt })}
               </p>
             </div>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => onToggleStatus(item.id)}
-                className="inline-flex h-10 items-center justify-center gap-2 rounded-full border border-brand-mid bg-white px-4 text-sm font-extrabold text-brand hover:border-brand"
-              >
+            <div className="flex flex-wrap gap-2">
+              <button onClick={() => onToggleStatus(item.id)} className="inline-flex h-10 items-center justify-center gap-2 rounded-full border border-brand-mid bg-white px-4 text-sm font-extrabold text-brand hover:border-brand">
                 <Archive size={16} />
                 {t('admin.toggle_status')}
               </button>
-              <button
-                type="button"
-                className="inline-flex h-10 items-center justify-center gap-2 rounded-full bg-brand px-4 text-sm font-extrabold text-white hover:bg-brand-deep"
-              >
+              <button onClick={() => onEdit(item)} className="inline-flex h-10 items-center justify-center gap-2 rounded-full border border-brand-mid bg-white px-4 text-sm font-extrabold text-brand hover:border-brand">
                 <Pencil size={16} />
                 {t('admin.edit')}
+              </button>
+              <button onClick={() => onDelete(item.id)} className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-red-200 bg-red-50 text-red-600 hover:bg-red-100">
+                <Trash2 size={16} />
               </button>
             </div>
           </div>
         ))}
       </div>
+
+      {modal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <form onSubmit={onSubmit} className="flex max-h-[90vh] w-full max-w-4xl flex-col rounded-3xl bg-[#f0f9f8] shadow-2xl overflow-hidden">
+            <div className="flex items-center justify-between border-b border-brand-mid/30 px-6 py-5 bg-white">
+              <h2 className="font-serif text-xl font-bold text-brand-deep">
+                {modal.mode === 'add' ? t('admin.add_new_content', 'Add Content') : t('admin.edit_content', 'Edit Content')}
+              </h2>
+              <button type="button" onClick={onCloseModal} className="rounded-full p-2 text-brand-deep/50 hover:bg-brand-mid/30 hover:text-brand-deep">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-6">
+              <div className="grid gap-6 md:grid-cols-2">
+                <div className="space-y-4">
+                  <h3 className="font-bold text-brand-deep">English Content</h3>
+                  <div>
+                    <label className="mb-1 block text-sm font-bold text-brand-deep/70">Title</label>
+                    <input required value={form.titleEn || ''} onChange={e => onFormChange({ ...form, titleEn: e.target.value })} className="w-full rounded-xl border border-brand-mid/60 bg-white/80 px-4 py-2 text-sm outline-none focus:border-brand" />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-sm font-bold text-brand-deep/70">Description</label>
+                    <textarea rows={3} value={form.descriptionEn || ''} onChange={e => onFormChange({ ...form, descriptionEn: e.target.value })} className="w-full rounded-xl border border-brand-mid/60 bg-white/80 px-4 py-2 text-sm outline-none focus:border-brand" />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-sm font-bold text-brand-deep/70">Full Content (HTML)</label>
+                    <textarea rows={6} value={form.contentEn || ''} onChange={e => onFormChange({ ...form, contentEn: e.target.value })} className="w-full rounded-xl border border-brand-mid/60 bg-white/80 px-4 py-2 text-sm outline-none focus:border-brand font-mono" />
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <h3 className="font-bold text-brand-deep">Bengali Content</h3>
+                  <div>
+                    <label className="mb-1 block text-sm font-bold text-brand-deep/70">Title</label>
+                    <input value={form.titleBn || ''} onChange={e => onFormChange({ ...form, titleBn: e.target.value })} className="w-full rounded-xl border border-brand-mid/60 bg-white/80 px-4 py-2 text-sm outline-none focus:border-brand" />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-sm font-bold text-brand-deep/70">Description</label>
+                    <textarea rows={3} value={form.descriptionBn || ''} onChange={e => onFormChange({ ...form, descriptionBn: e.target.value })} className="w-full rounded-xl border border-brand-mid/60 bg-white/80 px-4 py-2 text-sm outline-none focus:border-brand" />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-sm font-bold text-brand-deep/70">Full Content (HTML)</label>
+                    <textarea rows={6} value={form.contentBn || ''} onChange={e => onFormChange({ ...form, contentBn: e.target.value })} className="w-full rounded-xl border border-brand-mid/60 bg-white/80 px-4 py-2 text-sm outline-none focus:border-brand font-mono" />
+                  </div>
+                </div>
+
+                <div className="col-span-1 md:col-span-2 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+                  <div>
+                    <label className="mb-1 block text-sm font-bold text-brand-deep/70">Type</label>
+                    <select value={form.type || 'Essentials'} onChange={e => onFormChange({ ...form, type: e.target.value })} className="w-full rounded-xl border border-brand-mid/60 bg-white/80 px-4 py-2 text-sm outline-none focus:border-brand">
+                      <option value="Essentials">Essentials</option>
+                      <option value="News">News</option>
+                      <option value="Guide">Guide</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-sm font-bold text-brand-deep/70">Image URL</label>
+                    <input value={form.image || ''} onChange={e => onFormChange({ ...form, image: e.target.value })} placeholder="https://..." className="w-full rounded-xl border border-brand-mid/60 bg-white/80 px-4 py-2 text-sm outline-none focus:border-brand" />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-sm font-bold text-brand-deep/70">Tag (EN / BN)</label>
+                    <div className="flex gap-2">
+                      <input value={form.tagEn || ''} onChange={e => onFormChange({ ...form, tagEn: e.target.value })} placeholder="EN" className="w-full rounded-xl border border-brand-mid/60 bg-white/80 px-4 py-2 text-sm outline-none focus:border-brand min-w-0" />
+                      <input value={form.tagBn || ''} onChange={e => onFormChange({ ...form, tagBn: e.target.value })} placeholder="BN" className="w-full rounded-xl border border-brand-mid/60 bg-white/80 px-4 py-2 text-sm outline-none focus:border-brand min-w-0" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-sm font-bold text-brand-deep/70">Author & Time</label>
+                    <div className="flex gap-2">
+                      <input value={form.author || ''} onChange={e => onFormChange({ ...form, author: e.target.value })} placeholder="Author" className="w-full rounded-xl border border-brand-mid/60 bg-white/80 px-4 py-2 text-sm outline-none focus:border-brand min-w-0" />
+                      <input value={form.readTimeEn || ''} onChange={e => onFormChange({ ...form, readTimeEn: e.target.value })} placeholder="5 min" className="w-full rounded-xl border border-brand-mid/60 bg-white/80 px-4 py-2 text-sm outline-none focus:border-brand min-w-0" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center justify-end gap-3 border-t border-brand-mid/30 px-6 py-4 bg-white">
+              <button type="button" onClick={onCloseModal} className="rounded-full px-5 py-2.5 text-sm font-bold text-brand-deep hover:bg-brand-mid/30">
+                {t('admin.cancel')}
+              </button>
+              <button type="submit" className="inline-flex items-center justify-center gap-2 rounded-full bg-brand px-6 py-2.5 text-sm font-bold text-white hover:bg-brand-deep">
+                <Check size={18} />
+                {t('admin.save')}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {deleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl text-center">
+            <h2 className="font-serif text-2xl font-bold text-brand-deep">Delete Content</h2>
+            <p className="mt-2 text-sm text-brand-deep/60">Are you sure you want to delete this content? This action cannot be undone.</p>
+            <div className="mt-6 flex justify-center gap-3">
+              <button type="button" onClick={onCancelDelete} className="flex-1 h-10 rounded-full px-4 text-sm font-bold text-brand-deep bg-slate-100 hover:bg-slate-200">
+                Cancel
+              </button>
+              <button onClick={() => onConfirmDelete(deleteConfirm)} className="flex-1 h-10 rounded-full bg-red-500 text-sm font-bold text-white hover:bg-red-600">
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

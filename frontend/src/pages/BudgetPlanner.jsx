@@ -2,7 +2,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router-dom'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { BookmarkPlus, CheckCircle2, Circle, Download, LockKeyhole, Minus, Plus } from 'lucide-react'
+import { BookmarkPlus, CheckCircle2, Circle, Download, LockKeyhole, Minus, Plus, Trash2 } from 'lucide-react'
 import useStore from '@/store/useStore'
 import { LifestyleCards } from '@/components/budget/LifestyleCards'
 import { CitySelector } from '@/components/budget/CitySelector'
@@ -12,7 +12,6 @@ import { LivingFund } from '@/components/budget/LivingFund'
 import { AppLoader } from '@/components/common/AppLoader'
 import { Alert } from '@/components/common/Alert'
 import { useToast } from '@/components/common/ToastProvider'
-import { CHECKLIST_GROUPS } from '@/data/checklist'
 import { listCountries, listCitiesByCountry } from '@/api/countries'
 import { listPlanningProfiles } from '@/api/profiles'
 import { getMasterPlanByCombo } from '@/api/masterPlans'
@@ -29,26 +28,33 @@ import dunedinSvg from '@/assets/svg/dunedin.svg'
 
 const TABS = ['monthly', 'moving', 'checklist', 'fund']
 
-const CHECKLIST_CATEGORY_OPTIONS = [
-  ...CHECKLIST_GROUPS,
-  { id: 'other', titleEN: 'Other', titleBN: 'অন্যান্য', items: [] },
-]
+// Canonical category metadata — keys match API ENUM values exactly
+const CATEGORY_META = {
+  DOCUMENTS:     { titleEN: 'Documents',     titleBN: 'ডকুমেন্টস' },
+  FINANCIAL:     { titleEN: 'Financial',     titleBN: 'আর্থিক' },
+  ACCOMMODATION: { titleEN: 'Accommodation', titleBN: 'আবাসন' },
+  COMMUNICATION: { titleEN: 'Communication', titleBN: 'যোগাযোগ' },
+  HEALTH:        { titleEN: 'Health',        titleBN: 'স্বাস্থ্য' },
+  CUSTOM:        { titleEN: 'Custom',        titleBN: 'কাস্টম' },
+}
+const CATEGORY_ORDER = ['DOCUMENTS', 'FINANCIAL', 'ACCOMMODATION', 'COMMUNICATION', 'HEALTH', 'CUSTOM']
+const ADD_CATEGORY_OPTIONS = CATEGORY_ORDER.map(k => ({ value: k, ...CATEGORY_META[k] }))
 
 // Keyed by API profile CODE (matches PROFILE_META in LifestyleCards)
 const LIFESTYLE_ICON_SVG = {
-  SOLO_STUDENT:    soloStudentSvg,
-  STUDENT_COUPLE:  familyPlanningSvg,
-  WORKER:          comfortableSoloSvg,
-  FAMILY:          familyPlanningSvg,
-  VISITOR:         soloStudentSvg,
+  SOLO_STUDENT:   soloStudentSvg,
+  STUDENT_COUPLE: familyPlanningSvg,
+  WORKER:         comfortableSoloSvg,
+  FAMILY:         familyPlanningSvg,
+  VISITOR:        soloStudentSvg,
 }
 
 const CITY_ICON_SVG = {
-  AUCKLAND: aucklandSvg,
-  WELLINGTON: wellingtonSvg,
+  AUCKLAND:    aucklandSvg,
+  WELLINGTON:  wellingtonSvg,
   CHRISTCHURCH: christchurchSvg,
-  HAMILTON: hamiltonSvg,
-  DUNEDIN: dunedinSvg,
+  HAMILTON:    hamiltonSvg,
+  DUNEDIN:     dunedinSvg,
 }
 
 const slideVariants = {
@@ -57,285 +63,365 @@ const slideVariants = {
   exit:   (dir) => ({ x: dir > 0 ? -60 : 60, opacity: 0 }),
 }
 
+// ─── Pre-departure Checklist Panel ───────────────────────────────────────────
+// Fully driven by currentMasterPlan.checklistItems via Zustand store.
+// No static / hardcoded data.
 function PlannerChecklistPanel() {
-  const language = useStore(s => s.language)
-  const [items, setItems] = useState(() =>
-    CHECKLIST_GROUPS.flatMap(group =>
-      group.items.map(item => ({
-        ...item,
-        text: item.text || '',
-        draftText: item.text || '',
-        groupId: group.id,
-        quantity: 1,
-        completed: false,
-      }))
-    )
-  )
-  const [newGroupId, setNewGroupId] = useState(CHECKLIST_CATEGORY_OPTIONS[0]?.id || 'documents')
-  const [newText, setNewText] = useState('')
-  const [newQuantity, setNewQuantity] = useState(1)
+  const language               = useStore(s => s.language)
+  const checklistItems         = useStore(s => s.checklistItems)
+  const currentMasterPlan      = useStore(s => s.currentMasterPlan)
+  const toggleChecklistItem    = useStore(s => s.toggleChecklistItem)
+  const addCustomChecklistItem = useStore(s => s.addCustomChecklistItem)
+  const removeChecklistItem    = useStore(s => s.removeChecklistItem)
+  const updateChecklistItemText = useStore(s => s.updateChecklistItemText)
 
-  const clampQuantity = value => Math.min(1000, Math.max(0, Number(value) || 0))
+  const [newCategory, setNewCategory] = useState('CUSTOM')
+  const [newText, setNewText]         = useState('')
+  const [newQuantity, setNewQuantity] = useState(1)
+  const [editingId, setEditingId]     = useState(null)
+  const [draftTexts, setDraftTexts]   = useState({})
+
+  const isBN = language === 'BN'
+  const clampQty = v => Math.min(999, Math.max(1, Number(v) || 1))
 
   const totals = useMemo(() => {
-    const total = items.length
-    const done = items.filter(item => item.completed).length
+    const total = checklistItems.length
+    const done  = checklistItems.filter(i => i.completed).length
     return { total, done, percent: total ? Math.round((done / total) * 100) : 0 }
-  }, [items])
+  }, [checklistItems])
 
-  const groupedItems = useMemo(
-    () =>
-      CHECKLIST_CATEGORY_OPTIONS.map(group => ({
-        ...group,
-        items: items.filter(item => item.groupId === group.id),
-      })),
-    [items]
+  // Group by category — only show non-empty groups
+  const groupedItems = useMemo(() =>
+    CATEGORY_ORDER
+      .map(cat => ({
+        category: cat,
+        ...CATEGORY_META[cat],
+        items: checklistItems.filter(i => i.category === cat),
+      }))
+      .filter(g => g.items.length > 0),
+    [checklistItems]
   )
 
-  const updateItem = (id, patch) => {
-    setItems(prev => prev.map(item => (item.id === id ? { ...item, ...patch } : item)))
-  }
-
-  const removeItem = (id) => {
-    setItems(prev => prev.filter(item => item.id !== id))
-  }
-
-  const addItem = () => {
+  const handleAdd = () => {
     if (!newText.trim()) return
-    const text = newText.trim()
-    setItems(prev => [
-      ...prev,
-      {
-        id: `custom-${Date.now()}`,
-        groupId: newGroupId,
-        text,
-        draftText: text,
-        quantity: clampQuantity(newQuantity),
-        completed: false,
-        isCustom: true,
-      },
-    ])
+    addCustomChecklistItem(newCategory, newText.trim(), newQuantity)
     setNewText('')
     setNewQuantity(1)
   }
 
-  const copy = {
-    badge: language === 'BN' ? 'প্রি-ডিপার্চার প্রস্তুতি' : 'Pre-departure readiness',
-    title: language === 'BN' ? 'যাওয়ার আগে কী কী প্রস্তুত?' : 'What should be ready before you move?',
-    helper:
-      language === 'BN'
-        ? 'ডকুমেন্ট, টাকা, থাকার জায়গা, স্বাস্থ্য আর শপিং আইটেম একই জায়গায় ট্র্যাক করুন।'
-        : 'Track documents, money, housing, health, and shopping items in one practical list.',
-    completed: language === 'BN' ? 'সম্পন্ন' : 'completed',
-    addTitle: language === 'BN' ? 'নিজের আইটেম যোগ করুন' : 'Add your own item',
-    itemPlaceholder: language === 'BN' ? 'যেমন: শীতের জ্যাকেট' : 'e.g. winter jacket',
-    quantity: language === 'BN' ? 'পরিমাণ' : 'Qty',
-    add: language === 'BN' ? 'যোগ করুন' : 'Add item',
-    empty: language === 'BN' ? 'এই ক্যাটাগরিতে এখনো কিছু নেই' : 'Nothing in this category yet',
+  const getDraft = (item) =>
+    draftTexts[item.id] !== undefined
+      ? draftTexts[item.id]
+      : (isBN ? item.textBn : item.textEn)
+
+  const setDraft = (id, val) => setDraftTexts(prev => ({ ...prev, [id]: val }))
+
+  const commitDraft = (item) => {
+    const val = draftTexts[item.id]
+    if (val !== undefined) updateChecklistItemText(item.id, val)
+    setEditingId(null)
+  }
+
+  // ── No plan loaded yet ────────────────────────────────────────────────────
+  if (!currentMasterPlan) {
+    return (
+      <div className="rounded-[30px] border border-dashed border-brand-mid bg-white/60 p-10 text-center shadow-[0_16px_40px_rgba(0,89,96,0.06)]">
+        <p className="font-semibold text-brand-deep">
+          {isBN ? 'প্রথমে একটি পরিকল্পনা লোড করুন' : 'Load a plan first'}
+        </p>
+        <p className="mt-2 text-sm text-[#6a8284]">
+          {isBN
+            ? 'প্রোফাইল ও শহর বেছে নিলে চেকলিস্ট দেখা যাবে।'
+            : 'Select a planning profile and city to see your pre-departure checklist.'}
+        </p>
+      </div>
+    )
   }
 
   return (
-    <div className="rounded-[30px] border border-[#c9e4e2] bg-[linear-gradient(135deg,#fbfffc_0%,#edf8f7_100%)] p-5 shadow-[0_20px_48px_rgba(0,89,96,0.10)]">
-      <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand/70">
-            {copy.badge}
-          </p>
-          <h3 className="mt-2 font-serif text-2xl font-bold text-brand-deep">
-            {copy.title}
-          </h3>
-          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[#5f787a]">{copy.helper}</p>
-        </div>
-        <div className="min-w-[220px] rounded-[24px] border border-white/60 bg-white/60 p-4 shadow-[0_14px_34px_rgba(0,89,96,0.08)] backdrop-blur-xl">
-          <p className="text-sm font-bold text-brand-deep">
-            {totals.done} / {totals.total} {copy.completed}
-          </p>
-          <div className="mt-3 h-3 overflow-hidden rounded-full bg-brand-mid/70">
-            <motion.div
-              className="h-full bg-gradient-to-r from-brand to-brand-soft"
-              animate={{ width: `${totals.percent}%` }}
-            />
+    <div className="space-y-6">
+      {/* ── Header + overall progress ─────────────────────── */}
+      <div className="rounded-[30px] border border-[#c9e4e2] bg-[linear-gradient(135deg,#fbfffc_0%,#edf8f7_100%)] p-5 shadow-[0_20px_48px_rgba(0,89,96,0.10)]">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand/70">
+              {isBN ? 'প্রি-ডিপার্চার প্রস্তুতি' : 'Pre-departure readiness'}
+            </p>
+            <h3 className="mt-2 font-serif text-2xl font-bold text-brand-deep">
+              {isBN ? 'যাওয়ার আগে কী কী প্রস্তুত?' : 'What should be ready before you move?'}
+            </h3>
+            <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[#5f787a]">
+              {isBN
+                ? 'ডকুমেন্ট, টাকা, থাকার জায়গা, স্বাস্থ্য আর কাস্টম আইটেম একই জায়গায় ট্র্যাক করুন।'
+                : 'Track documents, finances, housing, health, and custom items in one practical list.'}
+            </p>
+          </div>
+
+          <div className="min-w-[220px] shrink-0 rounded-[24px] border border-white/60 bg-white/60 p-4 shadow-[0_14px_34px_rgba(0,89,96,0.08)] backdrop-blur-xl">
+            <p className="text-sm font-bold text-brand-deep">
+              {totals.done} / {totals.total} {isBN ? 'সম্পন্ন' : 'completed'}
+            </p>
+            <div className="mt-3 h-3 overflow-hidden rounded-full bg-brand-mid/70">
+              <motion.div
+                className="h-full bg-gradient-to-r from-brand to-brand-soft"
+                animate={{ width: `${totals.percent}%` }}
+                transition={{ duration: 0.5, ease: 'easeOut' }}
+              />
+            </div>
+            <p className="mt-2 text-right text-xs font-semibold text-brand/60">{totals.percent}%</p>
           </div>
         </div>
       </div>
 
-      <div className="mb-5 rounded-[26px] border border-white/70 bg-white/72 p-4 shadow-[0_16px_36px_rgba(0,89,96,0.08)] backdrop-blur-xl">
-        <p className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-brand/70">{copy.addTitle}</p>
-        <div className="grid gap-3 lg:grid-cols-[170px_1fr_auto_auto]">
+      {/* ── Add custom item ───────────────────────────────── */}
+      <div className="rounded-[26px] border border-white/70 bg-white/80 p-4 shadow-[0_16px_36px_rgba(0,89,96,0.08)] backdrop-blur-xl">
+        <p className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-brand/70">
+          {isBN ? 'নিজের আইটেম যোগ করুন' : 'Add your own item'}
+        </p>
+        <div className="grid gap-3 sm:grid-cols-[160px_1fr_80px_auto]">
           <select
-            value={newGroupId}
-            onChange={e => setNewGroupId(e.target.value)}
-            className="rounded-2xl border border-brand-mid bg-white px-4 py-3 text-sm font-semibold text-brand-deep outline-none focus:border-brand"
+            value={newCategory}
+            onChange={e => setNewCategory(e.target.value)}
+            className="rounded-2xl border border-brand-mid bg-white px-3 py-3 text-sm font-semibold text-brand-deep outline-none focus:border-brand"
           >
-            {CHECKLIST_CATEGORY_OPTIONS.map(group => (
-              <option key={group.id} value={group.id}>
-                {language === 'BN' ? group.titleBN : group.titleEN}
+            {ADD_CATEGORY_OPTIONS.map(opt => (
+              <option key={opt.value} value={opt.value}>
+                {isBN ? opt.titleBN : opt.titleEN}
               </option>
             ))}
           </select>
+
           <input
             type="text"
             value={newText}
             onChange={e => setNewText(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && addItem()}
-            placeholder={copy.itemPlaceholder}
+            onKeyDown={e => e.key === 'Enter' && handleAdd()}
+            placeholder={isBN ? 'যেমন: শীতের জ্যাকেট' : 'e.g. winter jacket'}
             className="rounded-2xl border border-brand-mid bg-white px-4 py-3 text-sm font-medium text-brand-deep outline-none placeholder:text-[#8ca1a3] focus:border-brand"
           />
+
           <div className="flex items-center overflow-hidden rounded-2xl border border-brand-mid bg-white text-brand-deep focus-within:border-brand">
-            <button
-              type="button"
-              onClick={() => setNewQuantity(value => clampQuantity(value - 1))}
-              className="flex h-12 w-10 items-center justify-center text-brand transition-colors hover:bg-brand-light"
-              aria-label="Decrease quantity"
-            >
-              <Minus size={15} />
+            <button type="button" onClick={() => setNewQuantity(q => clampQty(q - 1))} className="flex h-12 w-8 items-center justify-center text-brand hover:bg-brand-light">
+              <Minus size={13} />
             </button>
             <input
               type="number"
               value={newQuantity}
-              onChange={e => setNewQuantity(clampQuantity(e.target.value))}
-              aria-label={copy.quantity}
-              min="0"
-              max="1000"
-              className="h-12 w-14 bg-transparent text-center text-sm font-bold text-brand-deep outline-none"
+              onChange={e => setNewQuantity(clampQty(e.target.value))}
+              min="1" max="999"
+              className="h-12 w-10 bg-transparent text-center text-sm font-bold text-brand-deep outline-none"
             />
-            <button
-              type="button"
-              onClick={() => setNewQuantity(value => clampQuantity(value + 1))}
-              className="flex h-12 w-10 items-center justify-center text-brand transition-colors hover:bg-brand-light"
-              aria-label="Increase quantity"
-            >
-              <Plus size={15} />
+            <button type="button" onClick={() => setNewQuantity(q => clampQty(q + 1))} className="flex h-12 w-8 items-center justify-center text-brand hover:bg-brand-light">
+              <Plus size={13} />
             </button>
           </div>
+
           <button
             type="button"
-            onClick={addItem}
-            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-brand px-5 py-3 text-sm font-bold text-white shadow-[0_14px_30px_rgba(0,149,161,0.20)] transition-colors hover:bg-brand-deep"
+            onClick={handleAdd}
+            className="inline-flex items-center justify-center gap-1.5 rounded-2xl bg-brand px-4 py-3 text-sm font-bold text-white shadow-[0_14px_30px_rgba(0,149,161,0.20)] hover:bg-brand-deep"
           >
-            <Plus size={16} />
-            {copy.add}
+            <Plus size={15} />
+            {isBN ? 'যোগ করুন' : 'Add'}
           </button>
         </div>
       </div>
 
+      {/* ── Empty state: plan loaded but no items from API ─── */}
+      {checklistItems.length === 0 && (
+        <div className="rounded-[26px] border border-dashed border-brand-mid bg-white/60 p-8 text-center">
+          <p className="font-semibold text-brand-deep">
+            {isBN ? 'চেকলিস্টে কোনো আইটেম নেই' : 'No checklist items'}
+          </p>
+          <p className="mt-2 text-sm text-[#6a8284]">
+            {isBN
+              ? 'এই মাস্টার প্ল্যানে কোনো প্রি-ডিপার্চার আইটেম যোগ করা হয়নি। উপরে নিজের আইটেম যোগ করুন।'
+              : 'No pre-departure items in this master plan. Add your own items above.'}
+          </p>
+        </div>
+      )}
+
+      {/* ── Category groups ───────────────────────────────── */}
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-        {groupedItems.map((group, idx) => {
-          const title = language === 'BN' ? group.titleBN : group.titleEN
-          const done = group.items.filter(item => item.completed).length
-          return (
-            <motion.div
-              key={group.id}
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: idx * 0.04 }}
-              className="rounded-[26px] border border-white/70 bg-white/70 p-4 shadow-[0_14px_32px_rgba(0,89,96,0.07)] backdrop-blur-xl sm:p-5"
-            >
-              <div className="mb-4 flex items-center justify-between">
-                <div>
-                  <h4 className="font-bold text-brand-deep">{title}</h4>
-                  <p className="mt-1 text-xs text-[#6a8284]">{done} / {group.items.length}</p>
-                </div>
-                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-brand-light font-bold text-brand">
-                  {done}
-                </div>
-              </div>
-
-              <div className="divide-y divide-brand-mid/70">
-                {group.items.length === 0 ? (
-                  <div className="py-4 text-sm text-[#6a8284]">
-                    {copy.empty}
+        <AnimatePresence>
+          {groupedItems.map((group, idx) => {
+            const title = isBN ? group.titleBN : group.titleEN
+            const done  = group.items.filter(i => i.completed).length
+            const pct   = group.items.length ? Math.round((done / group.items.length) * 100) : 0
+            return (
+              <motion.div
+                key={group.category}
+                layout
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: idx * 0.04 }}
+                className="rounded-[26px] border border-white/70 bg-white/80 p-4 shadow-[0_14px_32px_rgba(0,89,96,0.07)] backdrop-blur-xl sm:p-5"
+              >
+                {/* Group header */}
+                <div className="mb-3 flex items-center justify-between">
+                  <div>
+                    <h4 className="font-bold text-brand-deep">{title}</h4>
+                    <p className="mt-0.5 text-xs text-[#6a8284]">
+                      {done} / {group.items.length} {isBN ? 'সম্পন্ন' : 'done'}
+                    </p>
                   </div>
-                ) : null}
+                  <div className={cn(
+                    'flex h-10 w-10 items-center justify-center rounded-2xl text-sm font-bold',
+                    pct === 100 ? 'bg-emerald-50 text-emerald-600' : 'bg-brand-light text-brand'
+                  )}>
+                    {done}
+                  </div>
+                </div>
 
-                {group.items.map(item => {
-                  const checked = item.completed
-                  return (
-                    <div
-                      key={item.id}
-                      className="grid grid-cols-[auto_1fr] items-start gap-2 py-3 sm:gap-3"
-                    >
-                      <button
-                        type="button"
-                        onClick={() => updateItem(item.id, { completed: !checked })}
-                        className="flex h-8 w-8 shrink-0 items-center justify-center text-brand"
-                        aria-label={checked ? 'Mark incomplete' : 'Mark complete'}
-                      >
-                        {checked ? <CheckCircle2 size={18} /> : <Circle size={18} />}
-                      </button>
-                      <div className="min-w-0">
-                        <div className="flex items-start gap-2">
-                          {item.quantity > 1 ? (
-                            <span className="mt-1 shrink-0 rounded-full bg-brand-light px-2 py-0.5 text-xs font-bold text-brand-deep ring-1 ring-brand-mid">
-                              ({item.quantity})
-                            </span>
-                          ) : null}
-                          <textarea
-                            value={item.draftText ?? item.text ?? ''}
-                            onChange={e => updateItem(item.id, { draftText: e.target.value })}
-                            rows={Math.max(1, Math.ceil(String(item.draftText ?? item.text ?? '').length / 38))}
-                            className={cn(
-                              'block w-full min-w-0 resize-none overflow-hidden bg-transparent text-base font-medium leading-6 outline-none sm:text-lg',
-                              language === 'BN' ? 'font-bengali' : 'font-sans',
-                              checked ? 'text-brand-deep/45 line-through' : 'text-brand-deep/86'
+                {/* Group progress bar */}
+                <div className="mb-4 h-1.5 overflow-hidden rounded-full bg-brand-mid/40">
+                  <motion.div
+                    className={cn('h-full rounded-full', pct === 100 ? 'bg-emerald-500' : 'bg-brand')}
+                    animate={{ width: `${pct}%` }}
+                    transition={{ duration: 0.4, ease: 'easeOut' }}
+                  />
+                </div>
+
+                {/* Items */}
+                <div className="divide-y divide-brand-mid/50">
+                  <AnimatePresence>
+                    {group.items.map(item => {
+                      const isEditing = editingId === item.id
+                      const draft     = getDraft(item)
+                      const checked   = item.completed
+                      return (
+                        <motion.div
+                          key={item.id}
+                          layout
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0, height: 0, overflow: 'hidden' }}
+                          className="grid grid-cols-[auto_1fr_auto] items-start gap-2 py-3"
+                        >
+                          {/* Toggle */}
+                          <button
+                            type="button"
+                            onClick={() => toggleChecklistItem(item.id)}
+                            className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center"
+                          >
+                            {checked
+                              ? <CheckCircle2 size={17} className="text-emerald-500" />
+                              : <Circle size={17} className="text-brand-mid" />}
+                          </button>
+
+                          {/* Content */}
+                          <div className="min-w-0">
+                            {/* Badges */}
+                            {(item.quantity > 1 || item.isCustom) && (
+                              <div className="mb-1 flex flex-wrap gap-1">
+                                {item.quantity > 1 && (
+                                  <span className="rounded-full bg-brand-light px-2 py-0.5 text-[11px] font-bold text-brand-deep ring-1 ring-brand-mid">
+                                    ×{item.quantity}
+                                  </span>
+                                )}
+                                {item.isCustom && (
+                                  <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-bold text-amber-700 ring-1 ring-amber-200">
+                                    {isBN ? 'কাস্টম' : 'custom'}
+                                  </span>
+                                )}
+                              </div>
                             )}
-                          />
-                        </div>
-                        <div className="mt-2 flex flex-wrap gap-2">
+
+                            {isEditing ? (
+                              <div className="flex flex-wrap gap-2">
+                                <input
+                                  autoFocus
+                                  type="text"
+                                  value={draft}
+                                  onChange={e => setDraft(item.id, e.target.value)}
+                                  onKeyDown={e => {
+                                    if (e.key === 'Enter') commitDraft(item)
+                                    if (e.key === 'Escape') setEditingId(null)
+                                  }}
+                                  className="flex-1 rounded-xl border border-brand bg-white px-3 py-1.5 text-sm font-medium text-brand-deep outline-none"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => commitDraft(item)}
+                                  className="rounded-xl bg-brand px-3 py-1.5 text-xs font-bold text-white hover:bg-brand-deep"
+                                >
+                                  {isBN ? 'সেভ' : 'Save'}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingId(null)}
+                                  className="rounded-xl border border-brand-mid px-3 py-1.5 text-xs font-semibold text-brand-deep hover:bg-brand-light"
+                                >
+                                  {isBN ? 'বাতিল' : 'Cancel'}
+                                </button>
+                              </div>
+                            ) : (
+                              <p
+                                onClick={() => setEditingId(item.id)}
+                                title={isBN ? 'এডিট করতে ক্লিক করুন' : 'Click to edit'}
+                                className={cn(
+                                  'cursor-text text-sm font-medium leading-relaxed',
+                                  isBN ? 'font-bengali' : '',
+                                  checked
+                                    ? 'text-brand-deep/40 line-through decoration-brand-deep/30'
+                                    : 'text-brand-deep/85'
+                                )}
+                              >
+                                {draft}
+                              </p>
+                            )}
+                          </div>
+
+                          {/* Delete */}
                           <button
                             type="button"
-                            onClick={() => updateItem(item.id, { text: item.draftText ?? item.text ?? '' })}
-                            className="rounded-full bg-brand px-3 py-1.5 text-xs font-bold text-white hover:bg-brand-deep"
+                            onClick={() => removeChecklistItem(item.id)}
+                            className="mt-0.5 rounded-xl p-1.5 text-gray-300 transition-colors hover:bg-red-50 hover:text-red-400"
                           >
-                            {language === 'BN' ? 'আপডেট' : 'Update'}
+                            <Trash2 size={13} />
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => removeItem(item.id)}
-                            className="rounded-full border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-bold text-red-700 hover:bg-red-100"
-                          >
-                            {language === 'BN' ? 'ডিলিট' : 'Delete'}
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </motion.div>
-          )
-        })}
+                        </motion.div>
+                      )
+                    })}
+                  </AnimatePresence>
+                </div>
+              </motion.div>
+            )
+          })}
+        </AnimatePresence>
       </div>
     </div>
   )
 }
 
+// ─── Budget Planner Page ──────────────────────────────────────────────────────
 export default function BudgetPlanner() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const { showToast } = useToast()
-  const wizardStep = useStore(s => s.wizardStep)
-  const activeTab = useStore(s => s.activeTab)
-  const setActiveTab = useStore(s => s.setActiveTab)
+  const wizardStep       = useStore(s => s.wizardStep)
+  const activeTab        = useStore(s => s.activeTab)
+  const setActiveTab     = useStore(s => s.setActiveTab)
   const selectedLifestyle = useStore(s => s.selectedLifestyle)  // profile CODE e.g. 'SOLO_STUDENT'
-  const selectedCity = useStore(s => s.selectedCity)            // city UUID
-  const language = useStore(s => s.language)
-  const isAuthenticated = useStore(s => s.isAuthenticated)
-  const saveCurrentPlan = useStore(s => s.saveCurrentPlan)
-  const savedPlans = useStore(s => s.savedPlans)
-  const setWizardStep = useStore(s => s.setWizardStep)
+  const selectedCity     = useStore(s => s.selectedCity)        // city UUID
+  const language         = useStore(s => s.language)
+  const isAuthenticated  = useStore(s => s.isAuthenticated)
+  const saveCurrentPlan  = useStore(s => s.saveCurrentPlan)
+  const savedPlans       = useStore(s => s.savedPlans)
+  const setWizardStep    = useStore(s => s.setWizardStep)
   const rechooseLifestyle = useStore(s => s.rechooseLifestyle)
-  const rechooseCity = useStore(s => s.rechooseCity)
-  const setMasterPlan = useStore(s => s.setMasterPlan)
+  const rechooseCity     = useStore(s => s.rechooseCity)
+  const setMasterPlan    = useStore(s => s.setMasterPlan)
   const currentMasterPlan = useStore(s => s.currentMasterPlan)
   const { monthlyTotal, survivalMonths } = useAffordability()
-  const [pageLoading, setPageLoading] = useState(true)
-  const [savingPlan, setSavingPlan] = useState(false)
+
+  const [pageLoading, setPageLoading]       = useState(true)
+  const [savingPlan, setSavingPlan]         = useState(false)
   const [masterPlanLoading, setMasterPlanLoading] = useState(false)
 
-  // ── API data ────────────────────────────────────────────────────────────
-  const [apiCountry, setApiCountry] = useState(null)    // NZ country object
-  const [apiCities, setApiCities] = useState([])
+  // ── API data ──────────────────────────────────────────────────────────────
+  const [apiCountry, setApiCountry]   = useState(null)
+  const [apiCities, setApiCities]     = useState([])
   const [apiProfiles, setApiProfiles] = useState([])
 
   // Fetch NZ country + profiles once on mount
@@ -346,28 +432,23 @@ export default function BudgetPlanner() {
         setApiCountry(nz)
       })
       .catch(() => {})
-
     listPlanningProfiles().then(setApiProfiles).catch(() => {})
   }, [])
 
-  // Fetch cities when country is loaded (auto-selects NZ)
+  // Fetch cities when country loads
   useEffect(() => {
     if (!apiCountry) return
     listCitiesByCountry(apiCountry.id).then(setApiCities).catch(() => {})
   }, [apiCountry])
 
-  // Fetch master plan when profile + city are both selected
+  // Fetch master plan when both profile and city are selected
   useEffect(() => {
     if (!selectedLifestyle || !selectedCity || !apiCountry) return
-
-    // selectedLifestyle is profile CODE (e.g. 'SOLO_STUDENT')
-    // selectedCity is city UUID
     const apiProfile = apiProfiles.find(p => p.code === selectedLifestyle)
-    const apiCity = apiCities.find(c => c.id === selectedCity)
-
+    const apiCity    = apiCities.find(c => c.id === selectedCity)
     if (!apiProfile || !apiCity) return
 
-    // Skip re-fetch if already have the matching plan
+    // Skip if we already have the right plan loaded
     if (
       currentMasterPlan &&
       currentMasterPlan.cityId === apiCity.id &&
@@ -386,7 +467,7 @@ export default function BudgetPlanner() {
     return () => window.clearTimeout(id)
   }, [])
 
-  // Track slide direction: +1 = forward (higher step), -1 = back (lower step)
+  // Track slide direction: +1 = forward, -1 = back
   const prevStepRef = useRef(wizardStep)
   const dirRef = useRef(1)
   if (prevStepRef.current !== wizardStep) {
@@ -395,24 +476,14 @@ export default function BudgetPlanner() {
   }
   const slideDir = dirRef.current
 
-  // Resolve display objects from API data (selectedLifestyle = profile CODE, selectedCity = UUID)
+  // Resolve display objects from API data
   const lifestyle = selectedLifestyle ? (apiProfiles.find(p => p.code === selectedLifestyle) || null) : null
   const city      = selectedCity      ? (apiCities.find(c => c.id === selectedCity)           || null) : null
 
   useEffect(() => {
-    if (wizardStep === 1 && !selectedLifestyle) {
-      setWizardStep(0)
-      return
-    }
-
-    if (wizardStep === 2 && !selectedLifestyle) {
-      setWizardStep(0)
-      return
-    }
-
-    if (wizardStep === 2 && !selectedCity) {
-      setWizardStep(1)
-    }
+    if (wizardStep === 1 && !selectedLifestyle) { setWizardStep(0); return }
+    if (wizardStep === 2 && !selectedLifestyle) { setWizardStep(0); return }
+    if (wizardStep === 2 && !selectedCity)      { setWizardStep(1) }
   }, [selectedCity, selectedLifestyle, setWizardStep, wizardStep])
 
   useEffect(() => {
@@ -434,6 +505,7 @@ export default function BudgetPlanner() {
             : (language === 'BN' ? 'আপনার budget workspace সাজানো হচ্ছে' : 'Setting up your budget workspace')
         }
       />
+
       {masterPlanLoading && !pageLoading && (
         <div className="fixed inset-x-0 top-16 z-30 flex justify-center pointer-events-none">
           <div className="mt-2 flex items-center gap-2 rounded-full border border-brand-mid bg-white px-4 py-2 shadow-brand-sm text-sm text-brand font-semibold">
@@ -445,6 +517,7 @@ export default function BudgetPlanner() {
           </div>
         </div>
       )}
+
       <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-8 pb-28 md:pb-8">
         {/* Breadcrumb (shown on step 2) */}
         {wizardStep === 2 && lifestyle && city && (
@@ -458,7 +531,6 @@ export default function BudgetPlanner() {
               onClick={rechooseLifestyle}
               className="flex items-center gap-1.5 rounded-full border border-brand-mid bg-white px-3 py-1.5 font-semibold text-brand transition-colors hover:bg-brand-light"
             >
-              {/* API icon first, then static fallback */}
               <img
                 src={lifestyle.iconSvgUrl || LIFESTYLE_ICON_SVG[lifestyle.code] || LIFESTYLE_ICON_SVG['SOLO_STUDENT']}
                 alt=""
@@ -474,7 +546,6 @@ export default function BudgetPlanner() {
               onClick={rechooseCity}
               className="flex items-center gap-1.5 rounded-full border border-brand-mid bg-white px-3 py-1.5 font-semibold text-brand transition-colors hover:bg-brand-light"
             >
-              {/* API icon first, then static fallback */}
               <img
                 src={city.iconSvgUrl || CITY_ICON_SVG[city.code] || aucklandSvg}
                 alt=""
@@ -488,70 +559,44 @@ export default function BudgetPlanner() {
         )}
 
         {/* Wizard steps */}
-        {/* mode="popLayout" removes exiting element from flow immediately —
-            no blank gap between steps. Direction-aware slide. */}
         <AnimatePresence mode="popLayout" custom={slideDir}>
           {wizardStep === 0 && (
-            <motion.div
-              key="lifestyle"
-              custom={slideDir}
-              variants={slideVariants}
-              initial="enter"
-              animate="center"
-              exit="exit"
-              transition={{ duration: 0.2, ease: 'easeInOut' }}
-            >
+            <motion.div key="lifestyle" custom={slideDir} variants={slideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.2, ease: 'easeInOut' }}>
               <LifestyleCards profiles={apiProfiles} />
             </motion.div>
           )}
 
           {wizardStep === 1 && (
-            <motion.div
-              key="city"
-              custom={slideDir}
-              variants={slideVariants}
-              initial="enter"
-              animate="center"
-              exit="exit"
-              transition={{ duration: 0.2, ease: 'easeInOut' }}
-            >
+            <motion.div key="city" custom={slideDir} variants={slideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.2, ease: 'easeInOut' }}>
               <CitySelector cities={apiCities} countryId={apiCountry?.id || ''} />
             </motion.div>
           )}
 
           {wizardStep === 2 && (
-            <motion.div
-              key="planner"
-              custom={slideDir}
-              variants={slideVariants}
-              initial="enter"
-              animate="center"
-              exit="exit"
-              transition={{ duration: 0.2, ease: 'easeInOut' }}
-            >
+            <motion.div key="planner" custom={slideDir} variants={slideVariants} initial="enter" animate="center" exit="exit" transition={{ duration: 0.2, ease: 'easeInOut' }}>
               {/* Tab bar */}
               <div className="mb-6 rounded-2xl border border-brand-mid bg-white p-1 shadow-brand-sm">
                 <div className="grid grid-cols-4 gap-1">
-                {TABS.map((tab, i) => (
-                  <button
-                    key={tab}
-                    onClick={() => setActiveTab(i)}
-                    className={cn(
-                      'relative min-w-0 rounded-xl px-1.5 py-2.5 text-[11px] font-semibold transition-colors duration-200 sm:px-2 sm:text-sm',
-                      activeTab === i ? 'text-white' : 'text-gray-500 hover:text-gray-700'
-                    )}
-                  >
-                    {activeTab === i && (
-                      <motion.span
-                        layoutId="tab-active"
-                        className="absolute inset-0 bg-brand rounded-xl"
-                        transition={{ type: 'spring', stiffness: 400, damping: 35 }}
-                      />
-                    )}
-                    <span className="relative block truncate sm:hidden">{t(`planner.tabs_short.${tab}`)}</span>
-                    <span className="relative hidden truncate sm:block">{t(`planner.tabs.${tab}`)}</span>
-                  </button>
-                ))}
+                  {TABS.map((tab, i) => (
+                    <button
+                      key={tab}
+                      onClick={() => setActiveTab(i)}
+                      className={cn(
+                        'relative min-w-0 rounded-xl px-1.5 py-2.5 text-[11px] font-semibold transition-colors duration-200 sm:px-2 sm:text-sm',
+                        activeTab === i ? 'text-white' : 'text-gray-500 hover:text-gray-700'
+                      )}
+                    >
+                      {activeTab === i && (
+                        <motion.span
+                          layoutId="tab-active"
+                          className="absolute inset-0 bg-brand rounded-xl"
+                          transition={{ type: 'spring', stiffness: 400, damping: 35 }}
+                        />
+                      )}
+                      <span className="relative block truncate sm:hidden">{t(`planner.tabs_short.${tab}`)}</span>
+                      <span className="relative hidden truncate sm:block">{t(`planner.tabs.${tab}`)}</span>
+                    </button>
+                  ))}
                 </div>
               </div>
 
@@ -571,6 +616,7 @@ export default function BudgetPlanner() {
                 </motion.div>
               </AnimatePresence>
 
+              {/* Save plan CTA */}
               <div className="mt-6 rounded-[30px] border border-[#c9e4e2] bg-[linear-gradient(135deg,#fbfffc_0%,#edf8f7_48%,#dff0ef_100%)] p-5 shadow-[0_20px_48px_rgba(0,89,96,0.10)]">
                 <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
                   <div>
@@ -645,18 +691,10 @@ export default function BudgetPlanner() {
                               })
                               navigate('/dashboard')
                             } else {
-                              showToast({
-                                tone: 'error',
-                                title: t('auth.save_toast_error_title'),
-                                message: t('auth.save_toast_error_copy'),
-                              })
+                              showToast({ tone: 'error', title: t('auth.save_toast_error_title'), message: t('auth.save_toast_error_copy') })
                             }
                           } catch {
-                            showToast({
-                              tone: 'error',
-                              title: t('auth.save_toast_error_title'),
-                              message: t('auth.save_toast_error_copy'),
-                            })
+                            showToast({ tone: 'error', title: t('auth.save_toast_error_title'), message: t('auth.save_toast_error_copy') })
                           } finally {
                             setSavingPlan(false)
                           }

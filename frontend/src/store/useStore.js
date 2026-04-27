@@ -171,6 +171,7 @@ const useStore = create(
       // ── Plan data (editable in-session) ──────────────────────
       planCategories: [],
       movingItems: DEFAULT_MOVING_ITEMS.map(item => ({ ...item })),
+      checklistItems: [],   // populated from currentMasterPlan.checklistItems
       livingFundBDT: '',
 
       // ── Wizard actions ───────────────────────────────────────
@@ -192,6 +193,7 @@ const useStore = create(
         wizardStep: 0,
         activeTab: 0,
         planCategories: state.planCategories.filter(c => c.isCustom),
+        checklistItems: [],
       })),
 
       rechooseCity: () => set(state => ({
@@ -200,6 +202,7 @@ const useStore = create(
         wizardStep: state.selectedLifestyle ? 1 : 0,
         activeTab: 0,
         planCategories: state.planCategories.filter(c => c.isCustom),
+        checklistItems: [],
       })),
 
       setLifestyle: (lifestyleType, profileObj) => {
@@ -225,6 +228,7 @@ const useStore = create(
           activeTab: 0,
           planCategories: [],
           movingItems: DEFAULT_MOVING_ITEMS.map(item => ({ ...item })),
+          checklistItems: [],
         })
       },
 
@@ -254,12 +258,28 @@ const useStore = create(
           autoCalc: false,
           displayOrder: item.displayOrder ?? idx,
         }))
+        const checklistItems = (masterPlan.checklistItems || [])
+          .slice()
+          .sort((a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0))
+          .map(item => ({
+            id: item.id,
+            category: item.category ? item.category.trim().toUpperCase() : 'CUSTOM',
+            textEn: item.itemTextEn || item.customItemText || '',
+            textBn: item.itemTextBn || item.customItemText || '',
+            quantity: item.quantity ?? 1,
+            completed: item.done || false,
+            noteEn: item.noteEn || '',
+            noteBn: item.noteBn || '',
+            isCustom: item.custom || false,
+            displayOrder: item.displayOrder ?? 0,
+          }))
         set({
           currentMasterPlan: masterPlan,
           planCategories,
           movingItems: movingItems.length > 0
             ? movingItems
             : DEFAULT_MOVING_ITEMS.map(item => ({ ...item })),
+          checklistItems,
         })
       },
 
@@ -335,6 +355,50 @@ const useStore = create(
         }))
       },
 
+      // ── Checklist actions ────────────────────────────────────
+      toggleChecklistItem: (id) => {
+        set(state => ({
+          checklistItems: state.checklistItems.map(item =>
+            item.id === id ? { ...item, completed: !item.completed } : item
+          ),
+        }))
+      },
+
+      addCustomChecklistItem: (category, text, quantity = 1) => {
+        const id = `custom-checklist-${Date.now()}`
+        set(state => ({
+          checklistItems: [
+            ...state.checklistItems,
+            {
+              id,
+              category: category || 'CUSTOM',
+              textEn: text,
+              textBn: text,
+              quantity: Math.max(1, Number(quantity) || 1),
+              completed: false,
+              noteEn: '',
+              noteBn: '',
+              isCustom: true,
+              displayOrder: state.checklistItems.length,
+            },
+          ],
+        }))
+      },
+
+      removeChecklistItem: (id) => {
+        set(state => ({
+          checklistItems: state.checklistItems.filter(item => item.id !== id),
+        }))
+      },
+
+      updateChecklistItemText: (id, text) => {
+        set(state => ({
+          checklistItems: state.checklistItems.map(item =>
+            item.id === id ? { ...item, textEn: text, textBn: text } : item
+          ),
+        }))
+      },
+
       // ── Living fund ──────────────────────────────────────────
       setLivingFund: (bdt) => set({ livingFundBDT: clampMoney(bdt, MONEY_LIMITS.livingFundBDT) }),
 
@@ -347,6 +411,7 @@ const useStore = create(
         currentMasterPlan: null,
         planCategories: [],
         movingItems: DEFAULT_MOVING_ITEMS.map(item => ({ ...item })),
+        checklistItems: [],
         livingFundBDT: '',
         wizardStep: 0,
         activeTab: 0,
@@ -408,6 +473,21 @@ const useStore = create(
         set({
           planCategories: plan.categories?.map(item => ({ ...item })) || [],
           movingItems: plan.movingItems?.map(item => ({ ...item })) || DEFAULT_MOVING_ITEMS.map(item => ({ ...item })),
+          checklistItems: (plan.checklistItems || [])
+            .slice()
+            .sort((a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0))
+            .map(item => ({
+              id: item.id,
+              category: item.category ? item.category.trim().toUpperCase() : 'CUSTOM',
+              textEn: item.itemTextEn || item.customItemText || '',
+              textBn: item.itemTextBn || item.customItemText || '',
+              quantity: item.quantity ?? 1,
+              completed: item.done || false,
+              noteEn: item.noteEn || '',
+              noteBn: item.noteBn || '',
+              isCustom: item.custom || false,
+              displayOrder: item.displayOrder ?? 0,
+            })),
           livingFundBDT: plan.livingFundBDT || '',
           selectedCity: plan.city?.toUpperCase?.().replaceAll(' ', '_') || null,
           selectedLifestyle: null,
@@ -450,6 +530,7 @@ const useStore = create(
         activeTab: state.activeTab,
         planCategories: state.planCategories,
         movingItems: state.movingItems,
+        checklistItems: state.checklistItems,
         livingFundBDT: state.livingFundBDT,
       }),
     }

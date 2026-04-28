@@ -10,8 +10,8 @@ import { cn } from '@/utils/cn'
 const NAV_LINKS = [
   { to: '/',          key: 'home' },
   { to: '/plan',      key: 'plan' },
-  { to: '/compare',   key: 'compare' },
   { to: '/dashboard', key: 'dashboard' },
+  { to: '/compare',   key: 'compare' },
   { to: '/guide',     key: 'guide' },
 ]
 

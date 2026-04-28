@@ -3,7 +3,17 @@ import { persist } from 'zustand/middleware'
 import { DEFAULT_MOVING_ITEMS } from '@/data/movingCosts'
 import i18n from 'i18next'
 import { changeMyPassword, getMyProfile, loginUser, logoutUser, registerUser, updateMyProfile, updateMyProfilePicture } from '@/api/auth'
-import { createPlanFromMaster } from '@/api/userPlans'
+import {
+  createPlanFromMaster,
+  getMyPlan,
+  getMyPlanByCombo,
+  updateMonthlyItem, addMonthlyItem, deleteMonthlyItem,
+  updateMovingItem, addMovingItem, deleteMovingItem,
+  addChecklistItem, updateChecklistItem, deleteChecklistItem,
+  toggleChecklistItem as toggleChecklistItemApi,
+  upsertLivingFund,
+} from '@/api/userPlans'
+import { fetchExchangeRate } from '@/api/exchangeRates'
 
 export const MONEY_LIMITS = {
   monthlyCategoryNZD: 10000,
@@ -37,6 +47,23 @@ const useStore = create(
       currency: 'NZD',
       exchangeRate: 83.2,
       setCurrency: (c) => set({ currency: c }),
+
+      hasFetchedExchangeRate: false,
+
+      fetchAndSetExchangeRate: async () => {
+        if (get().hasFetchedExchangeRate) return
+        try {
+          const data = await fetchExchangeRate('NZD', 'BDT')
+          if (data && data.rateValue) {
+            set({ 
+              exchangeRate: Number(data.rateValue).toFixed(2),
+              hasFetchedExchangeRate: true
+            })
+          }
+        } catch (error) {
+          console.error('Failed to fetch exchange rate:', error)
+        }
+      },
 
       // ── Language ─────────────────────────────────────────────
       language: 'EN',
@@ -104,6 +131,23 @@ const useStore = create(
           accessToken: null,
           refreshToken: null,
           tokenType: 'Bearer',
+          // Wipe all plan/wizard state so no user data leaks after logout
+          editingPlanId: null,
+          editingPlanOriginalMonthlyIds: [],
+          editingPlanOriginalMovingIds: [],
+          originalPlanSnapshot: null,
+          savedPlans: [],
+          selectedLifestyle: null,
+          selectedCity: null,
+          selectedCountry: null,
+          selectedProfile: null,
+          currentMasterPlan: null,
+          wizardStep: 0,
+          activeTab: 0,
+          planCategories: [],
+          movingItems: DEFAULT_MOVING_ITEMS.map(item => ({ ...item })),
+          checklistItems: [],
+          livingFundBDT: '',
         })
       },
 
@@ -113,6 +157,23 @@ const useStore = create(
         accessToken: null,
         refreshToken: null,
         tokenType: 'Bearer',
+        // Wipe plan state on forced session expiry too
+        editingPlanId: null,
+        editingPlanOriginalMonthlyIds: [],
+        editingPlanOriginalMovingIds: [],
+        originalPlanSnapshot: null,
+        savedPlans: [],
+        selectedLifestyle: null,
+        selectedCity: null,
+        selectedCountry: null,
+        selectedProfile: null,
+        currentMasterPlan: null,
+        wizardStep: 0,
+        activeTab: 0,
+        planCategories: [],
+        movingItems: DEFAULT_MOVING_ITEMS.map(item => ({ ...item })),
+        checklistItems: [],
+        livingFundBDT: '',
       }),
 
       fetchProfile: async () => {
@@ -168,6 +229,12 @@ const useStore = create(
       wizardStep: 0,
       activeTab: 0,
 
+      // ── Edit-mode state (set when updating an existing user plan) ──
+      editingPlanId: null,
+      editingPlanOriginalMonthlyIds: [],
+      editingPlanOriginalMovingIds: [],
+      originalPlanSnapshot: null,  // JSON string snapshot for dirty detection + checklist sync
+
       // ── Plan data (editable in-session) ──────────────────────
       planCategories: [],
       movingItems: DEFAULT_MOVING_ITEMS.map(item => ({ ...item })),
@@ -199,6 +266,9 @@ const useStore = create(
       rechooseCity: () => set(state => ({
         selectedCity: null,
         currentMasterPlan: null,
+        editingPlanId: null,
+        editingPlanOriginalMonthlyIds: [],
+        editingPlanOriginalMovingIds: [],
         wizardStep: state.selectedLifestyle ? 1 : 0,
         activeTab: 0,
         planCategories: state.planCategories.filter(c => c.isCustom),
@@ -213,6 +283,9 @@ const useStore = create(
           selectedProfile: profileObj || null,
           selectedCity: null,
           currentMasterPlan: null,
+          editingPlanId: null,
+          editingPlanOriginalMonthlyIds: [],
+          editingPlanOriginalMovingIds: [],
           wizardStep: 1,
           activeTab: 0,
           planCategories: customCategories,
@@ -224,6 +297,9 @@ const useStore = create(
           selectedCity: cityId,
           selectedCountry: countryId || null,
           currentMasterPlan: null,
+          editingPlanId: null,
+          editingPlanOriginalMonthlyIds: [],
+          editingPlanOriginalMovingIds: [],
           wizardStep: 2,
           activeTab: 0,
           planCategories: [],
@@ -362,6 +438,11 @@ const useStore = create(
             item.id === id ? { ...item, completed: !item.completed } : item
           ),
         }))
+        // Fire API immediately for items that already exist on the server (optimistic)
+        const { editingPlanId, accessToken } = get()
+        if (editingPlanId && accessToken && !String(id).startsWith('custom-checklist-')) {
+          toggleChecklistItemApi(accessToken, editingPlanId, id).catch(console.error)
+        }
       },
 
       addCustomChecklistItem: (category, text, quantity = 1) => {
@@ -402,6 +483,108 @@ const useStore = create(
       // ── Living fund ──────────────────────────────────────────
       setLivingFund: (bdt) => set({ livingFundBDT: clampMoney(bdt, MONEY_LIMITS.livingFundBDT) }),
 
+      // ── Load an existing user plan into the wizard for editing ──
+      loadPlanForEditing: async (planId, accessToken) => {
+        const plan = await getMyPlan(accessToken, planId)
+
+        const planCategories = (plan.monthlyItems || []).map((item, idx) => ({
+          id: item.id,
+          categoryName: item.customName || item.nameEn || 'Item',
+          categoryNameBN: item.nameBn || '',
+          estimatedAmountNZD: Number(item.estimatedAmountNzd) || 0,
+          noteEn: item.customNote || item.noteEn || '',
+          isCustom: item.custom || false,
+          displayOrder: item.displayOrder ?? idx,
+        }))
+
+        const movingItems = (plan.movingItems || []).map((item, idx) => ({
+          id: item.id,
+          itemName: item.customItemName || item.itemNameEn || 'Item',
+          itemNameBN: item.itemNameBn || '',
+          amountNZD: Number(item.estimatedAmountNzd) || 0,
+          noteEn: item.customNote || item.noteEn || '',
+          isCustom: item.custom || false,
+          autoCalc: false,
+          displayOrder: item.displayOrder ?? idx,
+        }))
+
+        const checklistItems = (plan.checklistItems || [])
+          .slice()
+          .sort((a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0))
+          .map(item => ({
+            id: item.id,
+            category: item.category ? item.category.trim().toUpperCase() : 'CUSTOM',
+            textEn: item.customItemText || item.itemTextEn || '',
+            textBn: item.itemTextBn || '',
+            quantity: item.quantity ?? 1,
+            completed: item.done || false,
+            noteEn: item.customNote || item.noteEn || '',
+            noteBn: item.noteBn || '',
+            isCustom: item.custom || false,
+            displayOrder: item.displayOrder ?? 0,
+          }))
+
+        const livingFundBDT = plan.livingFund?.userSavedAmountBdt
+          ? String(plan.livingFund.userSavedAmountBdt)
+          : ''
+
+        const resolvedMovingItems = movingItems.length > 0 ? movingItems : DEFAULT_MOVING_ITEMS.map(item => ({ ...item }))
+
+        const originalPlanSnapshot = JSON.stringify({
+          planCategories: planCategories.map(c => ({ id: c.id, categoryName: c.categoryName, estimatedAmountNZD: c.estimatedAmountNZD, noteEn: c.noteEn })),
+          movingItems: resolvedMovingItems.map(i => ({ id: i.id, itemName: i.itemName, amountNZD: i.amountNZD, noteEn: i.noteEn })),
+          checklistItems: checklistItems.map(i => ({ id: i.id, textEn: i.textEn, completed: i.completed, category: i.category })),
+          livingFundBDT,
+        })
+
+        set({
+          editingPlanId: planId,
+          editingPlanOriginalMonthlyIds: planCategories.map(c => c.id),
+          editingPlanOriginalMovingIds: movingItems.map(i => i.id),
+          originalPlanSnapshot,
+          planCategories,
+          movingItems: resolvedMovingItems,
+          checklistItems,
+          livingFundBDT,
+          currentMasterPlan: {
+            id: null,
+            cityId: plan.cityId,
+            cityNameEn: plan.cityNameEn,
+            cityNameBn: plan.cityNameBn,
+            planningProfileId: plan.planningProfileId,
+            profileCode: plan.profileCode,
+            profileNameEn: plan.profileNameEn,
+          },
+          selectedLifestyle: plan.profileCode || null,
+          selectedCity: plan.cityId || null,
+          wizardStep: 2,
+          activeTab: 0,
+        })
+
+        return plan
+      },
+
+      /**
+       * Check if the authenticated user already has a plan for the given city+profile combo.
+       * If found, loads it into edit mode. If not, clears any stale edit state.
+       * Returns true if an existing plan was found and loaded, false otherwise.
+       */
+      checkAndLoadExistingPlan: async (accessToken, cityId, planningProfileId) => {
+        try {
+          const plan = await getMyPlanByCombo(accessToken, cityId, planningProfileId)
+          if (plan && plan.id) {
+            await get().loadPlanForEditing(plan.id, accessToken)
+            return true
+          }
+          // No existing plan — ensure edit state is clean
+          set({ editingPlanId: null, editingPlanOriginalMonthlyIds: [], editingPlanOriginalMovingIds: [], originalPlanSnapshot: null })
+          return false
+        } catch {
+          set({ editingPlanId: null, editingPlanOriginalMonthlyIds: [], editingPlanOriginalMovingIds: [], originalPlanSnapshot: null })
+          return false
+        }
+      },
+
       // ── Reset ─────────────────────────────────────────────────
       resetPlan: () => set({
         selectedLifestyle: null,
@@ -409,6 +592,10 @@ const useStore = create(
         selectedCountry: null,
         selectedProfile: null,
         currentMasterPlan: null,
+        editingPlanId: null,
+        editingPlanOriginalMonthlyIds: [],
+        editingPlanOriginalMovingIds: [],
+        originalPlanSnapshot: null,
         planCategories: [],
         movingItems: DEFAULT_MOVING_ITEMS.map(item => ({ ...item })),
         checklistItems: [],
@@ -427,14 +614,129 @@ const useStore = create(
         if (!state.isAuthenticated) return { ok: false, reason: 'AUTH_REQUIRED' }
         if (!state.accessToken) return { ok: false, reason: 'AUTH_REQUIRED' }
 
+        const token = state.accessToken
+
+        // ── Edit mode: sync changes to existing user plan ──────
+        if (state.editingPlanId) {
+          const planId = state.editingPlanId
+          const originalMonthlyIds = new Set(state.editingPlanOriginalMonthlyIds)
+          const originalMovingIds  = new Set(state.editingPlanOriginalMovingIds)
+
+          // Monthly items: update existing, add new custom
+          for (const item of state.planCategories) {
+            if (!String(item.id).startsWith('custom-')) {
+              await updateMonthlyItem(token, planId, item.id, {
+                customName: item.categoryName,
+                estimatedAmountNzd: item.estimatedAmountNZD,
+                customNote: item.noteEn || '',
+              })
+            } else {
+              await addMonthlyItem(token, planId, {
+                customName: item.categoryName,
+                estimatedAmountNzd: item.estimatedAmountNZD,
+                isCustom: true,
+                displayOrder: item.displayOrder ?? 99,
+              })
+            }
+          }
+          // Delete removed monthly items
+          const currentMonthlyIds = new Set(
+            state.planCategories.map(c => c.id).filter(id => !String(id).startsWith('custom-'))
+          )
+          for (const id of originalMonthlyIds) {
+            if (!currentMonthlyIds.has(id)) await deleteMonthlyItem(token, planId, id)
+          }
+
+          // Moving items: update existing, add new custom
+          for (const item of state.movingItems) {
+            if (!String(item.id).startsWith('custom-')) {
+              await updateMovingItem(token, planId, item.id, {
+                customItemName: item.itemName,
+                estimatedAmountNzd: item.amountNZD,
+                customNote: item.noteEn || '',
+              })
+            } else {
+              await addMovingItem(token, planId, {
+                customItemName: item.itemName,
+                estimatedAmountNzd: item.amountNZD,
+                isCustom: true,
+                displayOrder: item.displayOrder ?? 99,
+              })
+            }
+          }
+          // Delete removed moving items
+          const currentMovingIds = new Set(
+            state.movingItems.map(i => i.id).filter(id => !String(id).startsWith('custom-'))
+          )
+          for (const id of originalMovingIds) {
+            if (!currentMovingIds.has(id)) await deleteMovingItem(token, planId, id)
+          }
+
+          // Living fund
+          if (state.livingFundBDT !== '' && state.livingFundBDT !== null) {
+            await upsertLivingFund(token, planId, {
+              userSavedAmountBdt: Number(state.livingFundBDT),
+            })
+          }
+
+          // Checklist sync — toggles are already live via API, here we sync adds/edits/deletes
+          const originalSnapshot = state.originalPlanSnapshot ? JSON.parse(state.originalPlanSnapshot) : null
+          const originalChecklistItems = originalSnapshot?.checklistItems || []
+          const originalChecklistIds = new Set(originalChecklistItems.map(i => i.id))
+          const currentServerIds = new Set(
+            state.checklistItems
+              .filter(i => !String(i.id).startsWith('custom-checklist-'))
+              .map(i => i.id)
+          )
+
+          for (const item of state.checklistItems) {
+            if (String(item.id).startsWith('custom-checklist-')) {
+              // New custom item — POST to create
+              await addChecklistItem(token, planId, {
+                category: item.category || 'CUSTOM',
+                customItemText: item.textEn || '',
+                quantity: item.quantity || 1,
+              })
+            } else if (originalChecklistIds.has(item.id)) {
+              // Existing item — check if text changed
+              const orig = originalChecklistItems.find(o => o.id === item.id)
+              if (orig && item.textEn !== orig.textEn) {
+                await updateChecklistItem(token, planId, item.id, { customItemText: item.textEn })
+              }
+            }
+          }
+
+          // Delete items removed by user
+          for (const id of originalChecklistIds) {
+            if (!currentServerIds.has(id)) {
+              await deleteChecklistItem(token, planId, id)
+            }
+          }
+
+          set({
+            editingPlanId: null,
+            editingPlanOriginalMonthlyIds: [],
+            editingPlanOriginalMovingIds: [],
+            originalPlanSnapshot: null,
+          })
+          return { ok: true, plan: { id: planId } }
+        }
+
         // API-backed save: use master plan deep copy
         if (state.currentMasterPlan?.id) {
           const masterPlanId = state.currentMasterPlan.id
           const cityName = state.currentMasterPlan.cityNameEn || 'City'
           const profileName = state.currentMasterPlan.profileNameEn || 'Plan'
           const planName = `${cityName} — ${profileName}`
-          const savedPlan = await createPlanFromMaster(state.accessToken, masterPlanId, planName)
-          return { ok: true, plan: savedPlan }
+          try {
+            const savedPlan = await createPlanFromMaster(state.accessToken, masterPlanId, planName)
+            return { ok: true, plan: savedPlan }
+          } catch (err) {
+            if (err?.code === 'DUPLICATE_PLAN') {
+              return { ok: false, reason: 'DUPLICATE_PLAN', message: err.message }
+            }
+            throw err
+          }
         }
 
         // Fallback: localStorage save (when no master plan is loaded)
@@ -526,6 +828,9 @@ const useStore = create(
         selectedCountry: state.selectedCountry,
         selectedProfile: state.selectedProfile,
         currentMasterPlan: state.currentMasterPlan,
+        editingPlanId: state.editingPlanId,
+        editingPlanOriginalMonthlyIds: state.editingPlanOriginalMonthlyIds,
+        editingPlanOriginalMovingIds: state.editingPlanOriginalMovingIds,
         wizardStep: state.wizardStep,
         activeTab: state.activeTab,
         planCategories: state.planCategories,

@@ -17,11 +17,11 @@ function mulberry32(seed) {
 }
 
 const STEPS = [
-  { id: 1, titleEN: 'Pick Profile',     titleBN: 'প্রোফাইল বাছুন',        subEN: 'Solo · couple · family',  subBN: 'একা · দম্পতি · পরিবার',      color: '#7C5CDB', icon: soloStudentSvg,     iconBg: '#E9F0FF' },
-  { id: 2, titleEN: 'Choose City',      titleBN: 'শহর বাছুন',              subEN: 'Auckland · Wellington',   subBN: 'অকল্যান্ড · ওয়েলিংটন',    color: '#0095A1', icon: aucklandSvg,        iconBg: '#E7F8F6' },
-  { id: 3, titleEN: 'Know Budget',      titleBN: 'বাজেট জানুন',            subEN: 'Monthly + moving costs',  subBN: 'মাসিক + যাওয়ার খরচ',         color: '#C07A10', icon: comfortableSoloSvg, iconBg: '#FFF3DA' },
-  { id: 4, titleEN: 'Living Fund',      titleBN: 'লিভিং ফান্ড',            subEN: 'Survival window calc',    subBN: 'টিকে থাকার হিসাব',            color: '#159D72', icon: familyPlanningSvg,  iconBg: '#EAF6FF' },
-  { id: 5, titleEN: 'Track Readiness',  titleBN: 'প্রস্তুতি দেখুন',        subEN: 'Score + savings plan',    subBN: 'স্কোর + সঞ্চয় পরিকল্পনা',    color: '#C0359A', icon: heroCharactersSvg,  iconBg: '#FCEAF4' },
+  { id: 1, titleEN: "Who's Moving?", titleBN: 'কে কে যাচ্ছেন?', subEN: 'Solo · couple · family', subBN: 'একা · দম্পতি · পরিবার', color: '#7C5CDB', icon: soloStudentSvg, iconBg: '#E9F0FF' },
+  { id: 2, titleEN: 'Where To?', titleBN: 'কোথায় থাকবেন?', subEN: 'Auckland · Wellington', subBN: 'অকল্যান্ড · ওয়েলিংটন', color: '#0095A1', icon: aucklandSvg, iconBg: '#E7F8F6' },
+  { id: 3, titleEN: 'Discover Costs', titleBN: 'খরচের হিসাব', subEN: 'Monthly + moving costs', subBN: 'মাসিক + যাওয়ার খরচ', color: '#C07A10', icon: comfortableSoloSvg, iconBg: '#FFF3DA' },
+  { id: 4, titleEN: 'Secure Your Fund', titleBN: 'ফান্ড নিশ্চিত করুন', subEN: 'Survival window calc', subBN: 'টিকে থাকার হিসাব', color: '#159D72', icon: familyPlanningSvg, iconBg: '#EAF6FF' },
+  { id: 5, titleEN: 'Master Your Move', titleBN: 'সফলতার পথে', subEN: 'Score + savings plan', subBN: 'স্কোর + সঞ্চয় পরিকল্পনা', color: '#C0359A', icon: heroCharactersSvg, iconBg: '#FCEAF4' },
 ]
 
 const NODE_POS = [
@@ -29,32 +29,32 @@ const NODE_POS = [
   { x: 272, y: 336 },
   { x: 404, y: 222 },
   { x: 198, y: 124 },
-  { x: 410, y: 78  },
+  { x: 410, y: 78 },
 ]
 
 // Which side the label sits for each node
 const LABEL_CFG = [
-  { side: 'right', dx: 52,  dy: 0  },
-  { side: 'right', dx: 52,  dy: -4 },
-  { side: 'left',  dx: -52, dy: 0  },
-  { side: 'left',  dx: -52, dy: 0  },
-  { side: 'left',  dx: -52, dy: 0  },
+  { side: 'right', dx: 52, dy: 0 },
+  { side: 'right', dx: 52, dy: -4 },
+  { side: 'left', dx: -52, dy: 0 },
+  { side: 'left', dx: -52, dy: 0 },
+  { side: 'left', dx: -52, dy: 0 },
 ]
 
 const MOBILE_NODE_POS = [
-  { x: 82,  y: 55  },
+  { x: 82, y: 55 },
   { x: 272, y: 145 },
-  { x: 82,  y: 235 },
+  { x: 82, y: 235 },
   { x: 272, y: 325 },
-  { x: 82,  y: 415 },
+  { x: 82, y: 415 },
 ]
 
 const MOBILE_LABEL_CFG = [
-  { side: 'right', dx: 52,  dy: 4 },
-  { side: 'left',  dx: -52, dy: 4 },
-  { side: 'right', dx: 52,  dy: 4 },
-  { side: 'left',  dx: -52, dy: 4 },
-  { side: 'right', dx: 52,  dy: 4 },
+  { side: 'right', dx: 52, dy: 4 },
+  { side: 'left', dx: -52, dy: 4 },
+  { side: 'right', dx: 52, dy: 4 },
+  { side: 'left', dx: -52, dy: 4 },
+  { side: 'right', dx: 52, dy: 4 },
 ]
 
 function buildPath(pts) {
@@ -81,17 +81,17 @@ export function JourneyAnimation() {
     navigate('/plan')
   }
 
-  const [current, setCurrent]         = useState(0)
-  const [arrived, setArrived]         = useState(false)
+  const [current, setCurrent] = useState(0)
+  const [arrived, setArrived] = useState(false)
   const [progressLen, setProgressLen] = useState(0)
-  const [plane, setPlane]             = useState({ x: NODE_POS[0].x, y: NODE_POS[0].y, angle: angleTo(NODE_POS[0], NODE_POS[1]) })
-  const [breath, setBreath]           = useState(0)
+  const [plane, setPlane] = useState({ x: NODE_POS[0].x, y: NODE_POS[0].y, angle: angleTo(NODE_POS[0], NODE_POS[1]) })
+  const [breath, setBreath] = useState(0)
   const [nodeLengths, setNodeLengths] = useState([])
-  const [totalLen, setTotalLen]       = useState(0)
+  const [totalLen, setTotalLen] = useState(0)
 
   const pathRef = useRef(null)
   const animRef = useRef(null)
-  const pathD   = useMemo(() => buildPath(NODE_POS), [])
+  const pathD = useMemo(() => buildPath(NODE_POS), [])
 
   // Gentle breathing tick for node pulse
   useEffect(() => {
@@ -137,16 +137,16 @@ export function JourneyAnimation() {
     }
 
     const fromLen = nodeLengths[current - 1]
-    const toLen   = nodeLengths[current]
-    const segLen  = Math.abs(toLen - fromLen)
-    const avgLen  = totalLen / (STEPS.length - 1)
+    const toLen = nodeLengths[current]
+    const segLen = Math.abs(toLen - fromLen)
+    const avgLen = totalLen / (STEPS.length - 1)
     const travelMs = STEP_DURATION * (0.5 + 0.82 * segLen / avgLen)
     const t0 = performance.now()
     setArrived(false)
 
     const tick = now => {
       const raw = Math.min(1, (now - t0) / travelMs)
-      const t   = eio(raw)
+      const t = eio(raw)
       const len = fromLen + (toLen - fromLen) * t
 
       const p = pathRef.current.getPointAtLength(len)
@@ -243,9 +243,9 @@ export function JourneyAnimation() {
 
         {/* Dot trail */}
         {dots.map((dot, i) => {
-          const behind  = progressLen - dot.l
+          const behind = progressLen - dot.l
           const inTrail = behind >= 0 && behind < TRAIL_LEN
-          const trailT  = inTrail ? 1 - behind / TRAIL_LEN : 0
+          const trailT = inTrail ? 1 - behind / TRAIL_LEN : 0
           const revealed = dot.l <= progressLen
           if (!revealed) return null
 
@@ -264,16 +264,16 @@ export function JourneyAnimation() {
         {/* Nodes */}
         {STEPS.map((step, i) => {
           const { x, y } = NODE_POS[i]
-          const isCur  = i === current
+          const isCur = i === current
           const isDone = i < current || (i === current && arrived)
-          const scale  = isCur ? 1.24 : isDone ? 1.04 : 0.96
-          const op     = i > current ? 0.72 : isDone ? 0.9 : 1
-          const pulse  = isCur ? 1 : 1 + Math.sin(breath * 1.4 + i * 1.1) * 0.008
-          const cfg    = LABEL_CFG[i]
+          const scale = isCur ? 1.24 : isDone ? 1.04 : 0.96
+          const op = i > current ? 0.72 : isDone ? 0.9 : 1
+          const pulse = isCur ? 1 : 1 + Math.sin(breath * 1.4 + i * 1.1) * 0.008
+          const cfg = LABEL_CFG[i]
           const anchor = cfg.side === 'right' ? 'start' : 'end'
           const labelOp = i > current ? 0.72 : isCur ? 1 : 0.82
-          const title  = language === 'BN' ? step.titleBN : step.titleEN
-          const sub    = language === 'BN' ? step.subBN   : step.subEN
+          const title = language === 'BN' ? step.titleBN : step.titleEN
+          const sub = language === 'BN' ? step.subBN : step.subEN
 
           return (
             <g

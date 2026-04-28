@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { Navigate, Routes, Route, useLocation } from 'react-router-dom'
 import { Navbar } from '@/components/layout/Navbar'
 import { BottomNav } from '@/components/layout/BottomNav'
@@ -46,6 +47,11 @@ function PublicOnlyForNonAdmins({ children }) {
 export default function App() {
   const location = useLocation()
   const isAdminRoute = location.pathname.startsWith('/admin/')
+  const fetchAndSetExchangeRate = useStore(s => s.fetchAndSetExchangeRate)
+
+  useEffect(() => {
+    fetchAndSetExchangeRate()
+  }, [fetchAndSetExchangeRate])
 
   return (
     <ToastProvider>

@@ -30,4 +30,22 @@ public interface PlanRepository extends JpaRepository<Plan, String> {
     /** Counts active user plans linked to a given master plan combo (for delete safety check). */
     @Query("SELECT COUNT(p) FROM Plan p WHERE p.city.id = :cityId AND p.masterPlan = false AND p.deleted = false")
     long countActiveUserPlansByCity(@Param("cityId") String cityId);
+
+    /**
+     * Finds an existing active user plan for the same user + city + profile combo.
+     * Used to enforce the one-plan-per-combo rule for applicants.
+     */
+    @Query("""
+            SELECT p FROM Plan p
+            JOIN PlanUser pu ON pu.plan.id = p.id
+            WHERE pu.user.id = :userId
+              AND p.city.id = :cityId
+              AND p.planningProfile.id = :planningProfileId
+              AND p.masterPlan = false
+              AND p.deleted = false
+            """)
+    Optional<Plan> findActiveUserPlanByCombo(
+            @Param("userId") String userId,
+            @Param("cityId") String cityId,
+            @Param("planningProfileId") String planningProfileId);
 }

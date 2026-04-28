@@ -24,6 +24,20 @@ export function getMyPlan(token, planId) {
 }
 
 /**
+ * GET /api/v1/me/plans/by-combo?cityId=&planningProfileId= — find existing plan for combo
+ * Returns the full PlanResponseDto if found, null if none.
+ * @param {string} token
+ * @param {string} cityId
+ * @param {string} planningProfileId
+ */
+export function getMyPlanByCombo(token, cityId, planningProfileId) {
+  return apiRequest(
+    `/api/v1/me/plans/by-combo?cityId=${encodeURIComponent(cityId)}&planningProfileId=${encodeURIComponent(planningProfileId)}`,
+    { token }
+  )
+}
+
+/**
  * POST /api/v1/me/plans/from-master/:masterPlanId — deep-copy a master plan
  * @param {string} token
  * @param {string} masterPlanId

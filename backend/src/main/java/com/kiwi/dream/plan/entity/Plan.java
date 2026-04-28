@@ -78,6 +78,14 @@ public class Plan extends BaseAuditableEntity {
     @Column(name = "is_deleted", nullable = false)
     private boolean deleted = false;
 
+    /**
+     * Plain String reference to the master plan this user plan was copied from.
+     * No FK constraint — admin can delete master plans without cascade issues.
+     * Only relevant when masterPlan = false.
+     */
+    @Column(name = "master_plan_id", length = 36)
+    private String masterPlanId;
+
     @PrePersist
     private void generateId() {
         if (this.id == null) {

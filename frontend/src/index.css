@@ -137,6 +137,22 @@
   }
 }
 
+/* ─── Print styles ───────────────────────────────────────────────
+   When a dashboard detail modal is open and user hits "Export PDF",
+   only the modal content is shown. The modal overlay gets
+   id="dashboard-modal-print" and the body gets class "modal-printing". */
+@media print {
+  body.modal-printing > *:not(#dashboard-modal-print) {
+    display: none !important;
+  }
+  body.modal-printing #dashboard-modal-print {
+    position: static !important;
+    overflow: visible !important;
+    height: auto !important;
+    background: white !important;
+  }
+}
+
 /* ─── Global iOS-26 glass hover on ALL interactive buttons ──────
    Applies to every <button> and <a> that carries a Tailwind
    rounded-* or btn-* class, so existing styles still win on

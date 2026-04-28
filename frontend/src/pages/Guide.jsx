@@ -18,7 +18,7 @@ const GuidePage = () => {
 
   return (
     <div className="min-h-screen bg-[#D7DBD4] text-[#142334] font-sans selection:bg-[#A2C4C4]/50 pb-20">
-      
+
       {/* 1. BREAKING NEWS TICKER */}
       <div className="w-full bg-[#142334] border-b border-[#A2C4C4] py-2 overflow-hidden whitespace-nowrap text-white">
         <div className="inline-block animate-marquee hover:[animation-play-state:paused]">
@@ -30,7 +30,7 @@ const GuidePage = () => {
       </div>
 
       <main className="max-w-7xl mx-auto px-4 py-12">
-        
+
         {/* PAGE HEADER */}
         <div className="mb-10 text-center">
           <h1 className="text-4xl md:text-6xl font-serif font-bold text-[#0095A1] mb-4">NZ Essentials & Guides</h1>
@@ -40,13 +40,13 @@ const GuidePage = () => {
         {/* 2. HERO FEATURED ARTICLE */}
         <section className="mb-16" id="featured-guide">
           <Link to={`/guide/${GUIDES_DATA.featured.id}`} className="block relative group overflow-hidden rounded-3xl bg-[#142334] aspect-[21/9] shadow-2xl shadow-[#142334]/20">
-            <img 
-              src={GUIDES_DATA.featured.image} 
-              alt="Featured" 
+            <img
+              src={GUIDES_DATA.featured.image}
+              alt="Featured"
               className="absolute inset-0 w-full h-full object-cover opacity-50 group-hover:scale-105 transition-transform duration-700 mix-blend-overlay"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-[#142334] via-[#142334]/60 to-transparent"></div>
-            
+
             <div className="absolute bottom-0 left-0 p-8 md:p-14 max-w-4xl z-10">
               <span className="inline-block px-4 py-1.5 bg-[#A2C4C4] text-[#142334] text-xs font-bold uppercase tracking-wider rounded-full mb-6 shadow-lg">
                 {isBn ? GUIDES_DATA.featured.tagBn : GUIDES_DATA.featured.tagEn}
@@ -89,9 +89,9 @@ const GuidePage = () => {
                       {isBn ? article.tagBn : article.tagEn}
                     </span>
                   </div>
-                  <img 
-                    src={article.image} 
-                    alt={article.titleEn} 
+                  <img
+                    src={article.image}
+                    alt={article.titleEn}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                   />
                 </div>
@@ -115,12 +115,76 @@ const GuidePage = () => {
           </div>
         </section>
 
-        {/* 4. SUBMISSION SECTION */}
+        {/* 4. HELPFUL VIDEOS */}
+        <section className="mb-20" id="helpful-videos">
+          <div className="flex items-center justify-between mb-10 border-b border-[#A2C4C4] pb-4">
+            <h2 className="text-3xl font-serif font-bold text-[#142334]">
+              {isBn ? 'জরুরি ভিডিও' : 'Helpful Videos'}
+            </h2>
+            <a href="https://youtube.com" target="_blank" rel="noreferrer" className="text-[#0095A1] font-bold hover:text-[#142334] transition-colors flex items-center gap-1">
+              {isBn ? 'ইউটিউবে আরও দেখুন' : 'More on YouTube'} <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" /></svg>
+            </a>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {/* Video 1 - Dark Theme */}
+            <div className="bg-[#142334] rounded-[2rem] overflow-hidden shadow-xl border border-[#A2C4C4]/30 flex flex-col">
+              <div className="aspect-video relative w-full bg-[#0a111a]">
+                <iframe
+                  className="absolute inset-0 w-full h-full"
+                  src="https://www.youtube.com/embed/BZEeSSQf0GU" /* Replace with your actual YouTube Video ID */
+                  title="Life in New Zealand"
+                  frameBorder="0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                ></iframe>
+              </div>
+              <div className="p-8 flex-grow flex flex-col">
+                <span className="inline-block px-3 py-1 bg-[#A2C4C4]/20 text-[#A2C4C4] text-xs font-bold uppercase tracking-wider rounded-full mb-4 w-max">
+                  {isBn ? 'ভিডিও গাইড' : 'Video Guide'}
+                </span>
+                <h3 className="text-2xl font-serif font-bold text-white mb-3 leading-snug">
+                  {isBn ? 'নিউজিল্যান্ডে ছাত্রজীবন: প্রথম মাসের অভিজ্ঞতা' : 'Student Life in NZ: First Month Experience'}
+                </h3>
+                <p className="text-white/70 text-base leading-relaxed line-clamp-2">
+                  {isBn ? 'অকল্যান্ডে পৌঁছানোর পর প্রথম কয়েক সপ্তাহের চ্যালেঞ্জ এবং অভিজ্ঞতা শুনুন।' : 'Hear about the challenges and experiences during the first few weeks after arriving in New Zealand.'}
+                </p>
+              </div>
+            </div>
+
+            {/* Video 2 - Light Theme */}
+            <div className="bg-white rounded-[2rem] overflow-hidden shadow-md border border-[#A2C4C4]/50 flex flex-col hover:shadow-xl transition-all duration-300">
+              <div className="aspect-video relative w-full bg-[#f0f2ef]">
+                <iframe
+                  className="absolute inset-0 w-full h-full"
+                  src="https://www.youtube.com/embed/qgN0nDTNEDc" /* Replace with your actual YouTube Video ID */
+                  title="Cost of Living in NZ"
+                  frameBorder="0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                ></iframe>
+              </div>
+              <div className="p-8 flex-grow flex flex-col">
+                <span className="inline-block px-3 py-1 bg-[#D7DBD4] text-[#142334] text-xs font-bold uppercase tracking-wider rounded-full mb-4 w-max border border-[#A2C4C4]">
+                  {isBn ? 'বাজেট প্ল্যানিং' : 'Budget Planning'}
+                </span>
+                <h3 className="text-2xl font-serif font-bold text-[#0095A1] mb-3 leading-snug">
+                  {isBn ? 'নিউজিল্যান্ডে থাকার আসল খরচ কত?' : 'What is the Real Cost of Living in NZ?'}
+                </h3>
+                <p className="text-[#142334]/70 text-base leading-relaxed line-clamp-2">
+                  {isBn ? 'বাসা ভাড়া, মুদি বাজার এবং যাতায়াতের বিস্তারিত হিসাব জানুন এই ভিডিওতে।' : 'Get a detailed breakdown of rent, groceries, and transport costs in this video guide.'}
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* 5. SUBMISSION SECTION */}
         <section className="relative bg-[#0095A1] rounded-[2.5rem] overflow-hidden shadow-xl">
           {/* Decorative background elements */}
           <div className="absolute top-0 right-0 -mt-20 -mr-20 w-80 h-80 bg-[#A2C4C4] rounded-full blur-[80px] opacity-30"></div>
           <div className="absolute bottom-0 left-0 -mb-20 -ml-20 w-64 h-64 bg-[#D7DBD4] rounded-full blur-[60px] opacity-20"></div>
-          
+
           <div className="relative p-10 md:p-20 text-center text-white">
             <h2 className="text-4xl md:text-5xl font-serif font-bold mb-6">Share Your NZ Journey</h2>
             <p className="text-white/90 mb-12 text-lg max-w-2xl mx-auto font-medium">
@@ -141,9 +205,9 @@ const GuidePage = () => {
                 <pre className="text-sm md:text-base text-white/90 whitespace-pre-wrap font-mono leading-relaxed">
                   {`Subject: [GUIDE SUBMISSION] - {Title}\n\nAuthor Name: \nArticle Title: \nContent: \n\n(Attach any relevant images to email) `}
                 </pre>
-                
+
                 <div className="absolute inset-y-0 right-0 w-32 bg-gradient-to-l from-[#142334] to-transparent flex items-center justify-end pr-4 opacity-80">
-                  <button 
+                  <button
                     onClick={copyTemplate}
                     className="bg-[#A2C4C4] hover:bg-white text-[#142334] px-5 py-2.5 rounded-full text-sm font-bold transition-all shadow-lg flex items-center gap-2 transform active:scale-95"
                   >
@@ -176,15 +240,6 @@ const GuidePage = () => {
         </section>
 
       </main>
-
-      {/* FOOTER SPACING */}
-      <footer className="py-12 text-center text-[#142334]/60 text-sm font-medium">
-        <div className="flex items-center justify-center gap-2 mb-2">
-          <span className="w-4 h-4 bg-[#0095A1] rounded-full block shadow-md"></span>
-          <span className="font-serif font-bold text-[#142334] text-xl tracking-tight">KiwiDream BD</span>
-        </div>
-        &copy; {new Date().getFullYear()} KiwiDream BD. All rights reserved.
-      </footer>
 
       {/* CSS for the Marquee Animation */}
       <style jsx>{`

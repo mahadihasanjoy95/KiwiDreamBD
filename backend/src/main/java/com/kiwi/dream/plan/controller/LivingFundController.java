@@ -11,8 +11,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import com.kiwi.dream.security.UserPrincipal;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -48,9 +48,9 @@ public class LivingFundController {
     @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Get my living fund with computed survival months and readiness score")
     public ResponseEntity<CommonApiResponse<LivingFundResponseDto>> userGet(
-            @AuthenticationPrincipal UserDetails user, @PathVariable String planId) {
+            @AuthenticationPrincipal UserPrincipal user, @PathVariable String planId) {
         return ResponseEntity.ok(CommonApiResponse.success(
-                userPlanService.getLivingFund(user.getUsername(), planId)));
+                userPlanService.getLivingFund(user.getUserId(), planId)));
     }
 
     @PutMapping("/api/v1/me/plans/{planId}/living-fund")
@@ -59,10 +59,10 @@ public class LivingFundController {
             description = "Updates userSavedAmountBdt and other personal fields. " +
                           "Response includes freshly computed survivalMonths, affordabilityStatus, readinessScore, and smartWarnings.")
     public ResponseEntity<CommonApiResponse<LivingFundResponseDto>> userUpsert(
-            @AuthenticationPrincipal UserDetails user,
+            @AuthenticationPrincipal UserPrincipal user,
             @PathVariable String planId,
             @RequestBody UpsertLivingFundRequestDto dto) {
         return ResponseEntity.ok(CommonApiResponse.success(
-                userPlanService.upsertLivingFund(user.getUsername(), planId, dto)));
+                userPlanService.upsertLivingFund(user.getUserId(), planId, dto)));
     }
 }

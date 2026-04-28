@@ -14,8 +14,8 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import com.kiwi.dream.security.UserPrincipal;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -71,49 +71,49 @@ public class ChecklistItemController {
     @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Get checklist items for my plan")
     public ResponseEntity<CommonApiResponse<List<ChecklistItemResponseDto>>> userList(
-            @AuthenticationPrincipal UserDetails user, @PathVariable String planId) {
+            @AuthenticationPrincipal UserPrincipal user, @PathVariable String planId) {
         return ResponseEntity.ok(CommonApiResponse.success(
-                userPlanService.getChecklistItems(user.getUsername(), planId)));
+                userPlanService.getChecklistItems(user.getUserId(), planId)));
     }
 
     @PostMapping("/api/v1/me/plans/{planId}/checklist-items")
     @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Add a custom checklist item to my plan")
     public ResponseEntity<CommonApiResponse<ChecklistItemResponseDto>> userAdd(
-            @AuthenticationPrincipal UserDetails user,
+            @AuthenticationPrincipal UserPrincipal user,
             @PathVariable String planId, @Valid @RequestBody UpdateChecklistItemRequestDto dto) {
         return ResponseEntity.ok(CommonApiResponse.success(
-                userPlanService.addChecklistItem(user.getUsername(), planId, dto)));
+                userPlanService.addChecklistItem(user.getUserId(), planId, dto)));
     }
 
     @PutMapping("/api/v1/me/plans/{planId}/checklist-items/{itemId}")
     @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Update a checklist item on my plan")
     public ResponseEntity<CommonApiResponse<ChecklistItemResponseDto>> userUpdate(
-            @AuthenticationPrincipal UserDetails user,
+            @AuthenticationPrincipal UserPrincipal user,
             @PathVariable String planId, @PathVariable String itemId,
             @Valid @RequestBody UpdateChecklistItemRequestDto dto) {
         return ResponseEntity.ok(CommonApiResponse.success(
-                userPlanService.updateChecklistItem(user.getUsername(), planId, itemId, dto)));
+                userPlanService.updateChecklistItem(user.getUserId(), planId, itemId, dto)));
     }
 
     @PatchMapping("/api/v1/me/plans/{planId}/checklist-items/{itemId}/toggle")
     @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Toggle a checklist item done/undone")
     public ResponseEntity<CommonApiResponse<ChecklistItemResponseDto>> toggle(
-            @AuthenticationPrincipal UserDetails user,
+            @AuthenticationPrincipal UserPrincipal user,
             @PathVariable String planId, @PathVariable String itemId) {
         return ResponseEntity.ok(CommonApiResponse.success(
-                userPlanService.toggleChecklistItem(user.getUsername(), planId, itemId)));
+                userPlanService.toggleChecklistItem(user.getUserId(), planId, itemId)));
     }
 
     @DeleteMapping("/api/v1/me/plans/{planId}/checklist-items/{itemId}")
     @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Delete a checklist item from my plan")
     public ResponseEntity<CommonApiResponse<Void>> userDelete(
-            @AuthenticationPrincipal UserDetails user,
+            @AuthenticationPrincipal UserPrincipal user,
             @PathVariable String planId, @PathVariable String itemId) {
-        userPlanService.deleteChecklistItem(user.getUsername(), planId, itemId);
+        userPlanService.deleteChecklistItem(user.getUserId(), planId, itemId);
         return ResponseEntity.ok(CommonApiResponse.success(null));
     }
 }

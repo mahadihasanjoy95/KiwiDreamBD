@@ -405,19 +405,44 @@ export default function BudgetPlanner() {
   const selectedLifestyle = useStore(s => s.selectedLifestyle)  // profile CODE e.g. 'SOLO_STUDENT'
   const selectedCity     = useStore(s => s.selectedCity)        // city UUID
   const language         = useStore(s => s.language)
-  const isAuthenticated  = useStore(s => s.isAuthenticated)
-  const saveCurrentPlan  = useStore(s => s.saveCurrentPlan)
-  const savedPlans       = useStore(s => s.savedPlans)
-  const setWizardStep    = useStore(s => s.setWizardStep)
-  const rechooseLifestyle = useStore(s => s.rechooseLifestyle)
-  const rechooseCity     = useStore(s => s.rechooseCity)
-  const setMasterPlan    = useStore(s => s.setMasterPlan)
-  const currentMasterPlan = useStore(s => s.currentMasterPlan)
+  const isAuthenticated           = useStore(s => s.isAuthenticated)
+  const accessToken               = useStore(s => s.accessToken)
+  const saveCurrentPlan           = useStore(s => s.saveCurrentPlan)
+  const resetPlan                 = useStore(s => s.resetPlan)
+  const savedPlans                = useStore(s => s.savedPlans)
+  const setWizardStep             = useStore(s => s.setWizardStep)
+  const rechooseLifestyle         = useStore(s => s.rechooseLifestyle)
+  const rechooseCity              = useStore(s => s.rechooseCity)
+  const setMasterPlan             = useStore(s => s.setMasterPlan)
+  const currentMasterPlan         = useStore(s => s.currentMasterPlan)
+  const editingPlanId             = useStore(s => s.editingPlanId)
+  const checkAndLoadExistingPlan  = useStore(s => s.checkAndLoadExistingPlan)
+  const originalPlanSnapshot      = useStore(s => s.originalPlanSnapshot)
+  const planCategories            = useStore(s => s.planCategories)
+  const movingItemsState          = useStore(s => s.movingItems)
+  const checklistItemsState       = useStore(s => s.checklistItems)
+  const livingFundBDT             = useStore(s => s.livingFundBDT)
   const { monthlyTotal, survivalMonths } = useAffordability()
 
-  const [pageLoading, setPageLoading]       = useState(true)
-  const [savingPlan, setSavingPlan]         = useState(false)
-  const [masterPlanLoading, setMasterPlanLoading] = useState(false)
+  // True when editing an existing plan AND the user has changed something
+  const isDirty = useMemo(() => {
+    if (!editingPlanId) return true  // new plan — always "Save"
+    if (!originalPlanSnapshot) return true  // no snapshot (e.g. after reload) — treat as dirty
+    const current = JSON.stringify({
+      planCategories: planCategories.map(c => ({ id: c.id, categoryName: c.categoryName, estimatedAmountNZD: c.estimatedAmountNZD, noteEn: c.noteEn })),
+      movingItems: movingItemsState.map(i => ({ id: i.id, itemName: i.itemName, amountNZD: i.amountNZD, noteEn: i.noteEn })),
+      checklistItems: checklistItemsState.map(i => ({ id: i.id, textEn: i.textEn, completed: i.completed, category: i.category })),
+      livingFundBDT,
+    })
+    return current !== originalPlanSnapshot
+  }, [editingPlanId, originalPlanSnapshot, planCategories, movingItemsState, checklistItemsState, livingFundBDT])
+
+  const [pageLoading, setPageLoading]               = useState(true)
+  const [savingPlan, setSavingPlan]                 = useState(false)
+  const [masterPlanLoading, setMasterPlanLoading]   = useState(false)
+  const [checkingExistingPlan, setCheckingExistingPlan] = useState(false)
+  // tracks the last combo we checked so we don't re-check on every render
+  const checkedComboRef = useRef(null)
 
   // ── API data ──────────────────────────────────────────────────────────────
   const [apiCountry, setApiCountry]   = useState(null)
@@ -462,6 +487,37 @@ export default function BudgetPlanner() {
       .finally(() => setMasterPlanLoading(false))
   }, [selectedLifestyle, selectedCity, apiCountry, apiCities, apiProfiles, setMasterPlan, currentMasterPlan])
 
+  // When user is logged in and has chosen a city+profile, check if they already have a plan
+  useEffect(() => {
+    if (wizardStep !== 2) return
+    if (!isAuthenticated || !accessToken) return
+    if (!selectedCity || !selectedLifestyle) return
+    if (!apiProfiles.length || !apiCities.length) return
+
+    const profile = apiProfiles.find(p => p.code === selectedLifestyle)
+    if (!profile) return
+
+    const comboKey = `${selectedCity}-${profile.id}`
+
+    // Skip if already in edit mode for exactly this combo
+    if (
+      editingPlanId &&
+      currentMasterPlan?.cityId === selectedCity &&
+      currentMasterPlan?.planningProfileId === profile.id
+    ) {
+      checkedComboRef.current = comboKey
+      return
+    }
+
+    // Skip if we already checked this combo
+    if (checkedComboRef.current === comboKey) return
+
+    checkedComboRef.current = comboKey
+    setCheckingExistingPlan(true)
+    checkAndLoadExistingPlan(accessToken, selectedCity, profile.id)
+      .finally(() => setCheckingExistingPlan(false))
+  }, [wizardStep, isAuthenticated, accessToken, selectedCity, selectedLifestyle, apiProfiles, apiCities, editingPlanId, currentMasterPlan, checkAndLoadExistingPlan])
+
   useEffect(() => {
     const id = window.setTimeout(() => setPageLoading(false), 700)
     return () => window.clearTimeout(id)
@@ -496,7 +552,9 @@ export default function BudgetPlanner() {
         show={pageLoading || savingPlan}
         label={
           savingPlan
-            ? (language === 'BN' ? 'আপনার plan সেভ হচ্ছে' : 'Saving your plan')
+            ? (editingPlanId
+                ? (language === 'BN' ? 'পরিকল্পনা আপডেট হচ্ছে' : 'Updating your plan')
+                : (language === 'BN' ? 'আপনার plan সেভ হচ্ছে' : 'Saving your plan'))
             : (language === 'BN' ? 'Planner প্রস্তুত হচ্ছে' : 'Loading your planner')
         }
         sublabel={
@@ -506,14 +564,16 @@ export default function BudgetPlanner() {
         }
       />
 
-      {masterPlanLoading && !pageLoading && (
+      {(masterPlanLoading || checkingExistingPlan) && !pageLoading && (
         <div className="fixed inset-x-0 top-16 z-30 flex justify-center pointer-events-none">
           <div className="mt-2 flex items-center gap-2 rounded-full border border-brand-mid bg-white px-4 py-2 shadow-brand-sm text-sm text-brand font-semibold">
             <svg className="animate-spin h-4 w-4 text-brand" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
             </svg>
-            {language === 'BN' ? 'পরিকল্পনা লোড হচ্ছে…' : 'Loading your plan data…'}
+            {checkingExistingPlan
+              ? (language === 'BN' ? 'আপনার plan খোঁজা হচ্ছে…' : 'Checking your existing plan…')
+              : (language === 'BN' ? 'পরিকল্পনা লোড হচ্ছে…' : 'Loading your plan data…')}
           </div>
         </div>
       )}
@@ -689,7 +749,10 @@ export default function BudgetPlanner() {
                                 title: t('auth.save_toast_title'),
                                 message: t('auth.save_toast_copy', { plan: result.plan?.displayPlanName || result.plan?.planName || 'Your plan' }),
                               })
-                              navigate('/dashboard')
+                              resetPlan()
+                              navigate('/dashboard', { state: { selectPlanId: result.plan?.id } })
+                            } else if (result.reason === 'DUPLICATE_PLAN') {
+                              showToast({ tone: 'warning', title: t('auth.duplicate_plan_title'), message: result.message || t('auth.duplicate_plan_copy') })
                             } else {
                               showToast({ tone: 'error', title: t('auth.save_toast_error_title'), message: t('auth.save_toast_error_copy') })
                             }
@@ -699,11 +762,26 @@ export default function BudgetPlanner() {
                             setSavingPlan(false)
                           }
                         }}
-                        disabled={savingPlan || masterPlanLoading}
-                        className="inline-flex items-center justify-center gap-2 rounded-[20px] bg-brand px-5 py-3 font-semibold text-white shadow-[0_16px_34px_rgba(0,149,161,0.22)] transition-transform hover:-translate-y-0.5 hover:bg-brand-deep disabled:opacity-60"
+                        disabled={savingPlan || masterPlanLoading || checkingExistingPlan || (editingPlanId && !isDirty)}
+                        className={cn(
+                          'inline-flex items-center justify-center gap-2 rounded-[20px] px-5 py-3 font-semibold transition-transform hover:-translate-y-0.5 disabled:opacity-60',
+                          editingPlanId && !isDirty
+                            ? 'border border-gray-300 bg-white/70 text-gray-500 cursor-not-allowed'
+                            : editingPlanId && isDirty
+                              ? 'bg-amber-500 text-white shadow-[0_16px_34px_rgba(245,158,11,0.28)] hover:bg-amber-600'
+                              : 'bg-brand text-white shadow-[0_16px_34px_rgba(0,149,161,0.22)] hover:bg-brand-deep'
+                        )}
                       >
                         <BookmarkPlus size={18} />
-                        {masterPlanLoading ? 'Loading plan…' : t('auth.save_plan_cta')}
+                        {checkingExistingPlan
+                          ? (language === 'BN' ? 'যাচাই হচ্ছে…' : 'Checking…')
+                          : masterPlanLoading
+                            ? (language === 'BN' ? 'লোড হচ্ছে…' : 'Loading…')
+                            : editingPlanId
+                              ? (isDirty
+                                  ? (language === 'BN' ? 'Plan আপডেট করুন' : 'Update this plan')
+                                  : (language === 'BN' ? 'Plan অপরিবর্তিত রাখুন' : 'Keep the plan as it is'))
+                              : (language === 'BN' ? 'Plan সেভ করুন' : 'Save this plan')}
                       </button>
                     ) : (
                       <Link

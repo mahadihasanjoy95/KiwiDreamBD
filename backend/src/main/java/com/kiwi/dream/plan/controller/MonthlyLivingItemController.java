@@ -14,8 +14,8 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import com.kiwi.dream.security.UserPrincipal;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -71,40 +71,40 @@ public class MonthlyLivingItemController {
     @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Get monthly items for my plan")
     public ResponseEntity<CommonApiResponse<List<MonthlyItemResponseDto>>> userList(
-            @AuthenticationPrincipal UserDetails user, @PathVariable String planId) {
+            @AuthenticationPrincipal UserPrincipal user, @PathVariable String planId) {
         return ResponseEntity.ok(CommonApiResponse.success(
-                userPlanService.getMonthlyItems(user.getUsername(), planId)));
+                userPlanService.getMonthlyItems(user.getUserId(), planId)));
     }
 
     @PostMapping("/api/v1/me/plans/{planId}/monthly-items")
     @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Add a custom monthly item to my plan")
     public ResponseEntity<CommonApiResponse<MonthlyItemResponseDto>> userAdd(
-            @AuthenticationPrincipal UserDetails user,
+            @AuthenticationPrincipal UserPrincipal user,
             @PathVariable String planId,
             @Valid @RequestBody UpdateMonthlyItemRequestDto dto) {
         return ResponseEntity.ok(CommonApiResponse.success(
-                userPlanService.addMonthlyItem(user.getUsername(), planId, dto)));
+                userPlanService.addMonthlyItem(user.getUserId(), planId, dto)));
     }
 
     @PutMapping("/api/v1/me/plans/{planId}/monthly-items/{itemId}")
     @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Update a monthly item on my plan")
     public ResponseEntity<CommonApiResponse<MonthlyItemResponseDto>> userUpdate(
-            @AuthenticationPrincipal UserDetails user,
+            @AuthenticationPrincipal UserPrincipal user,
             @PathVariable String planId, @PathVariable String itemId,
             @Valid @RequestBody UpdateMonthlyItemRequestDto dto) {
         return ResponseEntity.ok(CommonApiResponse.success(
-                userPlanService.updateMonthlyItem(user.getUsername(), planId, itemId, dto)));
+                userPlanService.updateMonthlyItem(user.getUserId(), planId, itemId, dto)));
     }
 
     @DeleteMapping("/api/v1/me/plans/{planId}/monthly-items/{itemId}")
     @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Delete a monthly item from my plan")
     public ResponseEntity<CommonApiResponse<Void>> userDelete(
-            @AuthenticationPrincipal UserDetails user,
+            @AuthenticationPrincipal UserPrincipal user,
             @PathVariable String planId, @PathVariable String itemId) {
-        userPlanService.deleteMonthlyItem(user.getUsername(), planId, itemId);
+        userPlanService.deleteMonthlyItem(user.getUserId(), planId, itemId);
         return ResponseEntity.ok(CommonApiResponse.success(null));
     }
 }

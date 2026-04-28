@@ -1,0 +1,41 @@
+<svg
+  width="64"
+  height="64"
+  viewBox="0 0 64 64"
+  fill="none"
+  xmlns="http://www.w3.org/2000/svg"
+  role="img"
+  aria-label="Discover Costs icon"
+>
+  <g
+    className="icon-discover-costs"
+    stroke="#334155"
+    strokeWidth="2.2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    {/* Calculator */}
+    <rect x="10" y="14" width="20" height="28" rx="4" fill="#A78BFA" />
+    <rect x="14" y="18" width="12" height="6" rx="2" fill="#FFF7ED" />
+    <rect x="14" y="28" width="4" height="4" rx="1.2" fill="#FFF7ED" />
+    <rect x="20" y="28" width="4" height="4" rx="1.2" fill="#FFF7ED" />
+    <rect x="14" y="34" width="4" height="4" rx="1.2" fill="#FFF7ED" />
+    <rect x="20" y="34" width="4" height="4" rx="1.2" fill="#FFF7ED" />
+
+    {/* Moving box */}
+    <path
+      d="M37 24L44 20L52 24V36L44 40L37 36V24Z"
+      fill="#7FD8C2"
+    />
+    <path d="M44 20V28" />
+    <path d="M37 24L44 28L52 24" />
+    <path d="M44 28V40" />
+    <path d="M41.5 22L46.5 25" />
+
+    {/* Coins */}
+    <ellipse cx="40" cy="46" rx="6.5" ry="2.5" fill="#F59E0B" />
+    <path d="M33.5 46V49C33.5 50.4 36.4 51.5 40 51.5C43.6 51.5 46.5 50.4 46.5 49V46" fill="#F59E0B" />
+    <ellipse cx="49.5" cy="43" rx="5" ry="2" fill="#FFF7ED" />
+    <path d="M44.5 43V45.4C44.5 46.5 46.7 47.4 49.5 47.4C52.3 47.4 54.5 46.5 54.5 45.4V43" fill="#FFF7ED" />
+  </g>
+</svg>

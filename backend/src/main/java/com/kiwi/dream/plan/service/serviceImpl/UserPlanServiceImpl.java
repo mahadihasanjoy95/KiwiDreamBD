@@ -9,6 +9,7 @@ import com.kiwi.dream.plan.dto.response.*;
 import com.kiwi.dream.plan.entity.*;
 import com.kiwi.dream.plan.enums.PlanAccessRole;
 import com.kiwi.dream.plan.enums.PlanStatus;
+import com.kiwi.dream.plan.exception.DuplicatePlanException;
 import com.kiwi.dream.plan.exception.PlanItemNotFoundException;
 import com.kiwi.dream.plan.exception.PlanNotFoundException;
 import com.kiwi.dream.plan.exception.PlanOwnershipException;
@@ -67,6 +68,14 @@ public class UserPlanServiceImpl implements UserPlanService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public PlanResponseDto getPlanByCombo(String userId, String cityId, String planningProfileId) {
+        return planRepository.findActiveUserPlanByCombo(userId, cityId, planningProfileId)
+                .map(masterPlanService::buildFullResponse)
+                .orElse(null);
+    }
+
+    @Override
     @Transactional
     public PlanResponseDto createFromMaster(String userId, CreateUserPlanFromMasterRequestDto dto) {
         // Load master plan — must be published
@@ -76,6 +85,14 @@ public class UserPlanServiceImpl implements UserPlanService {
 
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found: " + userId));
+
+        // Prevent duplicate: same user + same city + same profile
+        planRepository.findActiveUserPlanByCombo(userId, master.getCity().getId(), master.getPlanningProfile().getId())
+                .ifPresent(existing -> {
+                    throw new DuplicatePlanException(
+                            master.getCity().getNameEn(),
+                            master.getPlanningProfile().getNameEn());
+                });
 
         // 1. Create new user plan
         Plan userPlan = new Plan();
@@ -92,6 +109,7 @@ public class UserPlanServiceImpl implements UserPlanService {
         userPlan.setOverviewEn(master.getOverviewEn());
         userPlan.setOverviewBn(master.getOverviewBn());
         userPlan.setDeleted(false);
+        userPlan.setMasterPlanId(master.getId()); // plain String — no FK, safe for admin delete
         Plan savedPlan = planRepository.save(userPlan);
 
         // 2. Create plan-user ownership row

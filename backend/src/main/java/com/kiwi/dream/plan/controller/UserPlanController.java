@@ -14,8 +14,8 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import com.kiwi.dream.security.UserPrincipal;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -30,24 +30,34 @@ public class UserPlanController {
 
     private final UserPlanService userPlanService;
 
-    private String userId(UserDetails user) {
-        // UserDetails username is the user's UUID (set during JWT auth)
-        return user.getUsername();
+    private String userId(UserPrincipal user) {
+        return user.getUserId();
     }
 
     @GetMapping
     @Operation(summary = "List my plans", description = "Optional ?status=ACTIVE|ARCHIVED filter")
     public ResponseEntity<CommonApiResponse<List<PlanSummaryResponseDto>>> listMyPlans(
-            @AuthenticationPrincipal UserDetails user,
+            @AuthenticationPrincipal UserPrincipal user,
             @RequestParam(required = false) String status) {
         return ResponseEntity.ok(CommonApiResponse.success(
                 userPlanService.listMyPlans(userId(user), status)));
     }
 
+    @GetMapping("/by-combo")
+    @Operation(summary = "Get my existing plan for a city+profile combo, or null if none",
+            description = "Used by the planner page on load to detect and load an existing plan automatically.")
+    public ResponseEntity<CommonApiResponse<PlanResponseDto>> getByCombo(
+            @AuthenticationPrincipal UserPrincipal user,
+            @RequestParam String cityId,
+            @RequestParam String planningProfileId) {
+        return ResponseEntity.ok(CommonApiResponse.success(
+                userPlanService.getPlanByCombo(user.getUserId(), cityId, planningProfileId)));
+    }
+
     @GetMapping("/{planId}")
     @Operation(summary = "Get my full plan with all sub-resources and computed affordability fields")
     public ResponseEntity<CommonApiResponse<PlanResponseDto>> getMyPlan(
-            @AuthenticationPrincipal UserDetails user,
+            @AuthenticationPrincipal UserPrincipal user,
             @PathVariable String planId) {
         return ResponseEntity.ok(CommonApiResponse.success(
                 userPlanService.getMyPlan(userId(user), planId)));
@@ -56,7 +66,7 @@ public class UserPlanController {
     @PostMapping("/from-master/{masterPlanId}")
     @Operation(summary = "Create my personal plan from a published master plan (deep copy)")
     public ResponseEntity<CommonApiResponse<PlanResponseDto>> createFromMaster(
-            @AuthenticationPrincipal UserDetails user,
+            @AuthenticationPrincipal UserPrincipal user,
             @PathVariable String masterPlanId,
             @Valid @RequestBody(required = false) CreateUserPlanFromMasterRequestDto dto) {
         // Allow calling with just the path param and no body
@@ -69,7 +79,7 @@ public class UserPlanController {
     @PatchMapping("/{planId}")
     @Operation(summary = "Update my plan name")
     public ResponseEntity<CommonApiResponse<PlanResponseDto>> updatePlan(
-            @AuthenticationPrincipal UserDetails user,
+            @AuthenticationPrincipal UserPrincipal user,
             @PathVariable String planId,
             @Valid @RequestBody UpdatePlanRequestDto dto) {
         return ResponseEntity.ok(CommonApiResponse.success(
@@ -79,7 +89,7 @@ public class UserPlanController {
     @PostMapping("/{planId}/archive")
     @Operation(summary = "Archive my plan — saves a JSON snapshot, then soft-deletes the plan")
     public ResponseEntity<CommonApiResponse<Void>> archivePlan(
-            @AuthenticationPrincipal UserDetails user,
+            @AuthenticationPrincipal UserPrincipal user,
             @PathVariable String planId) {
         userPlanService.archivePlan(userId(user), planId);
         return ResponseEntity.ok(CommonApiResponse.success("Plan archived successfully.", null));
@@ -88,7 +98,7 @@ public class UserPlanController {
     @DeleteMapping("/{planId}")
     @Operation(summary = "Hard-delete my plan and all linked data (irreversible)")
     public ResponseEntity<CommonApiResponse<Void>> deletePlan(
-            @AuthenticationPrincipal UserDetails user,
+            @AuthenticationPrincipal UserPrincipal user,
             @PathVariable String planId) {
         userPlanService.deletePlan(userId(user), planId);
         return ResponseEntity.ok(CommonApiResponse.success("Plan deleted.", null));
@@ -97,7 +107,7 @@ public class UserPlanController {
     @GetMapping("/archives")
     @Operation(summary = "List my archived plan snapshots (view-only history)")
     public ResponseEntity<CommonApiResponse<List<PlanArchiveResponseDto>>> listArchives(
-            @AuthenticationPrincipal UserDetails user) {
+            @AuthenticationPrincipal UserPrincipal user) {
         return ResponseEntity.ok(CommonApiResponse.success(
                 userPlanService.listArchives(userId(user))));
     }

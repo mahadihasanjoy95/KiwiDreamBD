@@ -235,6 +235,16 @@ export default function Home() {
               {/* Bengali-forward headline */}
               {language === 'BN' ? (
                 <>
+                  <motion.div
+                    initial={{ opacity: 0, y: 15 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.15 }}
+                    className="mb-4 inline-flex items-center rounded-full border border-brand-mid/40 bg-brand-light/40 px-3.5 py-1.5 text-xs font-bold uppercase tracking-widest text-brand shadow-sm"
+                  >
+                    <span>{t('home.hero_motto_part1')}</span>
+                    <span className="mx-2 text-brand-deep/20">|</span>
+                    <span className="text-brand-deep/80">{t('home.hero_motto_part2')}</span>
+                  </motion.div>
                   <motion.h1
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -254,6 +264,16 @@ export default function Home() {
                 </>
               ) : (
                 <>
+                  <motion.div
+                    initial={{ opacity: 0, y: 15 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.15 }}
+                    className="mb-4 inline-flex items-center rounded-full border border-brand-mid/40 bg-brand-light/40 px-3.5 py-1.5 text-xs font-bold uppercase tracking-widest text-brand shadow-sm"
+                  >
+                    <span>{t('home.hero_motto_part1')}</span>
+                    <span className="mx-2 text-brand-deep/20">|</span>
+                    <span className="text-brand-deep/80">{t('home.hero_motto_part2')}</span>
+                  </motion.div>
                   <motion.h1
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -483,17 +503,17 @@ export default function Home() {
           className="mx-auto max-w-3xl px-6 text-center"
         >
           <h2 className="font-serif text-3xl font-bold text-brand-deep md:text-4xl lg:text-5xl">
-            Ready to plan your move?
+            {t('home.final_cta_title')}
           </h2>
           <p className="mt-4 text-base font-medium text-brand-deep/80 md:text-lg">
-            It takes 2 minutes. No account required.
+            {t('home.final_cta_sub')}
           </p>
           <Link
             to="/plan"
             onClick={startFreshPlan}
             className="mt-8 inline-flex items-center gap-2 rounded-full bg-brand px-8 py-4 text-base font-bold text-white shadow-[0_18px_42px_rgba(0,89,96,0.24)] transition-colors hover:bg-brand-deep"
           >
-            {t('home.cta_start')}
+            {t('home.final_cta_button')}
             <ArrowRight size={18} />
           </Link>
         </motion.div>

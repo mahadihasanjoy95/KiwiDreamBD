@@ -10,6 +10,7 @@ const BASE_TABS = [
   { to: '/plan',      key: 'plan',           Icon: BarChart3       },
   { to: '/dashboard', key: 'dashboard',      Icon: LayoutDashboard },
   { to: '/compare',   key: 'compare_mobile', Icon: Map             },
+  // order: home → plan → dashboard → compare → more
 ]
 
 export function BottomNav() {

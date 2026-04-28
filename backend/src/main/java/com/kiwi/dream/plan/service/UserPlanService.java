@@ -13,6 +13,9 @@ public interface UserPlanService {
 
     PlanResponseDto getMyPlan(String userId, String planId);
 
+    /** Returns the user's existing active plan for a city+profile combo, or null if none. */
+    PlanResponseDto getPlanByCombo(String userId, String cityId, String planningProfileId);
+
     PlanResponseDto createFromMaster(String userId, CreateUserPlanFromMasterRequestDto dto);
 
     PlanResponseDto updatePlan(String userId, String planId, UpdatePlanRequestDto dto);

@@ -1,15 +1,19 @@
 package com.kiwi.dream.auth.service.serviceImpl;
 
-import com.kiwi.dream.auth.constants.SystemRoles;
+import com.kiwi.dream.auth.entity.AdminInviteToken;
 import com.kiwi.dream.auth.dto.request.AssignUserRoleRequestDto;
 import com.kiwi.dream.auth.dto.request.CreateAdminRequestDto;
 import com.kiwi.dream.auth.dto.response.UserResponseDto;
-import com.kiwi.dream.auth.entity.Role;
 import com.kiwi.dream.auth.entity.User;
 import com.kiwi.dream.auth.enums.AuthProvider;
-import com.kiwi.dream.auth.exception.*;
+import com.kiwi.dream.auth.enums.UserRole;
+import com.kiwi.dream.auth.exception.AdminInviteTokenExpiredException;
+import com.kiwi.dream.auth.exception.AdminInviteTokenNotFoundException;
+import com.kiwi.dream.auth.exception.ProtectedSuperAdminOperationException;
+import com.kiwi.dream.auth.exception.UserAlreadyExistsException;
+import com.kiwi.dream.auth.exception.UserNotFoundException;
+import com.kiwi.dream.auth.repository.AdminInviteTokenRepository;
 import com.kiwi.dream.auth.repository.RefreshTokenRepository;
-import com.kiwi.dream.auth.repository.RoleRepository;
 import com.kiwi.dream.auth.repository.UserRepository;
 import com.kiwi.dream.auth.service.UserService;
 import com.kiwi.dream.common.email.EmailRequest;
@@ -26,7 +30,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.security.SecureRandom;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -34,7 +43,7 @@ import java.util.Map;
 public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
-    private final RoleRepository roleRepository;
+    private final AdminInviteTokenRepository adminInviteTokenRepository;
     private final RefreshTokenRepository refreshTokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
@@ -43,21 +52,23 @@ public class UserServiceImpl implements UserService {
     @Value("${app.admin.url}")
     private String adminUrl;
 
+    @Value("${app.frontend.url}")
+    private String frontendUrl;
+
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+    private static final String UPPERCASE = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+    private static final String LOWERCASE = "abcdefghjkmnpqrstuvwxyz";
+    private static final String DIGITS = "23456789";
+    private static final String SYMBOLS = "!@#$%";
+    private static final String PASSWORD_CHARS = UPPERCASE + LOWERCASE + DIGITS + SYMBOLS;
+    private static final long ADMIN_INVITE_EXPIRY_SECONDS = 604800L;
+
     @Override
     @Transactional
     public UserResponseDto createAdmin(CreateAdminRequestDto requestDto) {
         if (userRepository.existsByEmail(requestDto.email())) {
             throw new UserAlreadyExistsException("An account with email '" + requestDto.email() + "' already exists");
         }
-
-        String roleName = requestDto.effectiveRole();
-
-        if (SystemRoles.isReserved(roleName)) {
-            throw new InvalidAssignableRoleException(roleName);
-        }
-
-        Role adminRole = roleRepository.findByName(roleName)
-                .orElseThrow(() -> new RoleNotFoundException(roleName));
 
         String temporaryPassword = generateSecurePassword();
 
@@ -66,12 +77,17 @@ public class UserServiceImpl implements UserService {
         user.setEmail(requestDto.email().toLowerCase().trim());
         user.setPasswordHash(passwordEncoder.encode(temporaryPassword));
         user.setAuthProvider(AuthProvider.LOCAL);
-        user.setActive(true);
-        user.setEmailVerified(true);
-        user.getRoles().add(adminRole);
+        user.setRole(UserRole.ROLE_ADMIN);
+        user.setActive(false);
+        user.setEmailVerified(false);
 
         User saved = userRepository.save(user);
         log.info("New admin created: {}", saved.getEmail());
+
+        String inviteToken = UUID.randomUUID().toString();
+        Instant expiresAt = Instant.now().plusSeconds(ADMIN_INVITE_EXPIRY_SECONDS);
+        adminInviteTokenRepository.save(new AdminInviteToken(inviteToken, saved, expiresAt));
+        String activationUrl = frontendUrl + "/admin/activate?token=" + inviteToken;
 
         emailService.send(EmailRequest.of(
                 saved.getEmail(),
@@ -80,21 +96,45 @@ public class UserServiceImpl implements UserService {
                         "name",              saved.getName(),
                         "email",             saved.getEmail(),
                         "temporaryPassword", temporaryPassword,
-                        "loginUrl",          adminUrl + "/login"
+                        "activationUrl",      activationUrl,
+                        "loginUrl",          frontendUrl + "/signin",
+                        "adminPanelUrl",     adminUrl,
+                        "websiteUrl",        frontendUrl
                 )
         ));
 
         return authServiceImpl.toUserResponse(saved);
     }
 
-    private String generateSecurePassword() {
-        String chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%";
-        SecureRandom random = new SecureRandom();
-        StringBuilder sb = new StringBuilder(12);
-        for (int i = 0; i < 12; i++) {
-            sb.append(chars.charAt(random.nextInt(chars.length())));
+    @Override
+    @Transactional
+    public UserResponseDto activateAdminInvite(String token) {
+        AdminInviteToken inviteToken = adminInviteTokenRepository
+                .findByToken(token)
+                .orElseThrow(AdminInviteTokenNotFoundException::new);
+
+        if (inviteToken.isUsed()) {
+            throw new AdminInviteTokenNotFoundException();
         }
-        return sb.toString();
+
+        if (inviteToken.getExpiresAt().isBefore(Instant.now())) {
+            throw new AdminInviteTokenExpiredException();
+        }
+
+        User user = inviteToken.getUser();
+        if (user.getRole() != UserRole.ROLE_ADMIN && user.getRole() != UserRole.ROLE_SUPER_ADMIN) {
+            throw new AdminInviteTokenNotFoundException();
+        }
+
+        user.setActive(true);
+        user.setEmailVerified(true);
+        User saved = userRepository.save(user);
+
+        inviteToken.setUsed(true);
+        adminInviteTokenRepository.save(inviteToken);
+        log.info("Admin invite activated for user: {}", saved.getEmail());
+
+        return authServiceImpl.toUserResponse(saved);
     }
 
     @Override
@@ -108,7 +148,7 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional(readOnly = true)
     public PageResponse<UserResponseDto> listAdminUsers(Pageable pageable) {
-        Page<UserResponseDto> page = userRepository.findAllByRoles_Name(SystemRoles.ADMIN, pageable)
+        Page<UserResponseDto> page = userRepository.findByRole(UserRole.ROLE_ADMIN, pageable)
                 .map(authServiceImpl::toUserResponse);
         return PageResponse.from(page);
     }
@@ -116,7 +156,7 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional(readOnly = true)
     public PageResponse<UserResponseDto> listRegularUsers(Pageable pageable) {
-        Page<UserResponseDto> page = userRepository.findAllByRoles_Name(SystemRoles.USER, pageable)
+        Page<UserResponseDto> page = userRepository.findByRole(UserRole.ROLE_APPLICANT, pageable)
                 .map(authServiceImpl::toUserResponse);
         return PageResponse.from(page);
     }
@@ -134,15 +174,15 @@ public class UserServiceImpl implements UserService {
     public UserResponseDto assignRole(String userId, AssignUserRoleRequestDto requestDto) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException(userId));
+
         assertNotSuperAdmin(user);
-        assertRoleIsAssignable(requestDto.role());
 
-        Role role = roleRepository.findByName(requestDto.role())
-                .orElseThrow(() -> new RoleNotFoundException(requestDto.role()));
+        // Prevent promoting anyone to SUPER_ADMIN via this endpoint
+        if (requestDto.role() == UserRole.ROLE_SUPER_ADMIN) {
+            throw new ProtectedSuperAdminOperationException();
+        }
 
-        // Enforce single-role: clear existing roles before assigning
-        user.getRoles().clear();
-        user.getRoles().add(role);
+        user.setRole(requestDto.role());
 
         // Revoke all active refresh tokens — user must re-authenticate with new role
         refreshTokenRepository.revokeAllByUserId(userId);
@@ -154,7 +194,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
-    public UserResponseDto enableUser(String userId) {
+    public UserResponseDto activateUser(String userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException(userId));
         assertNotSuperAdmin(user);
@@ -164,7 +204,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
-    public UserResponseDto disableUser(String userId) {
+    public UserResponseDto deactivateUser(String userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException(userId));
         assertNotSuperAdmin(user);
@@ -187,16 +227,31 @@ public class UserServiceImpl implements UserService {
     // ──────────────────────────────────────────────────────────────────────────
 
     private void assertNotSuperAdmin(User user) {
-        boolean isSuperAdmin = user.getRoles().stream()
-                .anyMatch(role -> SystemRoles.SUPER_ADMIN.equals(role.getName()));
-        if (isSuperAdmin) {
+        if (user.getRole() == UserRole.ROLE_SUPER_ADMIN) {
             throw new ProtectedSuperAdminOperationException();
         }
     }
 
-    private void assertRoleIsAssignable(String roleName) {
-        if (SystemRoles.isReserved(roleName)) {
-            throw new InvalidAssignableRoleException(roleName);
+    private String generateSecurePassword() {
+        List<Character> chars = new ArrayList<>();
+        chars.add(randomChar(UPPERCASE));
+        chars.add(randomChar(LOWERCASE));
+        chars.add(randomChar(DIGITS));
+        chars.add(randomChar(SYMBOLS));
+
+        for (int i = chars.size(); i < 14; i++) {
+            chars.add(randomChar(PASSWORD_CHARS));
         }
+
+        Collections.shuffle(chars, SECURE_RANDOM);
+        StringBuilder password = new StringBuilder(chars.size());
+        for (Character character : chars) {
+            password.append(character);
+        }
+        return password.toString();
+    }
+
+    private char randomChar(String source) {
+        return source.charAt(SECURE_RANDOM.nextInt(source.length()));
     }
 }

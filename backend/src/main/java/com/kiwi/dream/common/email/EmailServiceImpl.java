@@ -5,6 +5,7 @@ import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.mail.MailException;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.scheduling.annotation.Async;
@@ -44,7 +45,7 @@ public class EmailServiceImpl implements EmailService {
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
             helper.setFrom(fromAddress);
             helper.setTo(request.to());
-            helper.setSubject(resolveSubject(request.template()));
+            helper.setSubject(request.template().getSubject());
             helper.setText(htmlBody, true);
 
             mailSender.send(message);
@@ -53,14 +54,9 @@ public class EmailServiceImpl implements EmailService {
         } catch (MessagingException e) {
             log.error("Failed to send email to {} using template {}: {}",
                     request.to(), request.template(), e.getMessage(), e);
+        } catch (MailException e) {
+            log.error("Mail server rejected email to {} using template {}: {}",
+                    request.to(), request.template(), e.getMessage(), e);
         }
-    }
-
-    private String resolveSubject(EmailTemplate template) {
-        return switch (template) {
-            case PASSWORD_RESET        -> "Reset your KiwiDream BD password";
-            case SOCIAL_LOGIN_REMINDER -> "Sign in to KiwiDream BD with Google";
-            case ADMIN_INVITE          -> "Your KiwiDream BD Admin Account";
-        };
     }
 }

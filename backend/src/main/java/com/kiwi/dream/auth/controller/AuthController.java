@@ -5,8 +5,8 @@ import com.kiwi.dream.auth.dto.response.ForgotPasswordResponseDto;
 import com.kiwi.dream.auth.dto.response.TokenResponseDto;
 import com.kiwi.dream.auth.dto.response.UserResponseDto;
 import com.kiwi.dream.auth.service.AuthService;
+import com.kiwi.dream.auth.service.UserService;
 import com.kiwi.dream.common.response.CommonApiResponse;
-import com.kiwi.dream.security.CurrentUserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -25,7 +25,7 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final AuthService authService;
-    private final CurrentUserService currentUserService;
+    private final UserService userService;
 
     @PostMapping("/register")
     @Operation(summary = "Register a new student account")
@@ -79,48 +79,6 @@ public class AuthController {
         return ResponseEntity.ok(CommonApiResponse.success("Logged out successfully"));
     }
 
-    @GetMapping("/me")
-    @Operation(summary = "Get current authenticated user profile",
-            security = @SecurityRequirement(name = "bearerAuth"))
-    @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Current user returned"),
-            @ApiResponse(responseCode = "401", description = "Not authenticated")
-    })
-    public ResponseEntity<CommonApiResponse<UserResponseDto>> me() {
-        String userId = currentUserService.getCurrentUserId();
-        return ResponseEntity.ok(CommonApiResponse.success(authService.me(userId)));
-    }
-
-    @PatchMapping("/me")
-    @Operation(summary = "Update current user's profile",
-            security = @SecurityRequirement(name = "bearerAuth"))
-    @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Profile updated"),
-            @ApiResponse(responseCode = "400", description = "Validation failed"),
-            @ApiResponse(responseCode = "401", description = "Not authenticated")
-    })
-    public ResponseEntity<CommonApiResponse<UserResponseDto>> updateMe(
-            @Valid @RequestBody UpdateProfileRequestDto requestDto) {
-        String userId = currentUserService.getCurrentUserId();
-        UserResponseDto updated = authService.updateMe(userId, requestDto);
-        return ResponseEntity.ok(CommonApiResponse.success("Profile updated successfully", updated));
-    }
-
-    @PatchMapping("/me/password")
-    @Operation(summary = "Change current user's password",
-            security = @SecurityRequirement(name = "bearerAuth"))
-    @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Password changed"),
-            @ApiResponse(responseCode = "400", description = "Validation failed"),
-            @ApiResponse(responseCode = "401", description = "Current password is wrong or not authenticated")
-    })
-    public ResponseEntity<CommonApiResponse<Void>> changePassword(
-            @Valid @RequestBody ChangePasswordRequestDto requestDto) {
-        String userId = currentUserService.getCurrentUserId();
-        authService.changePassword(userId, requestDto);
-        return ResponseEntity.ok(CommonApiResponse.success("Password changed successfully"));
-    }
-
     @PostMapping("/forgot-password")
     @Operation(summary = "Request a password reset email",
             description = "Returns type=EMAIL_SENT for normal accounts, " +
@@ -146,5 +104,17 @@ public class AuthController {
             @Valid @RequestBody ResetPasswordRequestDto requestDto) {
         authService.resetPassword(requestDto);
         return ResponseEntity.ok(CommonApiResponse.success("Password has been reset successfully. You can now log in."));
+    }
+
+    @PostMapping("/admin-invite/activate")
+    @Operation(summary = "Activate an invited admin account using the invite email token")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Admin account activated"),
+            @ApiResponse(responseCode = "400", description = "Token invalid, expired, or already used")
+    })
+    public ResponseEntity<CommonApiResponse<UserResponseDto>> activateAdminInvite(
+            @Valid @RequestBody ActivateAdminInviteRequestDto requestDto) {
+        UserResponseDto user = userService.activateAdminInvite(requestDto.token());
+        return ResponseEntity.ok(CommonApiResponse.success("Admin account activated. You can now sign in.", user));
     }
 }

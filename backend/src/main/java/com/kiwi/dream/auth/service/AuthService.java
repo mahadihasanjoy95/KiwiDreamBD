@@ -12,7 +12,10 @@ public interface AuthService {
     void logout(String refreshToken);
     UserResponseDto me(String userId);
     UserResponseDto updateMe(String userId, UpdateProfileRequestDto requestDto);
+    UserResponseDto updateProfilePicture(String userId, String pictureUrl);
     void changePassword(String userId, ChangePasswordRequestDto requestDto);
+    void deactivateSelf(String userId);
+    void deleteSelf(String userId);
     ForgotPasswordResponseDto forgotPassword(ForgotPasswordRequestDto requestDto);
     void resetPassword(ResetPasswordRequestDto requestDto);
 }

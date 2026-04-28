@@ -1,7 +1,7 @@
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { useCurrency } from '@/hooks/useCurrency'
 
-const COLORS = ['#7C3AED','#16A34A','#F59E0B','#0EA5E9','#EC4899','#10B981','#F97316','#64748B']
+const COLORS = ['#0095A1','#00A887','#D89A3D','#3983A8','#D95D83','#00C9BD','#C06B47','#64748B']
 
 const CustomTooltip = ({ active, payload, format }) => {
   if (active && payload && payload.length) {

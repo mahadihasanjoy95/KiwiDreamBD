@@ -1,11 +1,15 @@
 package com.kiwi.dream.common.config;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 import java.net.URI;
+import java.util.List;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
@@ -20,6 +24,31 @@ public class WebMvcConfig implements WebMvcConfigurer {
 
     @Override
     public void addCorsMappings(CorsRegistry registry) {
+        Set<String> origins = allowedOrigins();
+
+        registry.addMapping("/api/**")
+                .allowedOrigins(origins.toArray(String[]::new))
+                .allowedMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
+                .allowedHeaders("*")
+                .exposedHeaders("Authorization")
+                .allowCredentials(false)
+                .maxAge(3600);
+    }
+
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration config = new CorsConfiguration();
+        config.setAllowedOrigins(allowedOrigins().stream().toList());
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+        config.setAllowedHeaders(List.of("*"));
+        config.setExposedHeaders(List.of("Authorization"));
+        config.setAllowCredentials(false);
+        config.setMaxAge(3600L);
+
+        return request -> request.getRequestURI().startsWith("/api/") ? config : null;
+    }
+
+    private Set<String> allowedOrigins() {
         Set<String> origins = new LinkedHashSet<>();
 
         // Always allow local dev origins
@@ -32,12 +61,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
         origins.add(extractOrigin(frontendUrl));
         origins.add(extractOrigin(adminUrl));
 
-        registry.addMapping("/api/**")
-                .allowedOrigins(origins.toArray(String[]::new))
-                .allowedMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
-                .allowedHeaders("*")
-                .allowCredentials(false)
-                .maxAge(3600);
+        return origins;
     }
 
     private String extractOrigin(String url) {

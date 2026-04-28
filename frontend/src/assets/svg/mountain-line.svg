@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 320" width="700" height="320">
+  <defs>
+  <filter id="sketch" x="-5%" y="-5%" width="110%" height="110%">
+    <feTurbulence type="turbulence" baseFrequency="0.035" numOctaves="4" seed="12" result="noise"></feTurbulence>
+    <feDisplacementMap in="SourceGraphic" in2="noise" scale="2.2" xChannelSelector="R" yChannelSelector="G"></feDisplacementMap>
+  </filter>
+  <filter id="wc" x="-8%" y="-8%" width="116%" height="116%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.055 0.09" numOctaves="5" seed="7" result="n"></feTurbulence>
+    <feColorMatrix type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -2 2.2" in="n" result="mask"></feColorMatrix>
+    <feComposite in="SourceGraphic" in2="mask" operator="in" result="wc"></feComposite>
+    <feComposite in="wc" in2="SourceGraphic" operator="over"></feComposite>
+  </filter>
+  <filter id="softblur"><feGaussianBlur stdDeviation="1.2"></feGaussianBlur></filter>
+    <linearGradient id="mtnGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#B6DADE" stop-opacity="0.6"></stop>
+      <stop offset="100%" stop-color="#0095A1" stop-opacity="0.4"></stop>
+    </linearGradient>
+    <linearGradient id="mtnDark" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0057A0" stop-opacity="0.5"></stop>
+      <stop offset="100%" stop-color="#0095A1" stop-opacity="0.35"></stop>
+    </linearGradient>
+  </defs>
+  <g filter="url(#sketch)">
+    
+    <path d="M0,280 C50,240 100,210 160,225 C200,234 230,200 280,208 C320,214 340,195 380,200 C420,205 440,192 480,196 C520,200 545,185 590,188 C630,191 670,180 700,183 L700,320 L0,320 Z" fill="url(#mtnGrad)"></path>
+    
+    <path d="M0,280 C50,240 100,210 160,225 C200,234 230,200 280,208 C320,214 340,195 380,200 C420,205 440,192 480,196 C520,200 545,185 590,188 C630,191 670,180 700,183" fill="none" stroke="#B6DADE" stroke-width="1.5" opacity="0.7"></path>
+    
+    
+    <path d="M-10,320 C40,280 80,250 130,260 C170,268 200,235 250,245 L300,190 L350,250 C380,240 400,215 440,222 L500,165 L560,225 C600,215 640,230 700,220 L700,320 Z" fill="url(#mtnDark)"></path>
+    
+    <path d="M0,310 C40,280 80,250 130,260 C170,268 200,235 250,245 L300,190 L350,250 C380,240 400,215 440,222 L500,165 L560,225 C600,215 640,230 700,220" fill="none" stroke="#0095A1" stroke-width="2" opacity="0.65"></path>
+    
+    
+    <path d="M300,190 L285,225 L315,225 Z" fill="#E8F5F8" opacity="0.75"></path>
+    <path d="M500,165 L484,202 L516,202 Z" fill="#E8F5F8" opacity="0.7"></path>
+    
+    <path d="M285,225 C290,218 295,215 300,213 C305,215 310,218 315,225" fill="#E8F5F8" opacity="0.5"></path>
+    <path d="M484,202 C490,195 495,192 500,191 C505,192 510,195 516,202" fill="#E8F5F8" opacity="0.45"></path>
+    
+    
+    <path d="M305,192 C310,215 315,235 318,250" stroke="#0057A0" stroke-width="0.7" fill="none" opacity="0.25"></path>
+    <path d="M308,195 C313,218 318,238 321,253" stroke="#0057A0" stroke-width="0.7" fill="none" opacity="0.2"></path>
+    <path d="M505,168 C508,190 512,210 515,225" stroke="#0057A0" stroke-width="0.7" fill="none" opacity="0.25"></path>
+    
+    
+    <path d="M0,300 C30,290 60,285 90,288 C110,290 130,284 155,286 C175,288 190,283 210,285" stroke="#1A7570" stroke-width="2.5" fill="none" stroke-linecap="round" opacity="0.4"></path>
+  </g>
+</svg>

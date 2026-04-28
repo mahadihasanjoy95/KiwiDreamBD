@@ -1,0 +1,47 @@
+<svg
+  width="64"
+  height="64"
+  viewBox="0 0 64 64"
+  fill="none"
+  xmlns="http://www.w3.org/2000/svg"
+  role="img"
+  aria-label="Where To icon"
+>
+  <g
+    className="icon-where-to"
+    stroke="#334155"
+    strokeWidth="2.2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    {/* Folded map */}
+    <path
+      d="M12 18L24 14L40 19L52 15V45L40 49L24 44L12 48V18Z"
+      fill="#FFF7ED"
+    />
+    <path d="M24 14V44" />
+    <path d="M40 19V49" />
+
+    {/* Location pin */}
+    <path
+      d="M32 20.5C27.9 20.5 24.8 23.5 24.8 27.4C24.8 33 32 40.8 32 40.8C32 40.8 39.2 33 39.2 27.4C39.2 23.5 36.1 20.5 32 20.5Z"
+      fill="#F472B6"
+    />
+    <circle cx="32" cy="27.2" r="2.4" fill="#FFF7ED" />
+
+    {/* Tiny mountain */}
+    <path
+      d="M17 39L21 33L24.5 39L28 35L31 39"
+      fill="none"
+      stroke="#7FD8C2"
+      strokeWidth="2.2"
+    />
+
+    {/* Tiny sea wave */}
+    <path
+      d="M35 40C36.4 38.8 37.8 38.8 39.2 40C40.6 41.2 42 41.2 43.4 40C44.8 38.8 46.2 38.8 47.6 40"
+      stroke="#00A8B5"
+      strokeWidth="2.2"
+    />
+  </g>
+</svg>

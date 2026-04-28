@@ -1,0 +1,49 @@
+<svg
+  width="64"
+  height="64"
+  viewBox="0 0 64 64"
+  fill="none"
+  xmlns="http://www.w3.org/2000/svg"
+  role="img"
+  aria-label="Master Your Move icon"
+>
+  <g
+    className="icon-master-move"
+    stroke="#334155"
+    strokeWidth="2.2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    {/* Checklist / clipboard */}
+    <rect x="12" y="14" width="24" height="34" rx="4" fill="#FFF7ED" />
+    <rect x="19" y="11" width="10" height="6" rx="3" fill="#A78BFA" />
+
+    {/* Checklist items */}
+    <path d="M17 24L19 26.5L22.5 22.5" stroke="#00A8B5" />
+    <path d="M26 24H32" />
+    <path d="M17 32L19 34.5L22.5 30.5" stroke="#00A8B5" />
+    <path d="M26 32H32" />
+    <path d="M17 40L19 42.5L22.5 38.5" stroke="#00A8B5" />
+    <path d="M26 40H30" />
+
+    {/* Target badge */}
+    <circle cx="47" cy="21" r="9" fill="#FDE7B2" />
+    <circle cx="47" cy="21" r="5.5" fill="#FFF7ED" />
+    <circle cx="47" cy="21" r="2.2" fill="#F59E0B" />
+
+    {/* Small star accent */}
+    <path
+      d="M50.8 11.5L51.8 13.7L54.2 14L52.4 15.6L52.8 18L50.8 16.9L48.7 18L49.1 15.6L47.3 14L49.8 13.7L50.8 11.5Z"
+      fill="#F472B6"
+    />
+
+    {/* Savings graph */}
+    <path d="M40 46H54" />
+    <path d="M40 46V34" />
+    <path
+      d="M42.5 42L46 39L48.5 40.5L52 36"
+      stroke="#00A8B5"
+    />
+    <path d="M50.8 36H52V37.2" stroke="#00A8B5" />
+  </g>
+</svg>

@@ -12,7 +12,10 @@
   }
 
   body {
-    @apply bg-brand-light font-sans antialiased text-gray-800;
+    @apply bg-[#eaf6f5] font-sans antialiased text-[#142334];
+    background:
+      radial-gradient(circle at 18% 8%, rgba(255, 255, 255, 0.88), transparent 34%),
+      linear-gradient(180deg, #d8eef0 0%, #eaf6f5 42%, #f9fbf6 100%);
   }
 
   input[type='number']::-webkit-inner-spin-button,
@@ -26,9 +29,39 @@
   }
 }
 
+@keyframes cloudDrift {
+  0% {
+    transform: translate3d(-620px, 0, 0) scale(1);
+  }
+
+  50% {
+    transform: translate3d(520px, -10px, 0) scale(1.015);
+  }
+
+  100% {
+    transform: translate3d(1840px, 0, 0) scale(1);
+  }
+}
+
 @layer utilities {
   .font-bengali {
-    font-family: 'Noto Sans Bengali', 'Inter', sans-serif;
+    font-family: 'Noto Sans Bengali', 'DM Sans', sans-serif;
+  }
+
+  .font-hand {
+    font-family: 'Caveat', 'Noto Sans Bengali', cursive;
+  }
+
+  .font-logo {
+    font-family: 'Cinzel', Georgia, serif;
+  }
+
+  .hand-strike-text {
+    text-decoration-line: line-through;
+    text-decoration-style: solid;
+    text-decoration-color: rgba(214, 77, 77, 0.78);
+    text-decoration-thickness: 1.5px;
+    text-decoration-skip-ink: none;
   }
 
   .pb-safe {
@@ -46,5 +79,123 @@
 
   .text-balance {
     text-wrap: balance;
+  }
+
+  /* ─── iOS 26 / visionOS glass pill hover ───────────────────── */
+
+  /* Light-background variant (brand glass — used in navbar, light pages) */
+  .glass-pill-hover {
+    border-radius: 9999px;
+    border: 1px solid transparent;
+    transition:
+      background 0.24s cubic-bezier(0.34, 1.2, 0.64, 1),
+      box-shadow 0.24s cubic-bezier(0.34, 1.2, 0.64, 1),
+      border-color 0.24s ease,
+      color 0.18s ease;
+  }
+
+  .glass-pill-hover:hover {
+    background: rgba(255, 255, 255, 0.28);
+    backdrop-filter: blur(22px) saturate(180%);
+    -webkit-backdrop-filter: blur(22px) saturate(180%);
+    border-color: rgba(0, 149, 161, 0.30);
+    box-shadow:
+      0 8px 26px rgba(0, 149, 161, 0.14),
+      inset 0 1.5px 0 rgba(255, 255, 255, 0.70),
+      inset 0 -1px 0 rgba(0, 149, 161, 0.10);
+  }
+
+  .glass-pill-hover:active {
+    transform: scale(0.97);
+    background: rgba(255, 255, 255, 0.38);
+  }
+
+  /* Dark-background variant (white glass — used on hero, dark cards) */
+  .glass-pill-hover-dark {
+    border-radius: 9999px;
+    border: 1px solid transparent;
+    transition:
+      background 0.24s cubic-bezier(0.34, 1.2, 0.64, 1),
+      box-shadow 0.24s cubic-bezier(0.34, 1.2, 0.64, 1),
+      border-color 0.24s ease;
+  }
+
+  .glass-pill-hover-dark:hover {
+    background: rgba(255, 255, 255, 0.18);
+    backdrop-filter: blur(22px) saturate(200%);
+    -webkit-backdrop-filter: blur(22px) saturate(200%);
+    border-color: rgba(255, 255, 255, 0.28);
+    box-shadow:
+      0 2px 20px rgba(255, 255, 255, 0.12),
+      inset 0 1.5px 0 rgba(255, 255, 255, 0.42),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.08);
+  }
+
+  .glass-pill-hover-dark:active {
+    transform: scale(0.97);
+    background: rgba(255, 255, 255, 0.26);
+  }
+}
+
+/* ─── Print styles ───────────────────────────────────────────────
+   When a dashboard detail modal is open and user hits "Export PDF",
+   only the modal content is shown. The modal overlay gets
+   id="dashboard-modal-print" and the body gets class "modal-printing". */
+@media print {
+  body.modal-printing > *:not(#dashboard-modal-print) {
+    display: none !important;
+  }
+  body.modal-printing #dashboard-modal-print {
+    position: static !important;
+    overflow: visible !important;
+    height: auto !important;
+    background: white !important;
+  }
+}
+
+/* ─── Global iOS-26 glass hover on ALL interactive buttons ──────
+   Applies to every <button> and <a> that carries a Tailwind
+   rounded-* or btn-* class, so existing styles still win on
+   background/color — we only add the glass layer on top.        */
+@layer components {
+  .profile-input,
+  .home-modal-input {
+    @apply w-full rounded-2xl border border-brand-mid/70 bg-white/80 px-4 py-3 text-sm font-medium text-brand-deep outline-none transition-colors placeholder:text-slate-400 focus:border-brand focus:bg-white;
+  }
+
+  button:not([disabled]),
+  a[class*="rounded"],
+  a[class*="px-"],
+  a[class*="py-"] {
+    transition-property: background, box-shadow, border-color, color, transform, opacity;
+    transition-duration: 0.22s;
+    transition-timing-function: cubic-bezier(0.34, 1.2, 0.64, 1);
+  }
+
+  /* Outlined/ghost buttons — add glass shimmer on hover */
+  button[class*="border"]:not([disabled]):hover,
+  a[class*="border"]:hover {
+    box-shadow:
+      0 4px 20px rgba(0, 149, 161, 0.12),
+      inset 0 1px 0 rgba(255, 255, 255, 0.55);
+  }
+
+  /* Primary filled buttons (bg-brand, bg-white on dark) — glass lift */
+  button[class*="bg-brand"]:not([disabled]):hover,
+  a[class*="bg-brand"]:hover {
+    box-shadow:
+      0 8px 28px rgba(0, 149, 161, 0.26),
+      inset 0 1.5px 0 rgba(255, 255, 255, 0.30),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.06);
+    transform: translateY(-1px);
+  }
+
+  button[class*="bg-white"]:not([disabled]):hover,
+  a[class*="bg-white"]:hover {
+    box-shadow:
+      0 6px 24px rgba(255, 255, 255, 0.22),
+      inset 0 1.5px 0 rgba(255, 255, 255, 0.80),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.04);
+    transform: translateY(-1px);
   }
 }

@@ -1,19 +1,17 @@
 package com.kiwi.dream.auth.service.serviceImpl;
 
-import com.kiwi.dream.auth.constants.SystemRoles;
 import com.kiwi.dream.auth.dto.request.*;
 import com.kiwi.dream.auth.dto.response.ForgotPasswordResponseDto;
 import com.kiwi.dream.auth.dto.response.TokenResponseDto;
 import com.kiwi.dream.auth.dto.response.UserResponseDto;
 import com.kiwi.dream.auth.entity.PasswordResetToken;
 import com.kiwi.dream.auth.entity.RefreshToken;
-import com.kiwi.dream.auth.entity.Role;
 import com.kiwi.dream.auth.entity.User;
 import com.kiwi.dream.auth.enums.AuthProvider;
+import com.kiwi.dream.auth.enums.UserRole;
 import com.kiwi.dream.auth.exception.*;
 import com.kiwi.dream.auth.repository.PasswordResetTokenRepository;
 import com.kiwi.dream.auth.repository.RefreshTokenRepository;
-import com.kiwi.dream.auth.repository.RoleRepository;
 import com.kiwi.dream.auth.repository.UserRepository;
 import com.kiwi.dream.auth.service.AuthService;
 import com.kiwi.dream.common.email.EmailRequest;
@@ -31,9 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -41,7 +37,6 @@ import java.util.stream.Collectors;
 public class AuthServiceImpl implements AuthService {
 
     private final UserRepository userRepository;
-    private final RoleRepository roleRepository;
     private final RefreshTokenRepository refreshTokenRepository;
     private final PasswordResetTokenRepository passwordResetTokenRepository;
     private final JwtService jwtService;
@@ -51,7 +46,6 @@ public class AuthServiceImpl implements AuthService {
     @Value("${app.frontend.url}")
     private String frontendUrl;
 
-    /** Password reset tokens expire after 1 hour. */
     private static final long RESET_TOKEN_EXPIRY_SECONDS = 3600L;
 
     @Override
@@ -61,16 +55,13 @@ public class AuthServiceImpl implements AuthService {
             throw new UserAlreadyExistsException("An account with email '" + requestDto.email() + "' already exists");
         }
 
-        Role userRole = roleRepository.findByName(SystemRoles.USER)
-                .orElseThrow(() -> new RoleNotFoundException(SystemRoles.USER));
-
         User user = new User();
         user.setName(requestDto.name().trim());
         user.setEmail(requestDto.email().toLowerCase().trim());
         user.setPasswordHash(passwordEncoder.encode(requestDto.password()));
         user.setAuthProvider(AuthProvider.LOCAL);
+        user.setRole(UserRole.ROLE_APPLICANT);
         user.setActive(true);
-        user.getRoles().add(userRole);
 
         User saved = userRepository.save(user);
         log.info("New user registered: {}", saved.getEmail());
@@ -87,7 +78,6 @@ public class AuthServiceImpl implements AuthService {
             throw new InvalidCredentialsException();
         }
 
-        // Google-only accounts have no password — direct them to OAuth2
         if (user.getPasswordHash() == null) {
             throw new GoogleSignInRequiredException();
         }
@@ -127,7 +117,6 @@ public class AuthServiceImpl implements AuthService {
             throw new InvalidCredentialsException();
         }
 
-        // Rotate: revoke old token
         stored.setRevoked(true);
         refreshTokenRepository.save(stored);
 
@@ -163,9 +152,6 @@ public class AuthServiceImpl implements AuthService {
         if (requestDto.phoneNumber() != null) {
             user.setPhoneNumber(requestDto.phoneNumber().isBlank() ? null : requestDto.phoneNumber().trim());
         }
-        if (requestDto.city() != null) {
-            user.setCity(requestDto.city());
-        }
         if (requestDto.targetMoveDate() != null) {
             user.setTargetMoveDate(requestDto.targetMoveDate());
         }
@@ -191,7 +177,6 @@ public class AuthServiceImpl implements AuthService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException(userId));
 
-        // For Google-only users, skip current-password check — first time setting a password
         if (user.getPasswordHash() != null) {
             if (requestDto.currentPassword() == null || requestDto.currentPassword().isBlank()) {
                 throw new InvalidCredentialsException();
@@ -210,10 +195,8 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     public ForgotPasswordResponseDto forgotPassword(ForgotPasswordRequestDto requestDto) {
         String email = requestDto.email().toLowerCase().trim();
-
         var userOpt = userRepository.findByEmail(email);
 
-        // Unknown email — return generic success to prevent enumeration
         if (userOpt.isEmpty()) {
             log.debug("Forgot-password: email not found (not disclosed to caller): {}", email);
             return ForgotPasswordResponseDto.emailSent();
@@ -225,7 +208,6 @@ public class AuthServiceImpl implements AuthService {
             return ForgotPasswordResponseDto.emailSent();
         }
 
-        // Google-only account — send social login reminder
         if (user.getPasswordHash() == null) {
             emailService.send(EmailRequest.of(
                     user.getEmail(),
@@ -233,14 +215,13 @@ public class AuthServiceImpl implements AuthService {
                     Map.of(
                             "name",     user.getName(),
                             "email",    user.getEmail(),
-                            "loginUrl", frontendUrl + "/login"
+                            "loginUrl", frontendUrl + "/signin"
                     )
             ));
             log.info("Social login reminder sent to Google-only account: {}", email);
             return ForgotPasswordResponseDto.socialAccount();
         }
 
-        // Normal user — generate reset token and send reset-link email
         passwordResetTokenRepository.deleteByUserId(user.getId());
 
         String tokenValue = UUID.randomUUID().toString();
@@ -287,10 +268,46 @@ public class AuthServiceImpl implements AuthService {
         log.info("Password successfully reset for user: {}", user.getEmail());
     }
 
+    @Override
+    @Transactional
+    public UserResponseDto updateProfilePicture(String userId, String pictureUrl) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException(userId));
+        user.setProfilePicture(pictureUrl.isBlank() ? null : pictureUrl.trim());
+        return toUserResponse(userRepository.save(user));
+    }
+
+    @Override
+    @Transactional
+    public void deactivateSelf(String userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException(userId));
+        if (user.getRole() == UserRole.ROLE_SUPER_ADMIN) {
+            throw new ProtectedSuperAdminOperationException();
+        }
+        user.setActive(false);
+        userRepository.save(user);
+        refreshTokenRepository.revokeAllByUserId(userId);
+        log.info("User deactivated self: {}", user.getEmail());
+    }
+
+    @Override
+    @Transactional
+    public void deleteSelf(String userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException(userId));
+        if (user.getRole() == UserRole.ROLE_SUPER_ADMIN) {
+            throw new ProtectedSuperAdminOperationException();
+        }
+        refreshTokenRepository.deleteAllByUserId(userId);
+        userRepository.delete(user);
+        log.info("User deleted own account: {}", userId);
+    }
+
     // ──────────────────────────────────────────────────────────────────────────
 
     private TokenResponseDto issueTokenPair(User user) {
-        String accessToken = jwtService.generateAccessToken(user.getId(), user.getEmail());
+        String accessToken       = jwtService.generateAccessToken(user.getId(), user.getEmail());
         String refreshTokenValue = jwtService.generateRefreshToken(user.getId(), user.getEmail());
 
         Instant expiresAt = Instant.now().plusSeconds(jwtService.getRefreshTokenExpirySeconds());
@@ -299,18 +316,15 @@ public class AuthServiceImpl implements AuthService {
         return TokenResponseDto.of(accessToken, refreshTokenValue, jwtService.getAccessTokenExpirySeconds());
     }
 
+    /** Package-visible so UserServiceImpl can reuse it without code duplication. */
     UserResponseDto toUserResponse(User user) {
-        Set<String> roleNames = user.getRoles().stream()
-                .map(Role::getName)
-                .collect(Collectors.toSet());
-
         return new UserResponseDto(
                 user.getId(),
                 user.getEmail(),
                 user.getName(),
                 user.getPhoneNumber(),
                 user.getProfilePicture(),
-                user.getCity(),
+                user.getRole().name(),
                 user.getTargetMoveDate(),
                 user.getCurrentSavingsBdt(),
                 user.getMonthlyIncomeBdt(),
@@ -319,7 +333,6 @@ public class AuthServiceImpl implements AuthService {
                 user.getAuthProvider(),
                 user.isEmailVerified(),
                 user.isActive(),
-                roleNames,
                 user.getCreatedAt(),
                 user.getPasswordHash() != null
         );

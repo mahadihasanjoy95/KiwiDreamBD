@@ -1,30 +1,18 @@
 import { useState, useEffect, useRef } from 'react'
-import { motion, AnimatePresence, useMotionValue } from 'framer-motion'
-import { Globe } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Settings2 } from 'lucide-react'
 import useStore from '@/store/useStore'
-import i18n from 'i18next'
-
-function loadPos() {
-  try {
-    const raw = localStorage.getItem('kiwi-fab-pos')
-    return raw ? JSON.parse(raw) : { x: 0, y: 0 }
-  } catch { return { x: 0, y: 0 } }
-}
+import { AppLoader } from '@/components/common/AppLoader'
 
 export function FloatingPrefs() {
   const [open, setOpen] = useState(false)
-  const [nearTop, setNearTop] = useState(false)
   const containerRef = useRef(null)
-  const fabRef = useRef(null)
-
-  const saved = useRef(loadPos())
-  const x = useMotionValue(saved.current.x)
-  const y = useMotionValue(saved.current.y)
 
   const currency = useStore(s => s.currency)
   const setCurrency = useStore(s => s.setCurrency)
   const language = useStore(s => s.language)
   const setLanguage = useStore(s => s.setLanguage)
+  const [loadingPref, setLoadingPref] = useState(null)
 
   // Close panel on outside tap
   useEffect(() => {
@@ -36,48 +24,51 @@ export function FloatingPrefs() {
     return () => document.removeEventListener('pointerdown', handler)
   }, [open])
 
-  const handleLanguage = (l) => {
-    setLanguage(l)
-    i18n.changeLanguage(l.toLowerCase())
+  const changeLanguage = (id) => {
+    if (id === language || loadingPref) return
+    setLoadingPref(id)
+    window.setTimeout(() => {
+      setLanguage(id)
+      setLoadingPref(null)
+    }, 650)
   }
 
-  const handleDragEnd = () => {
-    localStorage.setItem('kiwi-fab-pos', JSON.stringify({ x: x.get(), y: y.get() }))
-    if (fabRef.current) {
-      const rect = fabRef.current.getBoundingClientRect()
-      setNearTop(rect.top < window.innerHeight / 2)
-    }
-  }
-
-  const dragBounds = {
-    left:   typeof window !== 'undefined' ? -(window.innerWidth - 56 - 16) : -300,
-    right:  0,
-    top:    typeof window !== 'undefined' ? -(window.innerHeight - 200)     : -500,
-    bottom: 0,
+  const changeCurrency = (id) => {
+    if (id === currency || loadingPref) return
+    setLoadingPref(id)
+    window.setTimeout(() => {
+      setCurrency(id)
+      setLoadingPref(null)
+    }, 650)
   }
 
   return (
-    <div ref={containerRef} className="md:hidden fixed bottom-24 right-4 z-50 flex flex-col items-end gap-2">
+    <div ref={containerRef} className="fixed bottom-24 right-4 z-50 flex flex-col items-end gap-2 md:hidden">
+      <AppLoader
+        show={Boolean(loadingPref)}
+        label={loadingPref === 'BN' ? 'বাংলা চালু হচ্ছে' : loadingPref === 'EN' ? 'Switching to English' : `${loadingPref} view`}
+        sublabel={loadingPref === 'NZD' || loadingPref === 'BDT' ? 'Converting amounts across the app' : 'Refreshing text across the app'}
+      />
 
       {/* Glass card */}
       <AnimatePresence>
         {open && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.88, y: nearTop ? -8 : 8 }}
+            initial={{ opacity: 0, scale: 0.88, y: 8 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.88 }}
             transition={{ type: 'spring', stiffness: 420, damping: 30 }}
-            className={nearTop ? 'order-last mt-2' : 'mb-2'}
+            className="mb-2"
             style={{
               borderRadius: 16,
-              background: 'rgba(76, 29, 149, 0.55)',
+              background: 'rgba(0, 89, 96, 0.54)',
               backdropFilter: 'blur(24px)',
               WebkitBackdropFilter: 'blur(24px)',
-              border: '1px solid rgba(255,255,255,0.18)',
-              boxShadow: '0 8px 32px rgba(76,29,149,0.35)',
+              border: '1px solid rgba(255,255,255,0.24)',
+              boxShadow: '0 18px 46px rgba(0,89,96,0.22)',
             }}
           >
-            <div className="px-4 py-3 min-w-[156px] space-y-3">
+            <div className="min-w-[168px] space-y-3 px-4 py-3">
               {/* Language */}
               <div>
                 <p className="text-[9px] font-bold text-white/40 uppercase tracking-[0.15em] mb-2">Language</p>
@@ -85,14 +76,15 @@ export function FloatingPrefs() {
                   {[{ id: 'EN', label: 'EN' }, { id: 'BN', label: 'বাং' }].map(opt => (
                     <button
                       key={opt.id}
-                      onClick={() => handleLanguage(opt.id)}
+                      onClick={() => changeLanguage(opt.id)}
+                      disabled={Boolean(loadingPref)}
                       className="relative flex-1 py-2 rounded-xl text-sm font-semibold overflow-hidden"
                     >
                       {language === opt.id && (
                         <motion.span
                           layoutId="fab-lang-active"
                           className="absolute inset-0 rounded-xl"
-                          style={{ background: 'rgba(255,255,255,0.20)' }}
+                          style={{ background: 'rgba(255,255,255,0.24)' }}
                           transition={{ type: 'spring', stiffness: 420, damping: 32 }}
                         />
                       )}
@@ -117,14 +109,15 @@ export function FloatingPrefs() {
                   {['NZD', 'BDT'].map(c => (
                     <button
                       key={c}
-                      onClick={() => setCurrency(c)}
+                      onClick={() => changeCurrency(c)}
+                      disabled={Boolean(loadingPref)}
                       className="relative flex-1 py-2 rounded-xl text-sm font-semibold overflow-hidden"
                     >
                       {currency === c && (
                         <motion.span
                           layoutId="fab-curr-active"
                           className="absolute inset-0 rounded-xl"
-                          style={{ background: 'rgba(255,255,255,0.20)' }}
+                          style={{ background: 'rgba(255,255,255,0.24)' }}
                           transition={{ type: 'spring', stiffness: 420, damping: 32 }}
                         />
                       )}
@@ -140,38 +133,31 @@ export function FloatingPrefs() {
         )}
       </AnimatePresence>
 
-      {/* Draggable FAB — drag and onTap on the SAME element so Framer Motion
-          auto-discriminates: tap fires only if pointer didn't move */}
-      <motion.div
-        ref={fabRef}
-        drag
-        dragMomentum={false}
-        dragElastic={0.06}
-        style={{ x, y }}
-        dragConstraints={dragBounds}
-        onDragEnd={handleDragEnd}
-        onTap={() => setOpen(v => !v)}
-        whileDrag={{ scale: 1.15, cursor: 'grabbing' }}
+      {/* Mobile preferences FAB */}
+      <motion.button
+        type="button"
+        onClick={() => setOpen(v => !v)}
         whileTap={{ scale: 0.90 }}
-        className="touch-none w-11 h-11 rounded-full flex items-center justify-center cursor-grab"
+        whileHover={{ scale: 1.04 }}
+        aria-label="Open language and currency settings"
+        className="flex h-12 w-12 items-center justify-center rounded-full"
         style={{
-          x, y,
-          background: open ? 'rgba(124,58,237,0.80)' : 'rgba(255,255,255,0.18)',
-          backdropFilter: 'blur(18px)',
-          WebkitBackdropFilter: 'blur(18px)',
-          border: '1px solid rgba(255,255,255,0.22)',
+          background: open ? 'rgba(0,149,161,0.78)' : 'rgba(255,255,255,0.26)',
+          backdropFilter: 'blur(22px)',
+          WebkitBackdropFilter: 'blur(22px)',
+          border: '1px solid rgba(255,255,255,0.28)',
           boxShadow: open
-            ? '0 4px 20px rgba(124,58,237,0.45)'
-            : '0 4px 20px rgba(0,0,0,0.18)',
+            ? '0 14px 34px rgba(0,149,161,0.30)'
+            : '0 14px 34px rgba(0,89,96,0.18)',
         }}
       >
         <motion.span
-          animate={{ rotate: open ? 20 : 0 }}
+          animate={{ rotate: open ? 45 : 0 }}
           transition={{ type: 'spring', stiffness: 300, damping: 20 }}
         >
-          <Globe size={18} strokeWidth={1.8} className={open ? 'text-white' : 'text-white/80'} />
+          <Settings2 size={19} strokeWidth={2} className="text-white" />
         </motion.span>
-      </motion.div>
+      </motion.button>
 
     </div>
   )

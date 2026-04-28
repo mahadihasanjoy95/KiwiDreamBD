@@ -9,12 +9,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Wraps our {@link User} entity as a Spring Security {@link OAuth2User}.
- *
- * <p>Used by the plain OAuth2 flow (non-OIDC providers).
- * For Google with {@code openid} scope, see {@link CustomOidcUser}.</p>
- */
 public class CustomOAuth2User implements OAuth2User {
 
     private final User user;
@@ -36,7 +30,7 @@ public class CustomOAuth2User implements OAuth2User {
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return List.of(new SimpleGrantedAuthority("ROLE_USER"));
+        return List.of(new SimpleGrantedAuthority(user.getRole().name()));
     }
 
     @Override

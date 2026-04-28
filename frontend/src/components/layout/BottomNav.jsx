@@ -1,24 +1,31 @@
 import { Link, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { Home, BarChart3, LayoutDashboard, BookOpen } from 'lucide-react'
+import { Home, BarChart3, LayoutDashboard, Map, Menu } from 'lucide-react'
 import { cn } from '@/utils/cn'
+import useStore from '@/store/useStore'
 
-const TABS = [
-  { to: '/',          key: 'home',      Icon: Home          },
-  { to: '/plan',      key: 'plan',      Icon: BarChart3     },
-  { to: '/dashboard', key: 'dashboard', Icon: LayoutDashboard },
-  { to: '/guide',     key: 'guide',     Icon: BookOpen      },
+const BASE_TABS = [
+  { to: '/',          key: 'home',           Icon: Home            },
+  { to: '/plan',      key: 'plan',           Icon: BarChart3       },
+  { to: '/dashboard', key: 'dashboard',      Icon: LayoutDashboard },
+  { to: '/compare',   key: 'compare_mobile', Icon: Map             },
+  // order: home → plan → dashboard → compare → more
 ]
 
 export function BottomNav() {
   const { t } = useTranslation()
   const location = useLocation()
 
+  const tabs = [
+    ...BASE_TABS,
+    { to: '/profile', label: t('nav.more'), Icon: Menu },
+  ]
+
   return (
     <nav className="md:hidden fixed bottom-0 inset-x-0 z-50 bg-white border-t border-gray-100 shadow-lg pb-safe">
       <div className="flex items-center h-16">
-        {TABS.map(({ to, key, Icon }) => {
+        {tabs.map(({ to, key, label, Icon }) => {
           const isActive = location.pathname === to
           return (
             <Link
@@ -39,7 +46,7 @@ export function BottomNav() {
                 )}
                 <Icon size={20} strokeWidth={isActive ? 2.5 : 1.8} />
               </div>
-              <span className="text-[10px] font-semibold leading-none">{t(`nav.${key}`)}</span>
+              <span className="text-[10px] font-semibold leading-none">{key ? t(`nav.${key}`) : label}</span>
             </Link>
           )
         })}

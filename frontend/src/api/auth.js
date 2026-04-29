@@ -19,6 +19,7 @@ export function logoutUser(refreshToken, accessToken) {
     method: 'POST',
     token: accessToken,
     body: { refreshToken },
+    skipAuthRefresh: true,
   })
 }
 

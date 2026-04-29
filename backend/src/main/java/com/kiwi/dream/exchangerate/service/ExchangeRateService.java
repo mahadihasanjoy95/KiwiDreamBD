@@ -25,23 +25,25 @@ public interface ExchangeRateService {
     ExchangeRateResponseDto getActive(String fromCurrency, String toCurrency);
 
     /**
-     * Returns the full rate history (active + archived) for a given currency pair.
+     * Returns remaining rows for a given currency pair.
+     * Sync/admin updates keep only the latest active row, so this normally
+     * contains one row after the next refresh.
      * Admin only.
      */
     List<ExchangeRateResponseDto> getHistory(String fromCurrency, String toCurrency);
 
     /**
      * Admin operation: manually override the rate for a currency pair.
-     * Archives the previously active row for the same pair, then creates a new
-     * active row with source = ADMIN_OVERRIDE.
+     * Updates the latest row in-place with source = ADMIN_OVERRIDE.
      *
-     * @return the newly created active rate row
+     * @return the updated active rate row
      */
     ExchangeRateResponseDto setRate(SetExchangeRateRequestDto requestDto);
 
     /**
      * Fetches the latest USD-base rates from the external API and updates
-     * all active rates for currencies present in the countries table.
+     * BDT-based rates for platform essentials and currencies present in the
+     * countries table.
      *
      * <p>Called on application startup and by the nightly cron job at midnight.
      * Skips any pair whose current active row has source = ADMIN_OVERRIDE,

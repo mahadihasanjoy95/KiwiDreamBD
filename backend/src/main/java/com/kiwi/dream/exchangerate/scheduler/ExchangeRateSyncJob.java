@@ -47,10 +47,10 @@ public class ExchangeRateSyncJob {
     }
 
     /**
-     * Runs every day at midnight (00:00:00 server time).
+     * Runs every day at midnight (00:00:00 Bangladesh time).
      * Uses a 1-second initial delay after the CRON expression is parsed.
      */
-    @Scheduled(cron = "0 0 0 * * *")
+    @Scheduled(cron = "0 0 0 * * *", zone = "Asia/Dhaka")
     public void syncNightly() {
         log.info("Nightly cron: starting exchange rate sync...");
         try {

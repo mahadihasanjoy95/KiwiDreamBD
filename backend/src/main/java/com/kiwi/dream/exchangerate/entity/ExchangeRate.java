@@ -13,9 +13,9 @@ import java.util.UUID;
 /**
  * Stores the admin-managed exchange rate between BDT and a destination currency.
  *
- * <p>Only one row per {@code fromCurrency}/{@code toCurrency} pair should be
- * active at any time. Previous rates are soft-archived (active = false) for
- * audit purposes — they are never hard-deleted.</p>
+ * <p>Only the latest row per {@code fromCurrency}/{@code toCurrency} pair is
+ * kept active. Startup/nightly syncs update the latest row in-place and prune
+ * old inactive rows so the table stays small as the platform scales.</p>
  *
  * <p>All monetary conversions across the platform read the single active row
  * for the relevant currency pair via {@link ExchangeRateRepository#findActiveRate}.</p>
@@ -64,7 +64,7 @@ public class ExchangeRate extends BaseAuditableEntity {
 
     /**
      * Only one row per currency pair should be active.
-     * Updating the rate archives the old row and creates a new active one.
+     * Updating the rate refreshes the latest row instead of creating history.
      */
     @Column(name = "is_active", nullable = false)
     private boolean active = true;

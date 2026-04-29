@@ -25,6 +25,6 @@ public class OAuth2FailureHandler implements AuthenticationFailureHandler {
                                         AuthenticationException exception) throws IOException {
         log.warn("OAuth2 authentication failed: {}", exception.getMessage());
         String message = URLEncoder.encode(exception.getMessage(), StandardCharsets.UTF_8);
-        response.sendRedirect(frontendUrl + "/login?error=" + message);
+        response.sendRedirect(frontendUrl + "/signin?error=" + message);
     }
 }

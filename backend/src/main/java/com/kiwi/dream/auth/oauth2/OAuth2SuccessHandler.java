@@ -38,7 +38,7 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
         if (user == null) {
             log.error("OAuth2 success handler: could not resolve user from principal {}",
                     authentication.getPrincipal().getClass());
-            response.sendRedirect(frontendUrl + "/login?error=oauth2_failed");
+            response.sendRedirect(frontendUrl + "/signin?error=oauth2_failed");
             return;
         }
 

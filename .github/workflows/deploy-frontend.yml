@@ -1,11 +1,13 @@
 name: Deploy Frontend to AWS S3 & CloudFront
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - master
     paths:
       - 'frontend/**'
+      - '.github/workflows/deploy-frontend.yml'
 
 jobs:
   build-and-deploy:
@@ -31,8 +33,7 @@ jobs:
     - name: Build Project
       run: npm run build
       env:
-        # Pass necessary env vars to Vite build if required
-        VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
+        VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL || secrets.VITE_API_URL }}
 
     - name: Configure AWS Credentials
       uses: aws-actions/configure-aws-credentials@v4
@@ -43,6 +44,34 @@ jobs:
 
     - name: Deploy to S3
       run: aws s3 sync dist/ s3://${{ secrets.AWS_S3_BUCKET_NAME }} --delete
+
+    - name: Configure CloudFront SPA Fallbacks
+      run: |
+        DIST_ID="${{ secrets.AWS_CLOUDFRONT_DISTRIBUTION_ID }}"
+        aws cloudfront get-distribution-config --id "$DIST_ID" > /tmp/cloudfront-config.json
+        ETAG="$(jq -r '.ETag' /tmp/cloudfront-config.json)"
+        jq '.DistributionConfig
+          | .CustomErrorResponses = {
+              "Quantity": 2,
+              "Items": [
+                {
+                  "ErrorCode": 403,
+                  "ResponsePagePath": "/index.html",
+                  "ResponseCode": "200",
+                  "ErrorCachingMinTTL": 0
+                },
+                {
+                  "ErrorCode": 404,
+                  "ResponsePagePath": "/index.html",
+                  "ResponseCode": "200",
+                  "ErrorCachingMinTTL": 0
+                }
+              ]
+            }' /tmp/cloudfront-config.json > /tmp/cloudfront-distribution-config.json
+        aws cloudfront update-distribution \
+          --id "$DIST_ID" \
+          --if-match "$ETAG" \
+          --distribution-config file:///tmp/cloudfront-distribution-config.json
 
     - name: Invalidate CloudFront Cache
       run: aws cloudfront create-invalidation --distribution-id ${{ secrets.AWS_CLOUDFRONT_DISTRIBUTION_ID }} --paths "/*"

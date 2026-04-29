@@ -1,4 +1,4 @@
-import { API_BASE_URL, apiRequest } from '@/api/client'
+import { apiFormRequest, apiRequest } from '@/api/client'
 
 // ─── User Management ──────────────────────────────────────────────────────────
 
@@ -306,20 +306,8 @@ export function deleteProfile(accessToken, id) {
 export async function uploadIcon(accessToken, file) {
   const formData = new FormData()
   formData.append('file', file)
-
-  const response = await fetch(`${API_BASE_URL}/api/v1/admin/upload/icon`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      // Do NOT set Content-Type — browser sets it automatically with boundary for multipart
-    },
-    body: formData,
+  return apiFormRequest('/api/v1/admin/upload/icon', {
+    token: accessToken,
+    formData,
   })
-
-  const payload = await response.json().catch(() => null)
-  if (!response.ok || payload?.success === false) {
-    const msg = payload?.error?.message || payload?.message || 'Upload failed'
-    throw new Error(msg)
-  }
-  return payload?.data // { url: string }
 }

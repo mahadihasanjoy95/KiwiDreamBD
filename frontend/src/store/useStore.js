@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { DEFAULT_MOVING_ITEMS } from '@/data/movingCosts'
 import i18n from 'i18next'
+import { configureAuthSessionHandlers } from '@/api/client'
 import { changeMyPassword, getMyProfile, loginUser, logoutUser, registerUser, updateMyProfile, updateMyProfilePicture } from '@/api/auth'
 import {
   createPlanFromMaster,
@@ -843,3 +844,21 @@ const useStore = create(
 )
 
 export default useStore
+
+configureAuthSessionHandlers({
+  getSession: () => ({
+    accessToken: useStore.getState().accessToken,
+    refreshToken: useStore.getState().refreshToken,
+  }),
+  onTokensRefreshed: (tokens) => {
+    useStore.setState({
+      isAuthenticated: true,
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+      tokenType: tokens.tokenType || 'Bearer',
+    })
+  },
+  onAuthExpired: () => {
+    useStore.getState().clearAuthSession()
+  },
+})

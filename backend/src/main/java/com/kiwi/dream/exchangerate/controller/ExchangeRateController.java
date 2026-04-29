@@ -59,11 +59,11 @@ public class ExchangeRateController {
     @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     @SecurityRequirement(name = "bearerAuth")
     @Operation(summary = "Set a new exchange rate for a currency pair (ADMIN)",
-            description = "Archives the previous active rate for the same pair and creates a new active row. " +
+            description = "Updates the latest active rate for the same pair. " +
                           "This is the primary admin action for updating the BDT ↔ NZD rate " +
                           "that all plan screens use for currency conversion.")
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "New rate set — old rate archived"),
+            @ApiResponse(responseCode = "200", description = "Latest rate updated"),
             @ApiResponse(responseCode = "400", description = "Validation failed"),
             @ApiResponse(responseCode = "401", description = "Not authenticated"),
             @ApiResponse(responseCode = "403", description = "Insufficient permissions")
@@ -72,15 +72,15 @@ public class ExchangeRateController {
             @Valid @RequestBody SetExchangeRateRequestDto requestDto) {
         ExchangeRateResponseDto result = exchangeRateService.setRate(requestDto);
         return ResponseEntity.ok(CommonApiResponse.success(
-                "Exchange rate updated. Previous rate has been archived.", result));
+                "Exchange rate updated.", result));
     }
 
     @GetMapping("/{fromCurrency}/{toCurrency}/history")
     @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     @SecurityRequirement(name = "bearerAuth")
     @Operation(summary = "Get full rate history for a currency pair (ADMIN)",
-            description = "Returns all rows (active + archived) for a pair, newest first. " +
-                          "Useful for auditing when the admin last updated the rate.")
+            description = "Returns remaining rows for a pair, newest first. " +
+                          "The sync process keeps only the latest active rate to avoid table growth.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Rate history returned"),
             @ApiResponse(responseCode = "401", description = "Not authenticated"),
@@ -99,7 +99,7 @@ public class ExchangeRateController {
     @Operation(summary = "Manually trigger an exchange rate sync from the external API (ADMIN)",
             description = "Forces an immediate fetch of all rates from the external API. " +
                           "Useful after adding a new country or when the nightly cron has not run yet. " +
-                          "Admin overrides are preserved — only AUTO_FETCH rows are replaced.")
+                          "Admin overrides are preserved — only AUTO_FETCH rows are refreshed in-place.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Sync triggered — returns number of pairs updated"),
             @ApiResponse(responseCode = "401", description = "Not authenticated"),

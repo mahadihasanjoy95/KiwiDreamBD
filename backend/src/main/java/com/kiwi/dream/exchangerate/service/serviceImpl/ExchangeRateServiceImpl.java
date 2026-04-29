@@ -18,10 +18,10 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClient;
 
 import java.math.BigDecimal;
-import java.math.MathContext;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -66,10 +66,12 @@ public class ExchangeRateServiceImpl implements ExchangeRateService {
     @Override
     @Transactional(readOnly = true)
     public List<ExchangeRateResponseDto> listActive() {
-        return exchangeRateRepository.findByActiveTrueOrderByFromCurrencyAscToCurrencyAsc()
-                .stream()
-                .map(exchangeRateMapper::toDto)
-                .toList();
+        Map<String, ExchangeRateResponseDto> latestByPair = new LinkedHashMap<>();
+        exchangeRateRepository.findByActiveTrueOrderByFromCurrencyAscToCurrencyAsc()
+                .forEach(rate -> latestByPair.putIfAbsent(
+                        rate.getFromCurrency() + ":" + rate.getToCurrency(),
+                        exchangeRateMapper.toDto(rate)));
+        return List.copyOf(latestByPair.values());
     }
 
     @Override
@@ -98,13 +100,10 @@ public class ExchangeRateServiceImpl implements ExchangeRateService {
         String from = requestDto.fromCurrency().toUpperCase().trim();
         String to   = requestDto.toCurrency().toUpperCase().trim();
 
-        archiveActive(from, to);
-
-        ExchangeRate newRate = buildRate(from, to, requestDto.rateValue(),
+        ExchangeRate saved = upsertLatestRate(from, to, requestDto.rateValue(),
                 requestDto.effectiveDate(), requestDto.note(), ExchangeRateSource.ADMIN_OVERRIDE);
 
-        ExchangeRate saved = exchangeRateRepository.save(newRate);
-        log.info("Admin override rate set: {} \u2192 {} = {} (effective {})",
+        log.info("Admin override rate saved: {} \u2192 {} = {} (effective {})",
                 from, to, saved.getRateValue(), saved.getEffectiveDate());
         return exchangeRateMapper.toDto(saved);
     }
@@ -167,8 +166,8 @@ public class ExchangeRateServiceImpl implements ExchangeRateService {
                 destinationCurrencies.size(), destinationCurrencies, dbCurrencies.size());
 
         int updatedCount = 0;
-        List<ExchangeRate> toSave = new ArrayList<>();
         LocalDate today = LocalDate.now();
+        String syncNote = "Auto-synced from ExchangeRate-API (USD base, " + apiResponse.date() + ")";
 
         for (String destCurrency : destinationCurrencies) {
             BigDecimal usdToDest = usdRates.get(destCurrency);
@@ -193,14 +192,8 @@ public class ExchangeRateServiceImpl implements ExchangeRateService {
                 log.info("Skipping {} \u2192 {}: active ADMIN_OVERRIDE in place (rate: {}).",
                         ORIGIN_CURRENCY, destCurrency, existingBdtToDest.get().getRateValue());
             } else {
-                // Archive old and queue new BDT → destCurrency
-                existingBdtToDest.ifPresent(old -> {
-                    old.setActive(false);
-                    toSave.add(old);
-                });
-                toSave.add(buildRate(ORIGIN_CURRENCY, destCurrency, bdtToDest, today,
-                        "Auto-synced from ExchangeRate-API (USD base, " + apiResponse.date() + ")",
-                        ExchangeRateSource.AUTO_FETCH));
+                upsertLatestRate(ORIGIN_CURRENCY, destCurrency, bdtToDest, today,
+                        syncNote, ExchangeRateSource.AUTO_FETCH);
                 updatedCount++;
             }
 
@@ -213,17 +206,12 @@ public class ExchangeRateServiceImpl implements ExchangeRateService {
                 log.info("Skipping {} \u2192 {}: active ADMIN_OVERRIDE in place (rate: {}).",
                         destCurrency, ORIGIN_CURRENCY, existingDestToBdt.get().getRateValue());
             } else {
-                existingDestToBdt.ifPresent(old -> {
-                    old.setActive(false);
-                    toSave.add(old);
-                });
-                toSave.add(buildRate(destCurrency, ORIGIN_CURRENCY, destToBdt, today,
-                        "Auto-synced from ExchangeRate-API (USD base, " + apiResponse.date() + ")",
-                        ExchangeRateSource.AUTO_FETCH));
+                upsertLatestRate(destCurrency, ORIGIN_CURRENCY, destToBdt, today,
+                        syncNote, ExchangeRateSource.AUTO_FETCH);
+                updatedCount++;
             }
         }
 
-        exchangeRateRepository.saveAll(toSave);
         log.info("Exchange rate sync complete. Updated {} currency pairs.", updatedCount);
         return updatedCount;
     }
@@ -254,19 +242,18 @@ public class ExchangeRateServiceImpl implements ExchangeRateService {
                 .orElseThrow(() -> new ExchangeRateNotFoundException(fromCurrency, toCurrency));
     }
 
-    private void archiveActive(String fromCurrency, String toCurrency) {
-        exchangeRateRepository.findActiveRate(fromCurrency, toCurrency).ifPresent(existing -> {
-            existing.setActive(false);
-            exchangeRateRepository.save(existing);
-            log.info("Archived previous rate: {} \u2192 {} (was {}, source: {})",
-                    fromCurrency, toCurrency, existing.getRateValue(), existing.getSource());
-        });
-    }
+    private ExchangeRate upsertLatestRate(String from, String to, BigDecimal rateValue,
+                                          LocalDate effectiveDate, String note,
+                                          ExchangeRateSource source) {
+        List<ExchangeRate> rows = exchangeRateRepository.findRowsForUpsert(from, to);
+        ExchangeRate rate = rows.stream().findFirst()
+                .orElseGet(() -> {
+                    ExchangeRate created = new ExchangeRate();
+                    created.setFromCurrency(from);
+                    created.setToCurrency(to);
+                    return created;
+                });
 
-    private ExchangeRate buildRate(String from, String to, BigDecimal rateValue,
-                                   LocalDate effectiveDate, String note,
-                                   ExchangeRateSource source) {
-        ExchangeRate rate = new ExchangeRate();
         rate.setFromCurrency(from);
         rate.setToCurrency(to);
         rate.setRateValue(rateValue.setScale(6, RoundingMode.HALF_UP));
@@ -274,6 +261,18 @@ public class ExchangeRateServiceImpl implements ExchangeRateService {
         rate.setNote(note);
         rate.setSource(source);
         rate.setActive(true);
-        return rate;
+
+        List<ExchangeRate> staleRows = rows.stream()
+                .filter(existing -> existing.getId() != null)
+                .filter(existing -> !existing.getId().equals(rate.getId()))
+                .peek(existing -> existing.setActive(false))
+                .toList();
+
+        ExchangeRate saved = exchangeRateRepository.save(rate);
+        if (!staleRows.isEmpty()) {
+            exchangeRateRepository.saveAll(staleRows);
+        }
+        exchangeRateRepository.deleteInactiveByPair(from, to);
+        return saved;
     }
 }

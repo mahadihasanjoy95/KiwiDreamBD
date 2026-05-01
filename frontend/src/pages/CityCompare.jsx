@@ -193,7 +193,7 @@ export default function CityCompare() {
             )}
           </div>
 
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="grid grid-cols-2 gap-2 sm:gap-3">
             {/* City A */}
             <CitySelect
               label={language === 'BN' ? 'শহর ক' : 'City A'}
@@ -287,7 +287,7 @@ export default function CityCompare() {
 // ── Country selector ──────────────────────────────────────────────────────────
 function CountrySelect({ countries, value, onChange, language, loading }) {
   return (
-    <div className="rounded-[20px] border border-brand-mid/70 bg-[#f7fdfc]/82 p-2.5 shadow-[0_12px_30px_rgba(0,89,96,0.06)] sm:rounded-[24px] sm:p-3">
+    <div className="rounded-[20px] border border-brand-mid/70 bg-[#f7fdfc]/82 p-2 shadow-[0_12px_30px_rgba(0,89,96,0.06)] sm:rounded-[24px] sm:p-3">
       <label className="mb-2 flex items-center gap-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-brand/60 sm:text-[11px]">
         <Globe2 size={11} />
         {language === 'BN' ? 'দেশ' : 'Country'}
@@ -325,7 +325,7 @@ function CitySelect({ label, value, onChange, cities, exclude, language, loading
           value={value || ''}
           onChange={e => onChange(e.target.value)}
           disabled={loading || available.length === 0}
-          className="w-full appearance-none rounded-2xl border border-white/80 bg-white px-3 py-3 pr-8 text-sm font-bold text-brand-deep shadow-[0_8px_22px_rgba(0,89,96,0.08)] outline-none transition-all focus:border-brand focus:ring-4 focus:ring-brand/10 disabled:opacity-60 sm:rounded-[20px] sm:px-4 sm:py-4 sm:pr-11 sm:text-base"
+          className="w-full appearance-none rounded-2xl border border-white/80 bg-white px-2.5 py-3 pr-7 text-xs font-bold text-brand-deep shadow-[0_8px_22px_rgba(0,89,96,0.08)] outline-none transition-all focus:border-brand focus:ring-4 focus:ring-brand/10 disabled:opacity-60 sm:rounded-[20px] sm:px-4 sm:py-4 sm:pr-11 sm:text-base"
         >
           {loading && <option value="">Loading…</option>}
           {!loading && available.length === 0 && <option value="">No cities</option>}

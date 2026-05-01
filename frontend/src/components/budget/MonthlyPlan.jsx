@@ -56,7 +56,7 @@ export function MonthlyPlan() {
   const { t } = useTranslation()
   const planCategories = useStore(s => s.planCategories)
   const { updateCategory, removeCategory, addCategory } = useStore()
-  const { format } = useCurrency()
+  const { format, formatAs, toDisplay, fromDisplay, displayCurrency } = useCurrency()
   const currency = useStore(s => s.currency)
 
   const [showAddForm, setShowAddForm] = useState(false)
@@ -66,6 +66,13 @@ export function MonthlyPlan() {
   const [editingId, setEditingId] = useState(null)
 
   const total = planCategories.reduce((sum, c) => sum + (c.estimatedAmountNZD || 0), 0)
+  const displayLimit = MONEY_LIMITS.maxAmount
+  const sliderMax = fromDisplay(MONEY_LIMITS.maxAmount)
+  const displayValue = (id, nzd) => {
+    if (editingId === id && Number(nzd || 0) === 0) return ''
+    return toDisplay(nzd || 0)
+  }
+  const oppositeCurrency = currency === 'BDT' ? 'NZD' : 'BDT'
 
   const chartData = useMemo(
     () =>
@@ -83,7 +90,7 @@ export function MonthlyPlan() {
 
   const handleAdd = () => {
     if (!newName.trim()) return
-    addCategory(newName.trim(), newAmount)
+    addCategory(newName.trim(), fromDisplay(newAmount))
     setNewName('')
     setNewAmount('')
     setShowAddForm(false)
@@ -99,7 +106,7 @@ export function MonthlyPlan() {
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#b66a48]">
                 {t('planner.monthly_board_title')}
               </p>
-              <h3 className="mt-2 font-serif text-2xl font-bold text-[#173526]">
+              <h3 className="mt-2 break-words font-sans text-3xl font-extrabold leading-tight tracking-tight text-[#173526] sm:text-4xl">
                 {format(total)}
               </h3>
               <p className="mt-2 max-w-xl text-sm leading-relaxed text-[#6d6257]">
@@ -190,8 +197,6 @@ export function MonthlyPlan() {
               const Icon = findIcon(category.categoryName)
               const share = total > 0 ? Math.round((category.estimatedAmountNZD / total) * 100) : 0
               const accent = CHART_COLORS[index % CHART_COLORS.length]
-              const sliderMax = MONEY_LIMITS.monthlyCategoryNZD
-
               return (
                 <motion.div
                   key={category.id}
@@ -244,11 +249,11 @@ export function MonthlyPlan() {
 
                       <div className="mt-5 flex items-end gap-3">
                         <div className="flex-1">
-                          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#9c8f83]">NZD</p>
+                          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#9c8f83]">{displayCurrency}</p>
                           <input
                             type="number"
-                            value={category.estimatedAmountNZD}
-                            onChange={(e) => updateCategory(category.id, e.target.value)}
+                            value={displayValue(category.id, category.estimatedAmountNZD)}
+                            onChange={(e) => updateCategory(category.id, fromDisplay(e.target.value))}
                             onFocus={() => setEditingId(category.id)}
                             onBlur={() => setEditingId(null)}
                             className={cn(
@@ -258,7 +263,7 @@ export function MonthlyPlan() {
                                 : 'border-[#ede2d3] text-[#173526] hover:border-[#d8c8b5]'
                             )}
                             min="0"
-                            max={MONEY_LIMITS.monthlyCategoryNZD}
+                            max={displayLimit}
                             step="50"
                           />
                         </div>
@@ -267,7 +272,7 @@ export function MonthlyPlan() {
                           <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#a29387]">
                             {t('planner.converted_value')}
                           </p>
-                          <p className="mt-1 text-sm font-semibold text-[#173526]">≈ {format(category.estimatedAmountNZD)}</p>
+                          <p className="mt-1 text-sm font-semibold text-[#173526]">≈ {formatAs(category.estimatedAmountNZD, oppositeCurrency)}</p>
                         </div>
                       </div>
 
@@ -324,7 +329,7 @@ export function MonthlyPlan() {
                   onChange={e => setNewAmount(e.target.value)}
                   className="rounded-2xl border border-[#eadfce] bg-white px-4 py-3 text-sm outline-none focus:border-[#1f5c46] focus:ring-2 focus:ring-[#1f5c46]/10"
                   min="0"
-                  max={MONEY_LIMITS.monthlyCategoryNZD}
+                  max={displayLimit}
                   step="50"
                 />
                 <button

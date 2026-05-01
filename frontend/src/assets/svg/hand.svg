@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
     <title id="title">Hand click indicator</title>
-    <desc id="desc">A friendly hand pointer icon with click rays and a soft KiwiDream styled accent.</desc>
+    <desc id="desc">A friendly hand pointer icon with click rays and a soft Plan For Abroad styled accent.</desc>
     <defs>
         <filter id="handShadow" x="-22%" y="-18%" width="144%" height="148%">
             <feDropShadow dx="0" dy="14" stdDeviation="14" flood-color="#246bfe" flood-opacity="0.16"/>
@@ -44,7 +44,6 @@
         <path d="m19 17 12 8-7 2-2 7-3-17Z" fill="#0095a1" stroke="#007886" stroke-linejoin="round" stroke-width="1.4"/>
     </g>
 </svg>
-
 
 
 

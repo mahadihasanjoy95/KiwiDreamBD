@@ -58,7 +58,7 @@ export default function OAuthCallback() {
     <AppLoader
       show
       label="Finishing Google sign-in"
-      sublabel="Securing your KiwiDream BD session"
+      sublabel="Securing your Plan For Abroad session"
     />
   )
 }

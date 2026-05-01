@@ -54,7 +54,7 @@ export function LivingFund() {
   // ── Derived values from user input ───────────────────────────────────────
   const fundNZD       = livingFundBDT ? +(Number(livingFundBDT) / exchangeRate).toFixed(0) : null
   const fundBDTValue  = Number(livingFundBDT) || 0
-  const fundProgress  = (fundBDTValue / MONEY_LIMITS.livingFundBDT) * 100
+  const fundProgress  = Math.min(100, (fundBDTValue / MONEY_LIMITS.livingFundBDT) * 100)
 
   // How many months does the recommended fund cover?
   const recommendedMonths = (recommendedNzd && monthlyTotal > 0)

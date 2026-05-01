@@ -43,6 +43,16 @@
   }
 }
 
+@keyframes guideArticleMarquee {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+
+  100% {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
 @layer utilities {
   .font-bengali {
     font-family: 'Noto Sans Bengali', 'DM Sans', sans-serif;
@@ -75,6 +85,10 @@
 
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
+  }
+
+  .guide-article-marquee {
+    animation: guideArticleMarquee 34s linear infinite;
   }
 
   .text-balance {

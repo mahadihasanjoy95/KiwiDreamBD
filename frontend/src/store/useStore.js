@@ -17,9 +17,10 @@ import {
 import { fetchExchangeRate } from '@/api/exchangeRates'
 
 export const MONEY_LIMITS = {
-  monthlyCategoryNZD: 10000,
-  movingItemNZD: 50000,
-  livingFundBDT: 20000000,
+  maxAmount: 100000000,
+  monthlyCategoryNZD: 100000000,
+  movingItemNZD: 100000000,
+  livingFundBDT: 100000000,
 }
 
 function clampMoney(value, max) {
@@ -37,15 +38,162 @@ function normalizeUser(user) {
     phone: user.phoneNumber || user.phone || '',
     profilePicture: user.profilePicture || user.profilePictureUrl || '',
     preferredLanguage: user.preferredLanguage || 'EN',
-    preferredCurrency: user.preferredCurrency || 'NZD',
+    preferredCurrency: user.preferredCurrency || 'BDT',
   }
+}
+
+function sameOrder(a, b) {
+  return Number(a?.displayOrder ?? 0) === Number(b?.displayOrder ?? 0)
+}
+
+function sameChecklistSlot(a, b) {
+  return sameOrder(a, b) && String(a?.category || 'CUSTOM') === String(b?.category || 'CUSTOM')
+}
+
+function isCustomMonthlyId(id) {
+  return String(id || '').startsWith('custom-')
+}
+
+function isCustomMovingId(id) {
+  return String(id || '').startsWith('custom-moving-')
+}
+
+function isCustomChecklistId(id) {
+  return String(id || '').startsWith('custom-checklist-')
+}
+
+async function syncCreatedPlanEdits(token, savedPlan, state) {
+  const planId = savedPlan?.id
+  if (!planId || !state.currentMasterPlan) return savedPlan
+
+  const masterMonthly = state.currentMasterPlan.monthlyItems || []
+  const copiedMonthly = savedPlan.monthlyItems || []
+  const keptMonthlySourceIds = new Set(
+    state.planCategories
+      .filter(item => !isCustomMonthlyId(item.id))
+      .map(item => item.id)
+  )
+
+  for (const copied of copiedMonthly) {
+    const source = masterMonthly.find(item => sameOrder(item, copied))
+    if (source && !keptMonthlySourceIds.has(source.id)) {
+      await deleteMonthlyItem(token, planId, copied.id)
+    }
+  }
+
+  for (const item of state.planCategories) {
+    if (isCustomMonthlyId(item.id)) {
+      await addMonthlyItem(token, planId, {
+        customName: item.categoryName,
+        estimatedAmountNzd: item.estimatedAmountNZD,
+        isCustom: true,
+        displayOrder: item.displayOrder ?? 99,
+      })
+      continue
+    }
+
+    const copied = copiedMonthly.find(candidate => sameOrder(candidate, item))
+    if (copied) {
+      await updateMonthlyItem(token, planId, copied.id, {
+        customName: item.categoryName,
+        estimatedAmountNzd: item.estimatedAmountNZD,
+        customNote: item.noteEn || '',
+        displayOrder: item.displayOrder ?? copied.displayOrder,
+      })
+    }
+  }
+
+  const masterMoving = state.currentMasterPlan.movingItems || []
+  const copiedMoving = savedPlan.movingItems || []
+  const keptMovingSourceIds = new Set(
+    state.movingItems
+      .filter(item => !isCustomMovingId(item.id))
+      .map(item => item.id)
+  )
+
+  for (const copied of copiedMoving) {
+    const source = masterMoving.find(item => sameOrder(item, copied))
+    if (source && !keptMovingSourceIds.has(source.id)) {
+      await deleteMovingItem(token, planId, copied.id)
+    }
+  }
+
+  for (const item of state.movingItems) {
+    if (isCustomMovingId(item.id)) {
+      await addMovingItem(token, planId, {
+        customItemName: item.itemName,
+        estimatedAmountNzd: item.amountNZD,
+        isCustom: true,
+        displayOrder: item.displayOrder ?? 99,
+      })
+      continue
+    }
+
+    const copied = copiedMoving.find(candidate => sameOrder(candidate, item))
+    if (copied) {
+      await updateMovingItem(token, planId, copied.id, {
+        customItemName: item.itemName,
+        estimatedAmountNzd: item.amountNZD,
+        customNote: item.noteEn || '',
+        displayOrder: item.displayOrder ?? copied.displayOrder,
+      })
+    }
+  }
+
+  const masterChecklist = state.currentMasterPlan.checklistItems || []
+  const copiedChecklist = savedPlan.checklistItems || []
+  const keptChecklistSourceIds = new Set(
+    state.checklistItems
+      .filter(item => !isCustomChecklistId(item.id))
+      .map(item => item.id)
+  )
+
+  for (const copied of copiedChecklist) {
+    const source = masterChecklist.find(item => sameChecklistSlot(item, copied))
+    if (source && !keptChecklistSourceIds.has(source.id)) {
+      await deleteChecklistItem(token, planId, copied.id)
+    }
+  }
+
+  for (const item of state.checklistItems) {
+    if (isCustomChecklistId(item.id)) {
+      await addChecklistItem(token, planId, {
+        category: item.category || 'CUSTOM',
+        customItemText: item.textEn || '',
+        quantity: item.quantity || 1,
+        displayOrder: item.displayOrder ?? 99,
+      })
+      continue
+    }
+
+    const copied = copiedChecklist.find(candidate => sameChecklistSlot(candidate, item))
+    if (copied) {
+      await updateChecklistItem(token, planId, copied.id, {
+        category: item.category || copied.category || 'CUSTOM',
+        customItemText: item.textEn || '',
+        quantity: item.quantity || 1,
+        displayOrder: item.displayOrder ?? copied.displayOrder,
+      })
+      if (Boolean(item.completed) !== Boolean(copied.done)) {
+        await toggleChecklistItemApi(token, planId, copied.id)
+      }
+    }
+  }
+
+  if (state.livingFundBDT !== '' && state.livingFundBDT !== null) {
+    await upsertLivingFund(token, planId, {
+      userSavedAmountBdt: Number(state.livingFundBDT),
+    })
+  }
+
+  return getMyPlan(token, planId)
 }
 
 const useStore = create(
   persist(
     (set, get) => ({
       // ── Currency ──────────────────────────────────────────────
-      currency: 'NZD',
+      currency: 'BDT',
       exchangeRate: 83.2,
       setCurrency: (c) => set({ currency: c }),
 
@@ -731,7 +879,8 @@ const useStore = create(
           const planName = `${cityName} — ${profileName}`
           try {
             const savedPlan = await createPlanFromMaster(state.accessToken, masterPlanId, planName)
-            return { ok: true, plan: savedPlan }
+            const syncedPlan = await syncCreatedPlanEdits(state.accessToken, savedPlan, state)
+            return { ok: true, plan: syncedPlan || savedPlan }
           } catch (err) {
             if (err?.code === 'DUPLICATE_PLAN') {
               return { ok: false, reason: 'DUPLICATE_PLAN', message: err.message }
@@ -809,6 +958,13 @@ const useStore = create(
     }),
     {
       name: 'kiwi-dream-plan-v2',
+      version: 3,
+      migrate: (persistedState, version) => {
+        if (version < 3 && persistedState?.currency === 'NZD' && !persistedState?.user?.preferredCurrency) {
+          return { ...persistedState, currency: 'BDT' }
+        }
+        return persistedState
+      },
       onRehydrateStorage: () => (state) => {
         const language = state?.language === 'BN' ? 'bn' : 'en'
         if (i18n.isInitialized && i18n.language !== language) {

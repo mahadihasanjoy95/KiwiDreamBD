@@ -2,12 +2,13 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
-  BookOpen,
   Camera,
+  CheckCircle2,
+  Eye,
+  EyeOff,
   Globe,
   Info,
   KeyRound,
-  LayoutDashboard,
   LogOut,
   Settings2,
   Sparkles,
@@ -38,6 +39,9 @@ export default function Profile() {
   const [profileError, setProfileError] = useState('')
   const [profileSuccess, setProfileSuccess] = useState('')
   const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' })
+  const [visiblePasswords, setVisiblePasswords] = useState({})
+
+  const passwordsMatch = Boolean(passwordForm.newPassword && passwordForm.confirmPassword && passwordForm.newPassword === passwordForm.confirmPassword)
 
   useEffect(() => {
     setForm(user || {})
@@ -47,54 +51,17 @@ export default function Profile() {
     <div className="min-h-screen bg-[linear-gradient(180deg,#eaf6f5_0%,#f8fbf6_50%,#eef7f6_100%)] px-4 py-6 sm:px-6 md:py-10">
       <div className="mx-auto max-w-6xl">
         <section className="overflow-hidden rounded-[30px] border border-white/70 bg-white/58 p-5 shadow-[0_24px_70px_rgba(0,89,96,0.10)] backdrop-blur-2xl sm:p-7 md:p-8">
-          <div className="grid gap-6 lg:grid-cols-[0.82fr_1.18fr]">
-            <div>
-              <div className="inline-flex items-center gap-2 rounded-full bg-white/55 px-3 py-1.5 text-xs font-bold text-brand-deep/70">
-                <Settings2 size={14} />
-                {t('auth.more_badge')}
-              </div>
-              <h1 className="mt-4 max-w-2xl font-serif text-3xl font-bold leading-tight text-brand-deep md:text-4xl">
-                {isAuthenticated ? t('auth.more_title_signedin') : t('auth.more_title_guest')}
-              </h1>
-              <p className="mt-3 max-w-2xl text-sm leading-relaxed text-brand-deep/64 md:text-base">
-                {isAuthenticated ? t('auth.more_subtitle_signedin') : t('auth.more_subtitle_guest')}
-              </p>
+          <div className="max-w-3xl">
+            <div className="inline-flex items-center gap-2 rounded-full bg-white/55 px-3 py-1.5 text-xs font-bold text-brand-deep/70">
+              <UserRound size={14} />
+              {t('auth.profile_section_label')}
             </div>
-
-            <div className="grid gap-3 sm:grid-cols-2">
-              <SettingCard
-                icon={<Globe size={17} />}
-                label={t('auth.language_pref')}
-                helper={t('auth.language_help')}
-              >
-                <SegmentedControl
-                  value={language}
-                  onChange={(value) => {
-                    setLanguage(value)
-                    i18n.changeLanguage(value.toLowerCase())
-                  }}
-                  options={[
-                    { value: 'EN', label: 'EN' },
-                    { value: 'BN', label: 'বাংলা', className: 'font-bengali' },
-                  ]}
-                />
-              </SettingCard>
-
-              <SettingCard
-                icon={<Wallet size={17} />}
-                label={t('auth.currency_pref')}
-                helper={t('auth.currency_help')}
-              >
-                <SegmentedControl
-                  value={currency}
-                  onChange={setCurrency}
-                  options={[
-                    { value: 'NZD', label: 'NZD' },
-                    { value: 'BDT', label: 'BDT' },
-                  ]}
-                />
-              </SettingCard>
-            </div>
+            <h1 className="mt-4 max-w-2xl font-serif text-3xl font-bold leading-tight text-brand-deep md:text-4xl">
+              {isAuthenticated ? (form.name || t('auth.profile_edit_title')) : t('auth.profile_guest_title')}
+            </h1>
+            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-brand-deep/64 md:text-base">
+              {isAuthenticated ? t('auth.more_subtitle_signedin') : t('auth.profile_guest_copy')}
+            </p>
           </div>
         </section>
 
@@ -154,8 +121,6 @@ export default function Profile() {
               )}
             </div>
 
-            <QuickLink to="/dashboard" icon={LayoutDashboard} title={t('nav.dashboard')} copy={t('auth.dashboard_quick_copy')} />
-            <QuickLink to="/guide" icon={BookOpen} title={t('tools.essentials_title')} copy={t('tools.essentials_desc')} />
           </div>
 
           <div className="space-y-6">
@@ -186,10 +151,10 @@ export default function Profile() {
                       <input type="date" value={form.targetMoveDate || ''} onChange={(e) => setForm({ ...form, targetMoveDate: e.target.value })} className="profile-input" />
                     </Field>
                     <Field label={t('auth.current_savings_bdt')}>
-                      <input type="number" min="0" value={form.currentSavingsBdt || ''} onChange={(e) => setForm({ ...form, currentSavingsBdt: e.target.value })} className="profile-input" />
+                      <input type="number" min="0" max="100000000" value={form.currentSavingsBdt || ''} onChange={(e) => setForm({ ...form, currentSavingsBdt: e.target.value })} className="profile-input" />
                     </Field>
                     <Field label={t('auth.monthly_income_bdt')}>
-                      <input type="number" min="0" value={form.monthlyIncomeBdt || ''} onChange={(e) => setForm({ ...form, monthlyIncomeBdt: e.target.value })} className="profile-input" />
+                      <input type="number" min="0" max="100000000" value={form.monthlyIncomeBdt || ''} onChange={(e) => setForm({ ...form, monthlyIncomeBdt: e.target.value })} className="profile-input" />
                     </Field>
                     <Field label={t('auth.profile_picture_url')}>
                       <input value={form.profilePicture || ''} onChange={(e) => setForm({ ...form, profilePicture: e.target.value })} className="profile-input" placeholder="https://..." />
@@ -263,15 +228,21 @@ export default function Profile() {
 
                 <div className="grid gap-4 md:grid-cols-3">
                   <Field label={t('auth.current_password')}>
-                    <input type="password" value={passwordForm.currentPassword} onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })} className="profile-input" />
+                    <PasswordInput name="currentPassword" value={passwordForm.currentPassword} visible={visiblePasswords.currentPassword} onToggle={() => setVisiblePasswords(v => ({ ...v, currentPassword: !v.currentPassword }))} onChange={(value) => setPasswordForm({ ...passwordForm, currentPassword: value })} />
                   </Field>
                   <Field label={t('auth.new_password')}>
-                    <input type="password" value={passwordForm.newPassword} onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })} className="profile-input" />
+                    <PasswordInput name="newPassword" value={passwordForm.newPassword} visible={visiblePasswords.newPassword} onToggle={() => setVisiblePasswords(v => ({ ...v, newPassword: !v.newPassword }))} onChange={(value) => setPasswordForm({ ...passwordForm, newPassword: value })} />
                   </Field>
                   <Field label={t('auth.confirm_password')}>
-                    <input type="password" value={passwordForm.confirmPassword} onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })} className="profile-input" />
+                    <PasswordInput name="confirmPassword" value={passwordForm.confirmPassword} visible={visiblePasswords.confirmPassword} onToggle={() => setVisiblePasswords(v => ({ ...v, confirmPassword: !v.confirmPassword }))} onChange={(value) => setPasswordForm({ ...passwordForm, confirmPassword: value })} />
                   </Field>
                 </div>
+                {passwordsMatch ? (
+                  <div className="mt-4 flex items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-700">
+                    <CheckCircle2 size={16} />
+                    {t('auth.password_match')}
+                  </div>
+                ) : null}
                 <button
                   type="button"
                   disabled={passwordSaving}
@@ -299,6 +270,54 @@ export default function Profile() {
                 </button>
               </div>
             ) : null}
+
+            <div className="rounded-[28px] border border-white/70 bg-white/68 p-5 shadow-[0_18px_54px_rgba(0,89,96,0.08)] backdrop-blur-xl sm:p-6">
+              <div className="mb-5 flex items-center gap-3">
+                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-brand-light text-brand">
+                  <Settings2 size={18} />
+                </div>
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-brand/60">{t('auth.more_badge')}</p>
+                  <h3 className="text-lg font-extrabold text-brand-deep">
+                    {isAuthenticated ? t('auth.more_title_signedin') : t('auth.more_title_guest')}
+                  </h3>
+                </div>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <SettingCard
+                  icon={<Globe size={17} />}
+                  label={t('auth.language_pref')}
+                  helper={t('auth.language_help')}
+                >
+                  <SegmentedControl
+                    value={language}
+                    onChange={(value) => {
+                      setLanguage(value)
+                      i18n.changeLanguage(value.toLowerCase())
+                    }}
+                    options={[
+                      { value: 'EN', label: 'EN' },
+                      { value: 'BN', label: 'বাংলা', className: 'font-bengali' },
+                    ]}
+                  />
+                </SettingCard>
+
+                <SettingCard
+                  icon={<Wallet size={17} />}
+                  label={t('auth.currency_pref')}
+                  helper={t('auth.currency_help')}
+                >
+                  <SegmentedControl
+                    value={currency}
+                    onChange={setCurrency}
+                    options={[
+                      { value: 'BDT', label: 'BDT' },
+                      { value: 'NZD', label: 'NZD' },
+                    ]}
+                  />
+                </SettingCard>
+              </div>
+            </div>
 
             <div className="relative overflow-hidden rounded-[28px] border border-white/70 bg-[linear-gradient(135deg,#ffffff_0%,#effafa_100%)] p-5 shadow-[0_18px_54px_rgba(0,89,96,0.08)] sm:p-6">
               <img
@@ -375,6 +394,29 @@ function InfoCard({ label, value }) {
   )
 }
 
+function PasswordInput({ name, value, visible, onToggle, onChange }) {
+  return (
+    <div className="relative">
+      <input
+        name={name}
+        type={visible ? 'text' : 'password'}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="profile-input pr-11"
+        autoComplete={name === 'currentPassword' ? 'current-password' : 'new-password'}
+      />
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-label={visible ? 'Hide password' : 'Show password'}
+        className="absolute inset-y-0 right-3 my-auto flex h-8 w-8 items-center justify-center rounded-full text-brand-deep/45 hover:bg-brand-light hover:text-brand"
+      >
+        {visible ? <EyeOff size={16} /> : <Eye size={16} />}
+      </button>
+    </div>
+  )
+}
+
 function SettingCard({ icon, label, helper, children }) {
   return (
     <div className="rounded-[24px] border border-brand-mid/55 bg-white/68 p-4 shadow-[0_14px_34px_rgba(0,89,96,0.06)] backdrop-blur-sm">
@@ -422,22 +464,5 @@ function InfoTile({ label, value }) {
       <p className="text-[10px] font-bold uppercase tracking-[0.11em] text-brand/58">{label}</p>
       <p className="mt-1 text-sm font-extrabold text-brand-deep">{value}</p>
     </div>
-  )
-}
-
-function QuickLink({ to, icon: Icon, title, copy }) {
-  return (
-    <Link
-      to={to}
-      className="group flex items-center gap-4 rounded-[24px] border border-brand-mid/55 bg-white/64 p-4 shadow-[0_14px_38px_rgba(0,89,96,0.06)] backdrop-blur-xl hover:bg-white"
-    >
-      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-brand-light text-brand group-hover:bg-brand group-hover:text-white">
-        <Icon size={18} />
-      </span>
-      <span>
-        <span className="block font-extrabold text-brand-deep">{title}</span>
-        <span className="mt-1 block text-xs leading-relaxed text-brand-deep/55">{copy}</span>
-      </span>
-    </Link>
   )
 }

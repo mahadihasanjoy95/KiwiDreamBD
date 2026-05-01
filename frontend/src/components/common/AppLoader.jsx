@@ -1,4 +1,5 @@
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
+import { createPortal } from 'react-dom'
 import { cn } from '@/utils/cn'
 
 export function AppLoader({
@@ -10,7 +11,7 @@ export function AppLoader({
 }) {
   const prefersReducedMotion = useReducedMotion()
 
-  return (
+  const loader = (
     <AnimatePresence>
       {show ? (
         <motion.div
@@ -74,4 +75,10 @@ export function AppLoader({
       ) : null}
     </AnimatePresence>
   )
+
+  if (fullScreen && typeof document !== 'undefined') {
+    return createPortal(loader, document.body)
+  }
+
+  return loader
 }

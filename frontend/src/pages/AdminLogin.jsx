@@ -121,7 +121,7 @@ function AdminLoginForm({ existingUser, login, logout, clearAuthSession }) {
 
           <p className="text-center text-xs font-extrabold uppercase tracking-[0.22em] mb-1"
             style={{ color: '#00C9BD' }}>
-            KiwiDream BD
+            Plan For Abroad
           </p>
           <h1 className="text-center font-serif text-2xl font-bold text-white mb-1">
             Admin workspace
@@ -268,7 +268,7 @@ function AdminLoginForm({ existingUser, login, logout, clearAuthSession }) {
 
         {/* Brand watermark */}
         <p className="mt-5 text-center text-xs font-semibold" style={{ color: 'rgba(182,218,222,0.2)' }}>
-          KiwiDream BD · Planning Control Panel
+          Plan For Abroad · Planning Control Panel
         </p>
       </div>
     </div>

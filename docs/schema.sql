@@ -65,7 +65,7 @@ CREATE TABLE IF NOT EXISTS users (
     target_move_date     DATE           NULL,
     current_savings_bdt  DECIMAL(15,2)  NULL,
     monthly_income_bdt   DECIMAL(15,2)  NULL,
-    preferred_currency   ENUM('NZD','BDT')     NOT NULL DEFAULT 'NZD',
+    preferred_currency   ENUM('NZD','BDT')     NOT NULL DEFAULT 'BDT',
     preferred_language   ENUM('EN','BN')        NOT NULL DEFAULT 'EN',
     auth_provider        ENUM('LOCAL','GOOGLE') NOT NULL DEFAULT 'LOCAL',
     email_verified       BOOLEAN               NOT NULL DEFAULT FALSE,

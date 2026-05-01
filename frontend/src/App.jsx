@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { Navigate, Routes, Route, useLocation } from 'react-router-dom'
 import { Navbar } from '@/components/layout/Navbar'
+import { MobileTopBar } from '@/components/layout/MobileTopBar'
 import { BottomNav } from '@/components/layout/BottomNav'
 import { Footer } from '@/components/layout/Footer'
 import { FloatingPrefs } from '@/components/layout/FloatingPrefs'
@@ -56,6 +57,7 @@ export default function App() {
   return (
     <ToastProvider>
       <div className="min-h-screen bg-[#eaf6f5] font-sans">
+        {!isAdminRoute && <MobileTopBar />}
         {!isAdminRoute && <Navbar />}
         <main className={isAdminRoute ? '' : 'pb-20 md:pb-0'}>
           <Routes>

@@ -10,7 +10,8 @@ public enum EmailTemplate {
 
     PASSWORD_RESET("emails/password-reset", "Reset your KiwiDream BD password"),
     SOCIAL_LOGIN_REMINDER("emails/social-login-reminder", "Sign in to KiwiDream BD with Google"),
-    ADMIN_INVITE("emails/admin-invite", "Your KiwiDream BD Admin Account");
+    ADMIN_INVITE("emails/admin-invite", "Your KiwiDream BD Admin Account"),
+    CONTACT_MESSAGE("emails/contact-message", "New message from Plan For Abroad");
 
     private final String templatePath;
     private final String subject;

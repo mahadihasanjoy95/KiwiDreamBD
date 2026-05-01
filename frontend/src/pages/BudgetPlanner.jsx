@@ -30,14 +30,32 @@ const TABS = ['monthly', 'moving', 'checklist', 'fund']
 
 // Canonical category metadata — keys match API ENUM values exactly
 const CATEGORY_META = {
-  DOCUMENTS:     { titleEN: 'Documents',     titleBN: 'ডকুমেন্টস' },
-  FINANCIAL:     { titleEN: 'Financial',     titleBN: 'আর্থিক' },
-  ACCOMMODATION: { titleEN: 'Accommodation', titleBN: 'আবাসন' },
-  COMMUNICATION: { titleEN: 'Communication', titleBN: 'যোগাযোগ' },
-  HEALTH:        { titleEN: 'Health',        titleBN: 'স্বাস্থ্য' },
-  CUSTOM:        { titleEN: 'Custom',        titleBN: 'কাস্টম' },
+  DOCUMENTS:        { titleEN: 'Documents',        titleBN: 'ডকুমেন্টস' },
+  FINANCIAL:        { titleEN: 'Financial',        titleBN: 'আর্থিক' },
+  ACCOMMODATION:    { titleEN: 'Accommodation',    titleBN: 'আবাসন' },
+  COMMUNICATION:    { titleEN: 'Communication',    titleBN: 'যোগাযোগ' },
+  HEALTH:           { titleEN: 'Health',           titleBN: 'স্বাস্থ্য' },
+  CLOTHES:          { titleEN: 'Clothes',          titleBN: 'কাপড়' },
+  FOOTWEAR:         { titleEN: 'Footwear & Essentials', titleBN: 'জুতা ও প্রয়োজনীয় জিনিস' },
+  WINTER_WEAR:      { titleEN: 'Extra Winter Wear', titleBN: 'শীতের অতিরিক্ত কাপড়' },
+  BEDDING:          { titleEN: 'Bedding',          titleBN: 'বিছানার জিনিস' },
+  KITCHEN:          { titleEN: 'Kitchen & Daily',  titleBN: 'রান্নাঘর ও দৈনন্দিন' },
+  ELECTRONICS:      { titleEN: 'Electronics',      titleBN: 'ইলেকট্রনিকস' },
+  PERSONAL_CARE:    { titleEN: 'Personal Care',    titleBN: 'ব্যক্তিগত যত্ন' },
+  BAGS:             { titleEN: 'Bags & Documents', titleBN: 'ব্যাগ ও কাগজপত্র' },
+  MEDICAL:          { titleEN: 'Medical',          titleBN: 'মেডিক্যাল' },
+  FOOD:             { titleEN: 'Food',             titleBN: 'খাবার' },
+  WEATHER:          { titleEN: 'Weather Items',    titleBN: 'আবহাওয়া সম্পর্কিত' },
+  STATIONERY:       { titleEN: 'Stationery',       titleBN: 'স্টেশনারি' },
+  OTHER_ESSENTIALS: { titleEN: 'Other Essentials', titleBN: 'অন্যান্য প্রয়োজনীয়' },
+  CUSTOM:           { titleEN: 'Custom',           titleBN: 'কাস্টম' },
 }
-const CATEGORY_ORDER = ['DOCUMENTS', 'FINANCIAL', 'ACCOMMODATION', 'COMMUNICATION', 'HEALTH', 'CUSTOM']
+const CATEGORY_ORDER = [
+  'DOCUMENTS', 'FINANCIAL', 'ACCOMMODATION', 'COMMUNICATION', 'HEALTH',
+  'CLOTHES', 'FOOTWEAR', 'WINTER_WEAR', 'BEDDING', 'KITCHEN',
+  'ELECTRONICS', 'PERSONAL_CARE', 'BAGS', 'MEDICAL', 'FOOD',
+  'WEATHER', 'STATIONERY', 'OTHER_ESSENTIALS', 'CUSTOM',
+]
 const ADD_CATEGORY_OPTIONS = CATEGORY_ORDER.map(k => ({ value: k, ...CATEGORY_META[k] }))
 
 // Keyed by API profile CODE (matches PROFILE_META in LifestyleCards)
@@ -312,18 +330,11 @@ function PlannerChecklistPanel() {
                           {/* Content */}
                           <div className="min-w-0">
                             {/* Badges */}
-                            {(item.quantity > 1 || item.isCustom) && (
+                            {item.quantity > 1 && (
                               <div className="mb-1 flex flex-wrap gap-1">
-                                {item.quantity > 1 && (
-                                  <span className="rounded-full bg-brand-light px-2 py-0.5 text-[11px] font-bold text-brand-deep ring-1 ring-brand-mid">
-                                    ×{item.quantity}
-                                  </span>
-                                )}
-                                {item.isCustom && (
-                                  <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-bold text-amber-700 ring-1 ring-amber-200">
-                                    {isBN ? 'কাস্টম' : 'custom'}
-                                  </span>
-                                )}
+                                <span className="rounded-full bg-brand-light px-2 py-0.5 text-[11px] font-bold text-brand-deep ring-1 ring-brand-mid">
+                                  ×{item.quantity}
+                                </span>
                               </div>
                             )}
 

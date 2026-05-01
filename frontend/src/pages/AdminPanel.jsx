@@ -38,7 +38,7 @@ import {
   WalletCards,
   X,
 } from 'lucide-react'
-import logoTigerNew from '@/assets/images/logo_tiger_new.png'
+import logoTigerNew from '@/assets/images/main_logo.png'
 import {
   activateUser, createAdminUser, deactivateUser, listAdminUsers,
   listCountries, createCountry, updateCountry, toggleCountryActive, deleteCountry,
@@ -48,13 +48,154 @@ import {
   publishMasterPlan, unpublishMasterPlan, deleteMasterPlan,
   addMasterMonthlyItem, updateMasterMonthlyItem, deleteMasterMonthlyItem,
   addMasterMovingItem, updateMasterMovingItem, deleteMasterMovingItem,
-  addMasterChecklistItem, updateMasterChecklistItem, deleteMasterChecklistItem,
+  addMasterChecklistItem, updateMasterChecklistItem, deleteMasterChecklistItem, bulkReplaceChecklistItems,
   getAdminLivingFund, upsertAdminLivingFund,
 } from '@/api/admin'
 import useStore from '@/store/useStore'
 import { cn } from '@/utils/cn'
 
-const CHECKLIST_CATEGORIES = ['DOCUMENTS', 'FINANCIAL', 'ACCOMMODATION', 'COMMUNICATION', 'HEALTH', 'CUSTOM']
+const CHECKLIST_CATEGORIES = [
+  'DOCUMENTS', 'FINANCIAL', 'ACCOMMODATION', 'COMMUNICATION', 'HEALTH',
+  'CLOTHES', 'FOOTWEAR', 'WINTER_WEAR', 'BEDDING', 'KITCHEN',
+  'ELECTRONICS', 'PERSONAL_CARE', 'BAGS', 'MEDICAL', 'FOOD',
+  'WEATHER', 'STATIONERY', 'OTHER_ESSENTIALS', 'CUSTOM',
+]
+
+const DEFAULT_CHECKLIST_ITEMS = [
+  // ── Pre-departure tasks ─────────────────────────────────────────────────────
+  { category: 'DOCUMENTS', itemTextEn: 'Valid Passport (6+ months validity)',        itemTextBn: 'বৈধ পাসপোর্ট (৬+ মাস মেয়াদ)',              quantity: 1,  displayOrder: 0 },
+  { category: 'DOCUMENTS', itemTextEn: 'Student Visa Approved',                      itemTextBn: 'স্টুডেন্ট ভিসা অনুমোদিত',                   quantity: 1,  displayOrder: 1 },
+  { category: 'DOCUMENTS', itemTextEn: 'Offer Letter from University',               itemTextBn: 'বিশ্ববিদ্যালয়ের অফার লেটার',               quantity: 1,  displayOrder: 2 },
+  { category: 'DOCUMENTS', itemTextEn: 'Travel Insurance Purchased',                 itemTextBn: 'ট্রাভেল ইন্স্যুরেন্স কেনা',                 quantity: 1,  displayOrder: 3 },
+  { category: 'DOCUMENTS', itemTextEn: 'Police Clearance Certificate',               itemTextBn: 'পুলিশ ক্লিয়ারেন্স সার্টিফিকেট',            quantity: 1,  displayOrder: 4 },
+  { category: 'DOCUMENTS', itemTextEn: 'Academic Transcripts (Certified Copies)',    itemTextBn: 'একাডেমিক ট্রান্সক্রিপ্ট (সত্যায়িত কপি)',   quantity: 3,  displayOrder: 5 },
+
+  { category: 'FINANCIAL', itemTextEn: 'Living Fund Transferred (NZD)',              itemTextBn: 'লিভিং ফান্ড ট্রান্সফার করা (NZD)',           quantity: 1,  displayOrder: 0 },
+  { category: 'FINANCIAL', itemTextEn: 'NZ Bank Account Opened (Before Arrival)',    itemTextBn: 'NZ ব্যাংক অ্যাকাউন্ট খোলা (আসার আগে)',      quantity: 1,  displayOrder: 1 },
+  { category: 'FINANCIAL', itemTextEn: 'Bond Money Prepared (4 weeks rent)',         itemTextBn: 'বন্ড মানি প্রস্তুত (৪ সপ্তাহ ভাড়া)',        quantity: 1,  displayOrder: 2 },
+  { category: 'FINANCIAL', itemTextEn: 'Tuition Fees Paid (First Semester)',         itemTextBn: 'টিউশন ফি পরিশোধ (প্রথম সেমিস্টার)',          quantity: 1,  displayOrder: 3 },
+  { category: 'FINANCIAL', itemTextEn: 'IRD Number Applied For',                     itemTextBn: 'IRD নম্বরের জন্য আবেদন',                    quantity: 1,  displayOrder: 4 },
+
+  { category: 'ACCOMMODATION', itemTextEn: 'Shared Room Booked (First Month)',       itemTextBn: 'শেয়ার রুম বুক করা (প্রথম মাস)',             quantity: 1,  displayOrder: 0 },
+  { category: 'ACCOMMODATION', itemTextEn: 'Tenancy Agreement Signed',               itemTextBn: 'টেনেন্সি চুক্তি স্বাক্ষরিত',                quantity: 1,  displayOrder: 1 },
+  { category: 'ACCOMMODATION', itemTextEn: 'Bond Lodged with Tenancy Services',      itemTextBn: 'টেনেন্সি সার্ভিসে বন্ড জমা দেওয়া',          quantity: 1,  displayOrder: 2 },
+
+  { category: 'COMMUNICATION', itemTextEn: 'NZ SIM Card Purchased',                  itemTextBn: 'NZ সিম কার্ড কেনা',                          quantity: 1,  displayOrder: 0 },
+  { category: 'COMMUNICATION', itemTextEn: 'Internet Plan Set Up',                   itemTextBn: 'ইন্টারনেট প্ল্যান সেট আপ',                   quantity: 1,  displayOrder: 1 },
+
+  { category: 'HEALTH', itemTextEn: 'Enrolled at a GP (General Practitioner)',       itemTextBn: 'জিপিতে নথিভুক্তি',                          quantity: 1,  displayOrder: 0 },
+  { category: 'HEALTH', itemTextEn: 'Medication Supply Packed (3 months)',           itemTextBn: 'ওষুধের সরবরাহ প্যাক করা (৩ মাস)',            quantity: 1,  displayOrder: 1 },
+
+  // ── Packing list ────────────────────────────────────────────────────────────
+  { category: 'CLOTHES', itemTextEn: 'Jacket (waterproof)',                          itemTextBn: 'জ্যাকেট (ওয়াটারপ্রুফ)',                     quantity: 2,  displayOrder: 0 },
+  { category: 'CLOTHES', itemTextEn: 'Summer Jacket',                               itemTextBn: 'সামার জ্যাকেট',                              quantity: 2,  displayOrder: 1 },
+  { category: 'CLOTHES', itemTextEn: 'Overcoat',                                    itemTextBn: 'ওভারকোট',                                    quantity: 1,  displayOrder: 2 },
+  { category: 'CLOTHES', itemTextEn: 'Thermal Suit',                                itemTextBn: 'থার্মাল স্যুট',                              quantity: 3,  displayOrder: 3 },
+  { category: 'CLOTHES', itemTextEn: 'T-Shirt',                                     itemTextBn: 'টি-শার্ট',                                   quantity: 9,  displayOrder: 4 },
+  { category: 'CLOTHES', itemTextEn: 'Towel (2 hand + 2 body)',                     itemTextBn: 'তোয়ালে (২ হাত + ২ বডি)',                     quantity: 4,  displayOrder: 5 },
+  { category: 'CLOTHES', itemTextEn: 'Pants (2 formal + 5–6 casual)',               itemTextBn: 'প্যান্ট (২ ফরমাল + ৫–৬ ক্যাজুয়াল)',         quantity: 8,  displayOrder: 6 },
+  { category: 'CLOTHES', itemTextEn: 'Shorts (football)',                           itemTextBn: 'শর্টস (ফুটবল)',                              quantity: 5,  displayOrder: 7 },
+  { category: 'CLOTHES', itemTextEn: 'Blazer',                                      itemTextBn: 'ব্লেজার',                                    quantity: 2,  displayOrder: 8 },
+  { category: 'CLOTHES', itemTextEn: 'Panjabi',                                     itemTextBn: 'পাঞ্জাবি',                                   quantity: 2,  displayOrder: 9 },
+  { category: 'CLOTHES', itemTextEn: 'Pajama',                                      itemTextBn: 'পায়জামা',                                   quantity: 2,  displayOrder: 10 },
+  { category: 'CLOTHES', itemTextEn: 'Sando Genji',                                 itemTextBn: 'স্যান্ডো গেঞ্জি',                           quantity: 6,  displayOrder: 11 },
+
+  { category: 'FOOTWEAR', itemTextEn: 'Leather Winter Shoes',                       itemTextBn: 'লেদার শীতের জুতা',                           quantity: 1,  displayOrder: 0 },
+  { category: 'FOOTWEAR', itemTextEn: 'Sports Shoes',                               itemTextBn: 'স্পোর্টস জুতা',                              quantity: 1,  displayOrder: 1 },
+  { category: 'FOOTWEAR', itemTextEn: 'Converse',                                   itemTextBn: 'কনভার্স জুতা',                               quantity: 1,  displayOrder: 2 },
+  { category: 'FOOTWEAR', itemTextEn: 'Slippers',                                   itemTextBn: 'স্যান্ডেল/স্লিপার',                          quantity: 4,  displayOrder: 3 },
+  { category: 'FOOTWEAR', itemTextEn: 'Socks',                                      itemTextBn: 'মোজা',                                       quantity: 10, displayOrder: 4 },
+  { category: 'FOOTWEAR', itemTextEn: 'Underwear',                                  itemTextBn: 'আন্ডারওয়্যার',                              quantity: 6,  displayOrder: 5 },
+  { category: 'FOOTWEAR', itemTextEn: 'Gloves',                                     itemTextBn: 'গ্লাভস',                                     quantity: 2,  displayOrder: 6 },
+  { category: 'FOOTWEAR', itemTextEn: 'Ear Muffs',                                  itemTextBn: 'ইয়ার মাফ',                                   quantity: 2,  displayOrder: 7 },
+  { category: 'FOOTWEAR', itemTextEn: 'Muffler',                                    itemTextBn: 'মাফলার',                                     quantity: 2,  displayOrder: 8 },
+  { category: 'FOOTWEAR', itemTextEn: 'Hair Band',                                  itemTextBn: 'হেয়ার ব্যান্ড',                             quantity: 1,  displayOrder: 9 },
+  { category: 'FOOTWEAR', itemTextEn: 'Belt',                                       itemTextBn: 'বেল্ট',                                      quantity: 4,  displayOrder: 10 },
+  { category: 'FOOTWEAR', itemTextEn: 'Tie',                                        itemTextBn: 'টাই',                                        quantity: 2,  displayOrder: 11 },
+
+  { category: 'WINTER_WEAR', itemTextEn: 'Trouser',                                 itemTextBn: 'ট্রাউজার',                                   quantity: 5,  displayOrder: 0 },
+  { category: 'WINTER_WEAR', itemTextEn: 'Sweat T-Shirt',                           itemTextBn: 'সুয়েট টি-শার্ট',                            quantity: 5,  displayOrder: 1 },
+  { category: 'WINTER_WEAR', itemTextEn: 'Hoodie',                                  itemTextBn: 'হুডি',                                       quantity: 4,  displayOrder: 2 },
+  { category: 'WINTER_WEAR', itemTextEn: 'Winter Joggers',                          itemTextBn: 'উইন্টার জগার',                               quantity: 2,  displayOrder: 3 },
+  { category: 'WINTER_WEAR', itemTextEn: 'Caps',                                    itemTextBn: 'ক্যাপ',                                      quantity: 2,  displayOrder: 4 },
+  { category: 'WINTER_WEAR', itemTextEn: 'Sunglasses',                              itemTextBn: 'সানগ্লাস',                                   quantity: 4,  displayOrder: 5 },
+  { category: 'WINTER_WEAR', itemTextEn: 'Winter Cap',                              itemTextBn: 'শীতের টুপি',                                 quantity: 2,  displayOrder: 6 },
+
+  { category: 'BEDDING', itemTextEn: 'Bedsheet',                                    itemTextBn: 'বিছানার চাদর',                               quantity: 2,  displayOrder: 0 },
+  { category: 'BEDDING', itemTextEn: 'Khata (thin blanket)',                        itemTextBn: 'খাতা',                                       quantity: 1,  displayOrder: 1 },
+  { category: 'BEDDING', itemTextEn: 'Blanket',                                     itemTextBn: 'কম্বল',                                      quantity: 1,  displayOrder: 2 },
+  { category: 'BEDDING', itemTextEn: 'Pillow',                                      itemTextBn: 'বালিশ',                                      quantity: 1,  displayOrder: 3 },
+  { category: 'BEDDING', itemTextEn: 'Pillow Cover',                                itemTextBn: 'বালিশের কভার',                               quantity: 1,  displayOrder: 4 },
+
+  { category: 'KITCHEN', itemTextEn: 'Plate',                                       itemTextBn: 'প্লেট',                                      quantity: 1,  displayOrder: 0 },
+  { category: 'KITCHEN', itemTextEn: 'Spoon',                                       itemTextBn: 'চামচ',                                       quantity: 1,  displayOrder: 1 },
+  { category: 'KITCHEN', itemTextEn: 'Glass',                                       itemTextBn: 'গ্লাস',                                      quantity: 1,  displayOrder: 2 },
+  { category: 'KITCHEN', itemTextEn: 'Pan',                                         itemTextBn: 'প্যান',                                      quantity: 1,  displayOrder: 3 },
+  { category: 'KITCHEN', itemTextEn: 'Rice Cooker (induction safe)',                itemTextBn: 'রাইস কুকার',                                 quantity: 1,  displayOrder: 4 },
+  { category: 'KITCHEN', itemTextEn: 'Belun (for ruti)',                            itemTextBn: 'বেলন',                                       quantity: 1,  displayOrder: 5 },
+  { category: 'KITCHEN', itemTextEn: 'Knife',                                       itemTextBn: 'ছুরি',                                       quantity: 1,  displayOrder: 6 },
+  { category: 'KITCHEN', itemTextEn: 'Vegetable Cutter',                            itemTextBn: 'সবজি কাটার',                                 quantity: 1,  displayOrder: 7 },
+  { category: 'KITCHEN', itemTextEn: 'Water Bottle',                                itemTextBn: 'পানির বোতল',                                 quantity: 2,  displayOrder: 8 },
+  { category: 'KITCHEN', itemTextEn: 'Thermal Hot Water Bottle',                    itemTextBn: 'থার্মাল বোতল',                               quantity: 1,  displayOrder: 9 },
+  { category: 'KITCHEN', itemTextEn: 'Tiffin Box (microwave safe, horizontal)',     itemTextBn: 'টিফিন বক্স',                                 quantity: 2,  displayOrder: 10 },
+  { category: 'KITCHEN', itemTextEn: 'Storage Box (foldable)',                      itemTextBn: 'স্টোরেজ বক্স',                               quantity: 3,  displayOrder: 11 },
+  { category: 'KITCHEN', itemTextEn: 'Food Storage Container',                      itemTextBn: 'খাবার সংরক্ষণ বক্স',                         quantity: 2,  displayOrder: 12 },
+  { category: 'KITCHEN', itemTextEn: 'Hangers',                                     itemTextBn: 'হ্যাঙ্গার',                                   quantity: 5,  displayOrder: 13 },
+
+  { category: 'ELECTRONICS', itemTextEn: 'Multiplug',                               itemTextBn: 'মাল্টিপ্লাগ',                               quantity: 2,  displayOrder: 0 },
+  { category: 'ELECTRONICS', itemTextEn: 'Converter Adapter',                       itemTextBn: 'কনভার্টার অ্যাডাপ্টার',                     quantity: 2,  displayOrder: 1 },
+  { category: 'ELECTRONICS', itemTextEn: 'Pendrive',                                itemTextBn: 'পেনড্রাইভ',                                  quantity: 1,  displayOrder: 2 },
+
+  { category: 'PERSONAL_CARE', itemTextEn: 'Nail Cutter',                           itemTextBn: 'নেল কাটার',                                  quantity: 1,  displayOrder: 0 },
+  { category: 'PERSONAL_CARE', itemTextEn: 'Electric Toothbrush',                   itemTextBn: 'ইলেকট্রিক টুথব্রাশ',                        quantity: 1,  displayOrder: 1 },
+  { category: 'PERSONAL_CARE', itemTextEn: 'Trimmer',                               itemTextBn: 'ট্রিমার',                                    quantity: 2,  displayOrder: 2 },
+  { category: 'PERSONAL_CARE', itemTextEn: 'Face Wash',                             itemTextBn: 'ফেসওয়াশ',                                   quantity: 2,  displayOrder: 3 },
+  { category: 'PERSONAL_CARE', itemTextEn: 'Face Cream',                            itemTextBn: 'ফেস ক্রিম',                                  quantity: 3,  displayOrder: 4 },
+  { category: 'PERSONAL_CARE', itemTextEn: 'Deodorant',                             itemTextBn: 'ডিওডোরেন্ট',                                quantity: 5,  displayOrder: 5 },
+  { category: 'PERSONAL_CARE', itemTextEn: 'Shampoo',                               itemTextBn: 'শ্যাম্পু',                                   quantity: 2,  displayOrder: 6 },
+  { category: 'PERSONAL_CARE', itemTextEn: 'Toothpaste',                            itemTextBn: 'টুথপেস্ট',                                   quantity: 2,  displayOrder: 7 },
+  { category: 'PERSONAL_CARE', itemTextEn: 'Perfume',                               itemTextBn: 'পারফিউম',                                    quantity: 5,  displayOrder: 8 },
+  { category: 'PERSONAL_CARE', itemTextEn: 'Moisturizer',                           itemTextBn: 'ময়েশ্চারাইজার',                             quantity: 3,  displayOrder: 9 },
+  { category: 'PERSONAL_CARE', itemTextEn: 'Sunscreen (SPF 50+)',                   itemTextBn: 'সানস্ক্রিন (SPF 50+)',                       quantity: 3,  displayOrder: 10 },
+  { category: 'PERSONAL_CARE', itemTextEn: 'Lip Gel',                               itemTextBn: 'লিপ জেল',                                    quantity: 3,  displayOrder: 11 },
+  { category: 'PERSONAL_CARE', itemTextEn: 'Hair Brush',                            itemTextBn: 'হেয়ার ব্রাশ',                               quantity: 2,  displayOrder: 12 },
+  { category: 'PERSONAL_CARE', itemTextEn: 'Hair Oil',                              itemTextBn: 'চুলের তেল',                                  quantity: 1,  displayOrder: 13 },
+
+  { category: 'BAGS', itemTextEn: 'Backpack',                                       itemTextBn: 'ব্যাকপ্যাক',                                 quantity: 2,  displayOrder: 0 },
+  { category: 'BAGS', itemTextEn: 'Document Bag / File Bag',                        itemTextBn: 'ডকুমেন্ট ব্যাগ',                            quantity: 5,  displayOrder: 1 },
+  { category: 'BAGS', itemTextEn: 'Grocery Bag',                                    itemTextBn: 'গ্রোসারি ব্যাগ',                            quantity: 2,  displayOrder: 2 },
+  { category: 'BAGS', itemTextEn: 'Waterproof Bag Cover',                           itemTextBn: 'ওয়াটারপ্রুফ কভার',                          quantity: 2,  displayOrder: 3 },
+  { category: 'BAGS', itemTextEn: 'Wallet / Card Holder',                           itemTextBn: 'ওয়ালেট',                                    quantity: 1,  displayOrder: 4 },
+  { category: 'BAGS', itemTextEn: 'Vacuum Bag',                                     itemTextBn: 'ভ্যাকুয়াম ব্যাগ',                           quantity: 3,  displayOrder: 5 },
+  { category: 'BAGS', itemTextEn: 'Passport Size Photos',                           itemTextBn: 'পাসপোর্ট সাইজ ছবি',                         quantity: 30, displayOrder: 6 },
+
+  { category: 'MEDICAL', itemTextEn: 'Basic First Aid Kit',                         itemTextBn: 'প্রাথমিক চিকিৎসা কিট',                      quantity: 1,  displayOrder: 0 },
+  { category: 'MEDICAL', itemTextEn: 'Regular Medicines (personal prescription)',   itemTextBn: 'নিয়মিত ওষুধ',                               quantity: 1,  displayOrder: 1 },
+
+  { category: 'FOOD', itemTextEn: 'Basic Spices',                                   itemTextBn: 'মৌলিক মসলা',                                 quantity: 1,  displayOrder: 0 },
+  { category: 'FOOD', itemTextEn: 'Ready-Made Noodles',                             itemTextBn: 'রেডি নুডলস',                                 quantity: 1,  displayOrder: 1 },
+  { category: 'FOOD', itemTextEn: 'Ready-Made Khichuri',                            itemTextBn: 'রেডি খিচুড়ি',                               quantity: 1,  displayOrder: 2 },
+
+  { category: 'WEATHER', itemTextEn: 'Raincoat',                                    itemTextBn: 'রেইনকোট',                                    quantity: 2,  displayOrder: 0 },
+  { category: 'WEATHER', itemTextEn: 'Umbrella',                                    itemTextBn: 'ছাতা',                                       quantity: 2,  displayOrder: 1 },
+
+  { category: 'STATIONERY', itemTextEn: 'Notebook',                                 itemTextBn: 'নোটবুক',                                     quantity: 1,  displayOrder: 0 },
+  { category: 'STATIONERY', itemTextEn: 'Pen / Pencil',                             itemTextBn: 'কলম / পেন্সিল',                             quantity: 1,  displayOrder: 1 },
+
+  { category: 'OTHER_ESSENTIALS', itemTextEn: 'Iron',                               itemTextBn: 'ইস্ত্রি',                                    quantity: 1,  displayOrder: 0 },
+  { category: 'OTHER_ESSENTIALS', itemTextEn: 'Detergent (Surf Excel)',              itemTextBn: 'ডিটারজেন্ট',                                quantity: 1,  displayOrder: 1 },
+  { category: 'OTHER_ESSENTIALS', itemTextEn: 'Soap',                               itemTextBn: 'সাবান',                                      quantity: 1,  displayOrder: 2 },
+  { category: 'OTHER_ESSENTIALS', itemTextEn: 'Liquid Soap',                        itemTextBn: 'লিকুইড সাবান',                              quantity: 1,  displayOrder: 3 },
+  { category: 'OTHER_ESSENTIALS', itemTextEn: 'Prayer Mat',                         itemTextBn: 'জায়নামাজ',                                  quantity: 1,  displayOrder: 4 },
+  { category: 'OTHER_ESSENTIALS', itemTextEn: 'Quran',                              itemTextBn: 'কোরআন',                                      quantity: 1,  displayOrder: 5 },
+  { category: 'OTHER_ESSENTIALS', itemTextEn: 'Tasbih',                             itemTextBn: 'তাসবিহ',                                     quantity: 1,  displayOrder: 6 },
+  { category: 'OTHER_ESSENTIALS', itemTextEn: 'Meswak',                             itemTextBn: 'মিসওয়াক',                                   quantity: 1,  displayOrder: 7 },
+  { category: 'OTHER_ESSENTIALS', itemTextEn: 'Cotton Buds',                        itemTextBn: 'কটন বাড',                                    quantity: 2,  displayOrder: 8 },
+  { category: 'OTHER_ESSENTIALS', itemTextEn: 'Screwdriver',                        itemTextBn: 'স্ক্রু ড্রাইভার',                           quantity: 1,  displayOrder: 9 },
+  { category: 'OTHER_ESSENTIALS', itemTextEn: 'Jharu (Broom)',                      itemTextBn: 'ঝাড়ু',                                      quantity: 1,  displayOrder: 10 },
+  { category: 'OTHER_ESSENTIALS', itemTextEn: 'Hand Blender',                       itemTextBn: 'হ্যান্ড ব্লেন্ডার',                          quantity: 1,  displayOrder: 11 },
+  { category: 'OTHER_ESSENTIALS', itemTextEn: 'Water Kettle',                       itemTextBn: 'পানির কেটলি',                                quantity: 1,  displayOrder: 12 },
+]
 
 const INITIAL_CONTENT = [
   { id: 'ird-guide', title: 'IRD number guide', type: 'Essentials', status: 'PUBLISHED', updatedAt: '2026-04-14' },
@@ -949,18 +1090,15 @@ export default function AdminPanel() {
     <div className="min-h-screen bg-[linear-gradient(180deg,#eaf6f5_0%,#f8fbf6_48%,#eef7f6_100%)]">
       <header className="sticky top-0 z-40 border-b border-brand-mid/35 bg-white/82 px-4 py-3 shadow-[0_12px_34px_rgba(0,89,96,0.08)] backdrop-blur-2xl sm:px-6">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
-          <Link to="/admin/Joy&Priota" className="flex shrink-0 items-center gap-1">
-            <span className="relative block h-11 w-11 overflow-hidden">
+          <Link to="/admin/Joy&Priota" className="flex shrink-0 items-center gap-3">
+            <div className="relative flex items-center h-11 w-[160px] overflow-hidden">
               <img
                 src={logoTigerNew}
-                alt="KiwiDream BD"
-                className="absolute left-1/2 top-1/2 h-[58px] w-auto max-w-none -translate-x-1/2 -translate-y-1/2"
+                alt="Plan For Abroad"
+                className="absolute left-1/2 top-1/2 w-full h-auto max-w-none -translate-x-1/2 -translate-y-1/2"
               />
-            </span>
-            <span className="hidden font-logo text-lg font-semibold leading-none tracking-[0.24em] text-brand-deep sm:block">
-              B K W I
-            </span>
-            <span className="ml-3 hidden rounded-full bg-brand-light px-3 py-1 text-xs font-extrabold uppercase tracking-[0.14em] text-brand md:inline-flex">
+            </div>
+            <span className="hidden rounded-full bg-brand-light px-3 py-1 text-xs font-extrabold uppercase tracking-[0.14em] text-brand md:inline-flex">
               {t('admin.private_panel')}
             </span>
           </Link>
@@ -2825,6 +2963,8 @@ function MasterPlansPanel({
   const [checklistSubmitting, setChecklistSubmitting] = useState(false)
   const [checklistError, setChecklistError] = useState('')
   const [deleteChecklistConfirm, setDeleteChecklistConfirm] = useState(null)
+  const [loadDefaultsConfirm, setLoadDefaultsConfirm] = useState(false)
+  const [loadDefaultsLoading, setLoadDefaultsLoading] = useState(false)
 
   // ── Living fund state ──────────────────────────────────────────────────────
   const [fundForm, setFundForm] = useState({})
@@ -3003,6 +3143,20 @@ function MasterPlansPanel({
       setDeleteChecklistConfirm(null)
     } catch (err) {
       setChecklistError(err.message || 'Failed to delete item')
+    }
+  }
+
+  const handleLoadDefaults = async () => {
+    setLoadDefaultsLoading(true)
+    setChecklistError('')
+    try {
+      await bulkReplaceChecklistItems(accessToken, detailPlan.id, DEFAULT_CHECKLIST_ITEMS)
+      await refreshDetail()
+      setLoadDefaultsConfirm(false)
+    } catch (err) {
+      setChecklistError(err.message || 'Failed to load default checklist')
+    } finally {
+      setLoadDefaultsLoading(false)
     }
   }
 
@@ -3495,12 +3649,20 @@ function MasterPlansPanel({
                     <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-brand/60">Pre-departure checklist</p>
                     <h3 className="font-serif text-lg font-bold text-brand-deep">{checklistItems.length} items</h3>
                   </div>
-                  <button
-                    onClick={() => { setChecklistForm({ category: 'DOCUMENTS', itemTextEn: '', itemTextBn: '', quantity: 1, noteEn: '', noteBn: '', displayOrder: checklistItems.length }); setChecklistError(''); setChecklistModal({ mode: 'add' }) }}
-                    className="inline-flex h-9 items-center gap-1.5 rounded-full bg-brand px-4 text-xs font-bold text-white hover:bg-brand-deep"
-                  >
-                    <Plus size={13} /> Add Item
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setLoadDefaultsConfirm(true)}
+                      className="inline-flex h-9 items-center gap-1.5 rounded-full border border-brand/40 bg-brand/8 px-4 text-xs font-bold text-brand hover:bg-brand/15"
+                    >
+                      <ListChecks size={13} /> Load Defaults
+                    </button>
+                    <button
+                      onClick={() => { setChecklistForm({ category: 'DOCUMENTS', itemTextEn: '', itemTextBn: '', quantity: 1, noteEn: '', noteBn: '', displayOrder: checklistItems.length }); setChecklistError(''); setChecklistModal({ mode: 'add' }) }}
+                      className="inline-flex h-9 items-center gap-1.5 rounded-full bg-brand px-4 text-xs font-bold text-white hover:bg-brand-deep"
+                    >
+                      <Plus size={13} /> Add Item
+                    </button>
+                  </div>
                 </div>
                 {checklistError && (
                   <div className="mb-3 rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700">{checklistError}</div>
@@ -3724,6 +3886,35 @@ function MasterPlansPanel({
             </div>
           </div>
         </PlanItemModal>
+      )}
+
+      {/* ── Load Defaults confirmation ── */}
+      {loadDefaultsConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl text-center">
+            <ListChecks size={28} className="mx-auto mb-3 text-brand" />
+            <h2 className="font-serif text-lg font-bold text-brand-deep">Load default checklist?</h2>
+            <p className="mt-1 text-sm text-brand-deep/60">
+              This will <span className="font-bold text-red-500">replace all existing items</span> with the
+              standard pre-departure checklist ({DEFAULT_CHECKLIST_ITEMS.length} items across 5 categories).
+            </p>
+            <div className="mt-5 flex justify-center gap-3">
+              <button
+                onClick={() => setLoadDefaultsConfirm(false)}
+                disabled={loadDefaultsLoading}
+                className="flex-1 h-10 rounded-full bg-slate-100 text-sm font-bold text-brand-deep hover:bg-slate-200 disabled:opacity-50"
+              >Cancel</button>
+              <button
+                onClick={handleLoadDefaults}
+                disabled={loadDefaultsLoading}
+                className="flex-1 h-10 rounded-full bg-brand text-sm font-bold text-white hover:bg-brand-deep disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {loadDefaultsLoading ? <Loader2 size={14} className="animate-spin" /> : null}
+                Load
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* ── Delete sub-item confirmations ── */}

@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import useStore from '@/store/useStore'
-import soloStudentSvg from '@/assets/svg/solo-student.svg'
-import aucklandSvg from '@/assets/svg/auckland.svg'
-import comfortableSoloSvg from '@/assets/svg/comfortable-solo.svg'
-import familyPlanningSvg from '@/assets/svg/family-planning.svg'
-import heroCharactersSvg from '@/assets/svg/hero-characters.svg'
+import whoIsMoving from '@/assets/images/whoIsMoving.png'
+import whereTo from '@/assets/images/whereTo.png'
+import discoverCost from '@/assets/images/discoverCost.png'
+import secureYourFund from '@/assets/images/secureYourFund.png'
+import masterYourMove from '@/assets/images/masterYourMove.png'
 
 function mulberry32(seed) {
   return function () {
@@ -17,11 +17,11 @@ function mulberry32(seed) {
 }
 
 const STEPS = [
-  { id: 1, titleEN: "Who's Moving?", titleBN: 'কে কে যাচ্ছেন?', subEN: 'Solo · couple · family', subBN: 'একা · দম্পতি · পরিবার', color: '#7C5CDB', icon: soloStudentSvg, iconBg: '#E9F0FF' },
-  { id: 2, titleEN: 'Where To?', titleBN: 'কোথায় থাকবেন?', subEN: 'Auckland · Wellington', subBN: 'অকল্যান্ড · ওয়েলিংটন', color: '#0095A1', icon: aucklandSvg, iconBg: '#E7F8F6' },
-  { id: 3, titleEN: 'Discover Costs', titleBN: 'খরচের হিসাব', subEN: 'Monthly + moving costs', subBN: 'মাসিক + যাওয়ার খরচ', color: '#C07A10', icon: comfortableSoloSvg, iconBg: '#FFF3DA' },
-  { id: 4, titleEN: 'Secure Your Fund', titleBN: 'ফান্ড নিশ্চিত করুন', subEN: 'Survival window calc', subBN: 'টিকে থাকার হিসাব', color: '#159D72', icon: familyPlanningSvg, iconBg: '#EAF6FF' },
-  { id: 5, titleEN: 'Master Your Move', titleBN: 'সফলতার পথে', subEN: 'Score + savings plan', subBN: 'স্কোর + সঞ্চয় পরিকল্পনা', color: '#C0359A', icon: heroCharactersSvg, iconBg: '#FCEAF4' },
+  { id: 1, titleEN: "Who's Moving?", titleBN: 'কে কে যাচ্ছেন?', subEN: 'Solo · couple · family', subBN: 'একা · দম্পতি · পরিবার', color: '#7C5CDB', icon: whoIsMoving, iconBg: '#E9F0FF' },
+  { id: 2, titleEN: 'Where To?', titleBN: 'কোথায় থাকবেন?', subEN: 'Auckland · Wellington', subBN: 'অকল্যান্ড · ওয়েলিংটন', color: '#0095A1', icon: whereTo, iconBg: '#E7F8F6' },
+  { id: 3, titleEN: 'Discover Costs', titleBN: 'খরচের হিসাব', subEN: 'Monthly + moving costs', subBN: 'মাসিক + যাওয়ার খরচ', color: '#C07A10', icon: discoverCost, iconBg: '#FFF3DA' },
+  { id: 4, titleEN: 'Secure Your Fund', titleBN: 'ফান্ড নিশ্চিত করুন', subEN: 'Survival window calc', subBN: 'টিকে থাকার হিসাব', color: '#159D72', icon: secureYourFund, iconBg: '#EAF6FF' },
+  { id: 5, titleEN: 'Master Your Move', titleBN: 'সফলতার পথে', subEN: 'Score + savings plan', subBN: 'স্কোর + সঞ্চয় পরিকল্পনা', color: '#C0359A', icon: masterYourMove, iconBg: '#FCEAF4' },
 ]
 
 const NODE_POS = [

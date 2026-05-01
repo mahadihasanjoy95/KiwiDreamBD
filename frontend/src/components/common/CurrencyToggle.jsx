@@ -31,7 +31,7 @@ export function CurrencyToggle({ className = '', dark = true, layoutIdPrefix = '
         dark ? 'bg-white/10' : 'bg-brand-mid/60',
         className
       )}>
-        {['NZD', 'BDT'].map(c => (
+        {['BDT', 'NZD'].map(c => (
           <button
             key={c}
             onClick={() => changeCurrency(c)}

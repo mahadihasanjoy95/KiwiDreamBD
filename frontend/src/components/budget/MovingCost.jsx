@@ -39,7 +39,7 @@ export function MovingCost() {
   const { t } = useTranslation()
   const movingItems = useStore(s => s.movingItems)
   const { updateMovingItem, removeMovingItem, addMovingItem, renameMovingItem } = useStore()
-  const { format } = useCurrency()
+  const { format, formatAs, toDisplay, fromDisplay, displayCurrency } = useCurrency()
   const currency = useStore(s => s.currency)
   const language = useStore(s => s.language)
 
@@ -49,6 +49,13 @@ export function MovingCost() {
   const [editingId, setEditingId] = useState(null)
 
   const total = movingItems.reduce((sum, item) => sum + (item.amountNZD || 0), 0)
+  const displayLimit = MONEY_LIMITS.maxAmount
+  const sliderMax = fromDisplay(MONEY_LIMITS.maxAmount)
+  const displayValue = (id, nzd) => {
+    if (editingId === id && Number(nzd || 0) === 0) return ''
+    return toDisplay(nzd || 0)
+  }
+  const oppositeCurrency = currency === 'BDT' ? 'NZD' : 'BDT'
   const highestItem = useMemo(
     () => [...movingItems].sort((a, b) => (b.amountNZD || 0) - (a.amountNZD || 0))[0],
     [movingItems]
@@ -56,7 +63,7 @@ export function MovingCost() {
 
   const handleAdd = () => {
     if (!newName.trim()) return
-    addMovingItem(newName.trim(), newAmount)
+    addMovingItem(newName.trim(), fromDisplay(newAmount))
     setNewName('')
     setNewAmount('')
     setShowAddForm(false)
@@ -70,24 +77,26 @@ export function MovingCost() {
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#b66a48]">
               {t('planner.moving_board_title')}
             </p>
-            <h3 className="mt-2 font-serif text-2xl font-bold text-[#173526]">{format(total)}</h3>
+            <h3 className="mt-2 break-words font-sans text-3xl font-extrabold leading-tight tracking-tight text-[#173526] sm:text-4xl">
+              {format(total)}
+            </h3>
             <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[#6d6257]">
               {t('planner.moving_board_subtitle')}
             </p>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="rounded-[24px] border border-white/55 bg-white/50 px-4 py-3 shadow-[0_14px_34px_rgba(57,42,22,0.08)] backdrop-blur-sm">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#9c795c]">
+          <div className="grid w-full gap-3 sm:grid-cols-2 lg:w-auto lg:grid-cols-[minmax(9rem,10rem)_minmax(10rem,12rem)]">
+            <div className="rounded-[24px] border border-white/55 bg-white/60 px-4 py-3 shadow-[0_14px_34px_rgba(57,42,22,0.08)] backdrop-blur-sm">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#8b6549]">
                 {t('planner.moving_item_count')}
               </p>
               <p className="mt-1 text-xl font-bold text-[#173526]">{movingItems.length}</p>
             </div>
-            <div className="rounded-[24px] border border-white/55 bg-white/50 px-4 py-3 shadow-[0_14px_34px_rgba(57,42,22,0.08)] backdrop-blur-sm">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#9c795c]">
+            <div className="rounded-[24px] border border-white/55 bg-white/60 px-4 py-3 shadow-[0_14px_34px_rgba(57,42,22,0.08)] backdrop-blur-sm">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#8b6549]">
                 {t('planner.moving_biggest_item')}
               </p>
-              <p className="mt-1 truncate text-sm font-semibold text-[#173526]">
+              <p className="mt-1 truncate text-sm font-bold text-[#173526]">
                 {highestItem ? (language === 'BN' ? highestItem.itemNameBN : highestItem.itemName) : '-'}
               </p>
             </div>
@@ -149,11 +158,11 @@ export function MovingCost() {
 
                     <div className="mt-5 flex items-end gap-3">
                       <div className="flex-1">
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#9c8f83]">NZD</p>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#9c8f83]">{displayCurrency}</p>
                         <input
                           type="number"
-                          value={amount}
-                          onChange={(e) => updateMovingItem(item.id, e.target.value)}
+                          value={displayValue(item.id, amount)}
+                          onChange={(e) => updateMovingItem(item.id, fromDisplay(e.target.value))}
                           onFocus={() => setEditingId(item.id)}
                           onBlur={() => setEditingId(null)}
                           className={cn(
@@ -163,7 +172,7 @@ export function MovingCost() {
                               : 'border-[#ede2d3] text-[#173526] hover:border-[#d8c8b5]'
                           )}
                           min="0"
-                          max={MONEY_LIMITS.movingItemNZD}
+                          max={displayLimit}
                           step="50"
                         />
                       </div>
@@ -172,7 +181,7 @@ export function MovingCost() {
                         <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#a29387]">
                           {t('planner.converted_value')}
                         </p>
-                        <p className="mt-1 text-sm font-semibold text-[#173526]">≈ {format(amount)}</p>
+                        <p className="mt-1 text-sm font-semibold text-[#173526]">≈ {formatAs(amount, oppositeCurrency)}</p>
                       </div>
                     </div>
 
@@ -180,19 +189,19 @@ export function MovingCost() {
                       <input
                         type="range"
                         min="0"
-                        max={MONEY_LIMITS.movingItemNZD}
+                        max={sliderMax}
                         step="50"
                         value={amount}
                         onChange={(e) => updateMovingItem(item.id, e.target.value)}
                         className="h-2 w-full cursor-pointer appearance-none rounded-full"
                         style={{
-                          background: `linear-gradient(90deg, ${accent} 0%, ${accent} ${(amount / MONEY_LIMITS.movingItemNZD) * 100}%, #efe4d5 ${(amount / MONEY_LIMITS.movingItemNZD) * 100}%, #efe4d5 100%)`,
+                          background: `linear-gradient(90deg, ${accent} 0%, ${accent} ${sliderMax ? (amount / sliderMax) * 100 : 0}%, #efe4d5 ${sliderMax ? (amount / sliderMax) * 100 : 0}%, #efe4d5 100%)`,
                         }}
                       />
                       <div className="mt-2 flex items-center justify-between text-[11px] text-[#9c8f83]">
                         <span>0</span>
                         <span>{t('planner.adjust_hint')}</span>
-                        <span>{format(MONEY_LIMITS.movingItemNZD)}</span>
+                        <span>{format(sliderMax)}</span>
                       </div>
                       <div className="mt-1 text-right text-[11px] text-[#b5a99d]">
                         {total > 0 ? Math.round((amount / total) * 100) : 0}% {t('planner.of_total')}
@@ -231,7 +240,7 @@ export function MovingCost() {
                 onChange={e => setNewAmount(e.target.value)}
                 className="rounded-2xl border border-[#eadfce] bg-white px-4 py-3 text-sm outline-none focus:border-[#1f5c46] focus:ring-2 focus:ring-[#1f5c46]/10"
                 min="0"
-                max={MONEY_LIMITS.movingItemNZD}
+                max={displayLimit}
                 step="50"
               />
               <button

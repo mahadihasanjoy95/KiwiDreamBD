@@ -38,7 +38,7 @@ export const GUIDES_DATA = {
       <p>স্থানীয় কোনো দোকান বা ট্রেন স্টেশন থেকে একটি AT HOP কার্ড কিনে নিন। অকল্যান্ডে বাস বা ট্রেনে যাতায়াতের জন্য এটি অত্যাবশ্যক। হারানো গেলে ব্যালেন্স সুরক্ষিত রাখতে এটি অনলাইনে রেজিস্ট্রেশন করুন এবং স্টুডেন্ট ডিসকাউন্টের জন্য আবেদন করতে ভুলবেন না!</p>
     `,
     image: "https://images.unsplash.com/photo-1507699622108-4be3abd695ad?auto=format&fit=crop&q=80&w=1200",
-    author: "KiwiDream Editorial",
+    author: "Plan For Abroad Editorial",
     dateEn: "Oct 24, 2023",
     dateBn: "২৪ অক্টোবর, ২০২৩",
     readTimeEn: "8 min read",

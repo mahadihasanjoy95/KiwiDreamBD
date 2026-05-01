@@ -1,8 +1,8 @@
 import { Link, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { Settings2 } from 'lucide-react'
-import logoTigerNew from '@/assets/images/logo_tiger_new.png'
+import { UserCircle2 } from 'lucide-react'
+import logoTigerNew from '@/assets/images/main_logo.png'
 import { CurrencyToggle } from '@/components/common/CurrencyToggle'
 import { LanguageToggle } from '@/components/common/LanguageToggle'
 import { cn } from '@/utils/cn'
@@ -35,18 +35,15 @@ export function Navbar() {
       {/* ── Logo ── */}
       <Link
         to="/"
-        className="pointer-events-auto flex shrink-0 items-center gap-0"
+        className="pointer-events-auto flex shrink-0 items-center"
       >
-        <span className="relative block h-[46px] w-[46px] overflow-hidden xl:h-[56px] xl:w-[56px]">
+        <div className="relative h-[30px] w-[130px] overflow-hidden xl:h-[34px] xl:w-[150px]">
           <img
             src={logoTigerNew}
-            alt="KiwiDream BD"
-            className="absolute left-1/2 top-1/2 h-[58px] w-auto max-w-none -translate-x-1/2 -translate-y-1/2 xl:h-[70px]"
+            alt="Plan For Abroad"
+            className="absolute w-[200%] h-auto left-1/2 top-1/2 -translate-x-1/2 -translate-y-[42%]"
           />
-        </span>
-        <span className="ml-1 whitespace-nowrap font-logo text-[1.08rem] font-semibold leading-none tracking-[0.2em] text-brand-deep xl:text-[1.35rem] xl:tracking-[0.25em]">
-          B K W I
-        </span>
+        </div>
       </Link>
 
       {/* ── Nav links ── */}
@@ -89,14 +86,14 @@ export function Navbar() {
 
         <Link
           to="/profile"
-          aria-label={t('auth.settings_title')}
-          title={t('auth.settings_title')}
+          aria-label={t('auth.profile_section_label')}
+          title={t('auth.profile_section_label')}
           className={cn(
             'inline-flex h-9 w-9 items-center justify-center rounded-full text-sm font-bold transition-all duration-200 glass-pill-hover xl:h-11 xl:w-11',
             'bg-white/20 text-brand-deep hover:text-brand-deep'
           )}
         >
-          <Settings2 size={17} strokeWidth={2.2} />
+          <UserCircle2 size={18} strokeWidth={2.2} />
         </Link>
       </div>
     </motion.nav>

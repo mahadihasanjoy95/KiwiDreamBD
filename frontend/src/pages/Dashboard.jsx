@@ -5,26 +5,40 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import {
   Archive,
   Banknote,
+  BedDouble,
+  BookOpen,
+  Briefcase,
   CalendarCheck,
   CheckCircle2,
+  ChefHat,
   ChevronRight,
   Circle,
   CircleDollarSign,
   ClipboardList,
+  Cloud,
+  Cpu,
   Download,
   FileText,
+  Footprints,
   Heart,
+  HeartPulse,
   Home,
   Loader2,
   MapPin,
+  Moon,
+  Package,
   Pencil,
   Phone,
   PiggyBank,
   Plane,
+  Shirt,
   ShoppingCart,
+  Sparkles,
   Trash2,
   TrendingUp,
+  UtensilsCrossed,
   Wallet,
+  Wind,
   X,
 } from 'lucide-react'
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts'
@@ -43,12 +57,25 @@ const CHART_COLORS = [
 ]
 
 const CHECKLIST_CATEGORY_META = {
-  DOCUMENTS: { label: 'Documents', Icon: FileText, color: 'text-sky-600', bg: 'bg-sky-50', border: 'border-sky-100', ring: '#0EA5E9' },
-  FINANCIAL: { label: 'Financial', Icon: Wallet, color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-100', ring: '#10B981' },
-  ACCOMMODATION: { label: 'Accommodation', Icon: Home, color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-100', ring: '#F59E0B' },
-  COMMUNICATION: { label: 'Communication', Icon: Phone, color: 'text-violet-600', bg: 'bg-violet-50', border: 'border-violet-100', ring: '#8B5CF6' },
-  HEALTH: { label: 'Health', Icon: Heart, color: 'text-rose-600', bg: 'bg-rose-50', border: 'border-rose-100', ring: '#F43F5E' },
-  CUSTOM: { label: 'Other', Icon: ClipboardList, color: 'text-brand', bg: 'bg-brand-light', border: 'border-brand-mid', ring: '#0095A1' },
+  DOCUMENTS:        { label: 'Documents',          Icon: FileText,       color: 'text-sky-600',     bg: 'bg-sky-50',     border: 'border-sky-100',     ring: '#0EA5E9' },
+  FINANCIAL:        { label: 'Financial',          Icon: Wallet,         color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-100', ring: '#10B981' },
+  ACCOMMODATION:    { label: 'Accommodation',      Icon: Home,           color: 'text-amber-600',   bg: 'bg-amber-50',   border: 'border-amber-100',   ring: '#F59E0B' },
+  COMMUNICATION:    { label: 'Communication',      Icon: Phone,          color: 'text-violet-600',  bg: 'bg-violet-50',  border: 'border-violet-100',  ring: '#8B5CF6' },
+  HEALTH:           { label: 'Health',             Icon: Heart,          color: 'text-rose-600',    bg: 'bg-rose-50',    border: 'border-rose-100',    ring: '#F43F5E' },
+  CLOTHES:          { label: 'Clothes',            Icon: Shirt,          color: 'text-indigo-600',  bg: 'bg-indigo-50',  border: 'border-indigo-100',  ring: '#4F46E5' },
+  FOOTWEAR:         { label: 'Footwear',           Icon: Footprints,     color: 'text-slate-600',   bg: 'bg-slate-50',   border: 'border-slate-100',   ring: '#475569' },
+  WINTER_WEAR:      { label: 'Winter Wear',        Icon: Wind,           color: 'text-blue-600',    bg: 'bg-blue-50',    border: 'border-blue-100',    ring: '#2563EB' },
+  BEDDING:          { label: 'Bedding',            Icon: BedDouble,      color: 'text-purple-600',  bg: 'bg-purple-50',  border: 'border-purple-100',  ring: '#9333EA' },
+  KITCHEN:          { label: 'Kitchen & Daily',    Icon: ChefHat,        color: 'text-orange-600',  bg: 'bg-orange-50',  border: 'border-orange-100',  ring: '#EA580C' },
+  ELECTRONICS:      { label: 'Electronics',        Icon: Cpu,            color: 'text-cyan-600',    bg: 'bg-cyan-50',    border: 'border-cyan-100',    ring: '#0891B2' },
+  PERSONAL_CARE:    { label: 'Personal Care',      Icon: Sparkles,       color: 'text-pink-600',    bg: 'bg-pink-50',    border: 'border-pink-100',    ring: '#DB2777' },
+  BAGS:             { label: 'Bags & Documents',   Icon: Briefcase,      color: 'text-teal-600',    bg: 'bg-teal-50',    border: 'border-teal-100',    ring: '#0D9488' },
+  MEDICAL:          { label: 'Medical',            Icon: HeartPulse,     color: 'text-red-600',     bg: 'bg-red-50',     border: 'border-red-100',     ring: '#DC2626' },
+  FOOD:             { label: 'Food',               Icon: UtensilsCrossed,color: 'text-yellow-600',  bg: 'bg-yellow-50',  border: 'border-yellow-100',  ring: '#CA8A04' },
+  WEATHER:          { label: 'Weather Items',      Icon: Cloud,          color: 'text-blue-500',    bg: 'bg-blue-50',    border: 'border-blue-100',    ring: '#3B82F6' },
+  STATIONERY:       { label: 'Stationery',         Icon: BookOpen,       color: 'text-green-600',   bg: 'bg-green-50',   border: 'border-green-100',   ring: '#16A34A' },
+  OTHER_ESSENTIALS: { label: 'Other Essentials',   Icon: Package,        color: 'text-gray-600',    bg: 'bg-gray-50',    border: 'border-gray-100',    ring: '#4B5563' },
+  CUSTOM:           { label: 'Other',              Icon: ClipboardList,  color: 'text-brand',       bg: 'bg-brand-light',border: 'border-brand-mid',   ring: '#0095A1' },
 }
 
 const DEMO_PLANS = [
@@ -66,7 +93,55 @@ const DEMO_PLANS = [
       { id: 'g', categoryName: 'Groceries', estimatedAmountNZD: 240 },
       { id: 't', categoryName: 'Transport', estimatedAmountNZD: 120 },
       { id: 'u', categoryName: 'Utilities', estimatedAmountNZD: 80 },
+      { id: 'm', categoryName: 'Mobile & internet', estimatedAmountNZD: 60 },
+      { id: 'h', categoryName: 'Health & medicine', estimatedAmountNZD: 50 },
       { id: 'o', categoryName: 'Other', estimatedAmountNZD: 110 },
+    ],
+    movingItems: [
+      { id: 'f', itemNameEn: 'Flight ticket', estimatedAmountNzd: 1200 },
+      { id: 'b', itemNameEn: 'Rental bond', estimatedAmountNzd: 1600 },
+      { id: 'k', itemNameEn: 'Kitchen basics', estimatedAmountNzd: 180 },
+      { id: 's', itemNameEn: 'SIM and first top-up', estimatedAmountNzd: 40 },
+      { id: 'w', itemNameEn: 'Warm clothing', estimatedAmountNzd: 260 },
+      { id: 'a', itemNameEn: 'Airport transfer', estimatedAmountNzd: 80 },
+    ],
+    checklistItems: [
+      { id: 'passport', category: 'DOCUMENTS', customItemText: 'Passport and visa documents ready', done: true },
+      { id: 'offer', category: 'DOCUMENTS', customItemText: 'University offer and enrollment papers', done: true },
+      { id: 'fund', category: 'FINANCIAL', customItemText: 'Living fund transferred or accessible', done: false },
+      { id: 'flat', category: 'ACCOMMODATION', customItemText: 'Shortlist 3 suburbs and temporary stay', done: false },
+      { id: 'sim', category: 'COMMUNICATION', customItemText: 'Choose mobile plan for week 1', done: true },
+      { id: 'meds', category: 'HEALTH', customItemText: 'Bring prescriptions and basic medicine', done: false },
+    ],
+  },
+  {
+    id: 'demo-christchurch',
+    planName: 'Christchurch Couple Plan',
+    city: 'Christchurch',
+    lifestyleLabel: 'Student Couple',
+    monthlyTotalNZD: 2380,
+    survivalMonths: 7.4,
+    setupCostNZD: 4620,
+    affordability: 'TIGHT',
+    categories: [
+      { id: 'r2', categoryName: 'Rent', estimatedAmountNZD: 1500 },
+      { id: 'g2', categoryName: 'Groceries', estimatedAmountNZD: 430 },
+      { id: 't2', categoryName: 'Transport', estimatedAmountNZD: 180 },
+      { id: 'u2', categoryName: 'Utilities', estimatedAmountNZD: 150 },
+      { id: 'o2', categoryName: 'Other', estimatedAmountNZD: 120 },
+    ],
+    movingItems: [
+      { id: 'f2', itemNameEn: 'Two flight tickets', estimatedAmountNzd: 2200 },
+      { id: 'b2', itemNameEn: 'Rental bond', estimatedAmountNzd: 1800 },
+      { id: 'home2', itemNameEn: 'Home setup basics', estimatedAmountNzd: 420 },
+      { id: 'sim2', itemNameEn: 'SIM cards', estimatedAmountNzd: 60 },
+      { id: 'taxi2', itemNameEn: 'Airport transfer', estimatedAmountNzd: 140 },
+    ],
+    checklistItems: [
+      { id: 'docs2', category: 'DOCUMENTS', customItemText: 'Both visa documents ready', done: true },
+      { id: 'money2', category: 'FINANCIAL', customItemText: 'Separate emergency fund from tuition', done: false },
+      { id: 'flat2', category: 'ACCOMMODATION', customItemText: 'Book first two weeks accommodation', done: true },
+      { id: 'bank2', category: 'FINANCIAL', customItemText: 'Prepare bank account documents', done: false },
     ],
   },
 ]
@@ -115,6 +190,35 @@ function getMonthlyCategories(fullPlan) {
       color: CHART_COLORS[i % CHART_COLORS.length],
     }))
     .filter(c => c.value > 0)
+}
+
+function demoToFullPlan(plan) {
+  if (!plan || plan._isApiPlan) return null
+  return {
+    id: plan.id,
+    displayPlanName: plan.planName,
+    cityNameEn: plan.city,
+    profileNameEn: plan.lifestyleLabel,
+    monthlyItems: (plan.categories || []).map((item, index) => ({
+      id: item.id,
+      customName: item.categoryName,
+      estimatedAmountNzd: item.estimatedAmountNZD,
+      displayOrder: index,
+    })),
+    movingItems: (plan.movingItems || []).map((item, index) => ({
+      ...item,
+      displayOrder: index,
+    })),
+    checklistItems: (plan.checklistItems || []).map((item, index) => ({
+      ...item,
+      quantity: item.quantity || 1,
+      displayOrder: index,
+      custom: false,
+    })),
+    livingFund: { userSavedAmountBdt: 1400000 },
+    survivalMonths: plan.survivalMonths,
+    affordabilityStatus: plan.affordability,
+  }
 }
 
 function groupChecklist(items) {
@@ -285,7 +389,7 @@ function LivingFundSection({ fullPlan, loading, readinessScore, format }) {
 
 function MonthlyBreakdownSection({ fullPlan, loading, format, onViewAll }) {
   const categories = useMemo(() => getMonthlyCategories(fullPlan), [fullPlan])
-  const totalNzd = Number(fullPlan?.monthlyTotalNzd) || 0
+  const totalNzd = Number(fullPlan?.monthlyTotalNzd) || categories.reduce((sum, item) => sum + item.value, 0)
   const max = Math.max(...categories.map(c => c.value), 1)
 
   return (
@@ -635,58 +739,10 @@ function DetailModal({ title, kicker, icon: Icon, onClose, children }) {
 function ChecklistModal({ fullPlan, onClose }) {
   const items = fullPlan?.checklistItems || []
   const grouped = useMemo(() => groupChecklist(items), [items])
-  const totalDone = items.filter(i => i.done).length
 
   return (
     <AnimatePresence>
       <DetailModal title="Pre-Departure Checklist" kicker="Full breakdown" icon={ClipboardList} onClose={onClose}>
-        {/* Overall progress bar */}
-        <div className="rounded-2xl border border-brand-mid/30 bg-brand-light/50 p-4">
-          <div className="flex items-center justify-between text-sm font-bold text-brand-deep mb-2">
-            <span>Overall progress</span>
-            <span>{totalDone} / {items.length} done</span>
-          </div>
-          <div className="h-3 overflow-hidden rounded-full bg-white/70">
-            <motion.div
-              initial={{ width: 0 }}
-              animate={{ width: `${items.length ? (totalDone / items.length) * 100 : 0}%` }}
-              transition={{ duration: 0.7, ease: 'easeOut' }}
-              className="h-full rounded-full bg-brand"
-            />
-          </div>
-        </div>
-
-        {/* Category completion bar chart */}
-        {Object.entries(grouped).length > 0 && (
-          <div className="rounded-2xl border border-brand-mid/30 bg-white p-4">
-            <p className="text-xs font-bold uppercase tracking-[0.14em] text-brand/55 mb-3">Completion by category</p>
-            <div className="space-y-2.5">
-              {Object.entries(grouped).map(([cat, catItems]) => {
-                const meta = CHECKLIST_CATEGORY_META[cat] || CHECKLIST_CATEGORY_META.CUSTOM
-                const done = catItems.filter(i => i.done).length
-                const pct = catItems.length > 0 ? (done / catItems.length) * 100 : 0
-                return (
-                  <div key={cat}>
-                    <div className="flex items-center justify-between text-xs font-semibold text-brand-deep/70 mb-1">
-                      <span>{meta.label}</span>
-                      <span>{done}/{catItems.length}</span>
-                    </div>
-                    <div className="h-2 overflow-hidden rounded-full bg-brand-light">
-                      <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: `${pct}%` }}
-                        transition={{ duration: 0.6, ease: 'easeOut' }}
-                        className="h-full rounded-full"
-                        style={{ backgroundColor: meta.ring }}
-                      />
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        )}
-
         {/* Full item list by category */}
         {Object.entries(grouped).map(([cat, catItems]) => {
           const meta = CHECKLIST_CATEGORY_META[cat] || CHECKLIST_CATEGORY_META.CUSTOM
@@ -797,7 +853,7 @@ function MovingCostModal({ fullPlan, format, onClose }) {
 
 function CostBreakdownModal({ fullPlan, format, onClose }) {
   const categories = useMemo(() => getMonthlyCategories(fullPlan), [fullPlan])
-  const totalNzd = Number(fullPlan?.monthlyTotalNzd) || 0
+  const totalNzd = Number(fullPlan?.monthlyTotalNzd) || categories.reduce((sum, item) => sum + item.value, 0)
   const max = Math.max(...categories.map(c => c.value), 1)
 
   return (
@@ -947,6 +1003,7 @@ export default function Dashboard() {
   }, [plans, summaryPlans, selectedPlanId, location.state, navigate, location.pathname])
 
   const selectedSummary = plans.find(p => p.id === selectedPlanId) || plans[0]
+  const displayedFullPlan = fullPlan || demoToFullPlan(selectedSummary)
 
   // Fetch full plan whenever selected plan changes
   useEffect(() => {
@@ -958,9 +1015,9 @@ export default function Dashboard() {
       .finally(() => setFullPlanLoading(false))
   }, [selectedSummary?.id, accessToken, selectedSummary?._isApiPlan])
 
-  const survivalMonths = Number(fullPlan?.survivalMonths ?? selectedSummary?.survivalMonths ?? 0)
+  const survivalMonths = Number(displayedFullPlan?.survivalMonths ?? selectedSummary?.survivalMonths ?? 0)
   const readinessScore = Math.min(100, Math.max(10, Math.round(survivalMonths * 8.5)))
-  const affordability = fullPlan?.affordabilityStatus || selectedSummary?.affordability || 'TIGHT'
+  const affordability = displayedFullPlan?.affordabilityStatus || selectedSummary?.affordability || 'TIGHT'
 
   // ── Actions ──────────────────────────────────────────────────────────────────
 
@@ -1224,53 +1281,28 @@ export default function Dashboard() {
 
           {/* ── Living fund + Monthly breakdown (side by side on lg) ── */}
           <div className="grid gap-5 lg:grid-cols-[0.85fr_1.15fr]">
-            <LivingFundSection fullPlan={fullPlan} loading={fullPlanLoading} readinessScore={readinessScore} format={format} />
-            <MonthlyBreakdownSection fullPlan={fullPlan} loading={fullPlanLoading} format={format} onViewAll={() => setBreakdownModalOpen(true)} />
+            <LivingFundSection fullPlan={displayedFullPlan} loading={fullPlanLoading} readinessScore={readinessScore} format={format} />
+            <MonthlyBreakdownSection fullPlan={displayedFullPlan} loading={fullPlanLoading} format={format} onViewAll={() => setBreakdownModalOpen(true)} />
           </div>
 
           {/* ── Moving cost ── */}
-          <MovingCostSection fullPlan={fullPlan} loading={fullPlanLoading} format={format} onViewAll={() => setMovingModalOpen(true)} />
+          <MovingCostSection fullPlan={displayedFullPlan} loading={fullPlanLoading} format={format} onViewAll={() => setMovingModalOpen(true)} />
 
           {/* ── Checklist ── */}
-          <ChecklistSection fullPlan={fullPlan} loading={fullPlanLoading} onViewAll={() => setChecklistModalOpen(true)} />
-
-          {/* ── Quick actions footer ── */}
-          <motion.div
-            initial={{ opacity: 0, y: 14 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="rounded-[28px] border border-brand-mid/60 bg-white/58 p-5 sm:p-6"
-          >
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-brand/55">{t('dashboard.next_kicker')}</p>
-                <h2 className="mt-1 font-serif text-xl font-bold text-brand-deep">{t('dashboard.next_title')}</h2>
-              </div>
-              <div className="flex flex-wrap gap-3">
-                <Link to="/plan" className="inline-flex items-center gap-2 rounded-full bg-brand px-5 py-3 text-sm font-bold text-white hover:bg-brand-deep">
-                  {t('dashboard.action_budget_title')}
-                  <ChevronRight size={15} />
-                </Link>
-                <Link to="/guide" className="inline-flex items-center gap-2 rounded-full border border-brand-mid bg-white/80 px-5 py-3 text-sm font-bold text-brand-deep hover:bg-brand-light">
-                  {t('dashboard.action_essentials_title')}
-                  <ChevronRight size={15} />
-                </Link>
-              </div>
-            </div>
-          </motion.div>
+          <ChecklistSection fullPlan={displayedFullPlan} loading={fullPlanLoading} onViewAll={() => setChecklistModalOpen(true)} />
 
         </div>
       </section>
 
       {/* ── Detail modals ── */}
       {checklistModalOpen && (
-        <ChecklistModal fullPlan={fullPlan} onClose={() => setChecklistModalOpen(false)} />
+        <ChecklistModal fullPlan={displayedFullPlan} onClose={() => setChecklistModalOpen(false)} />
       )}
       {movingModalOpen && (
-        <MovingCostModal fullPlan={fullPlan} format={format} onClose={() => setMovingModalOpen(false)} />
+        <MovingCostModal fullPlan={displayedFullPlan} format={format} onClose={() => setMovingModalOpen(false)} />
       )}
       {breakdownModalOpen && (
-        <CostBreakdownModal fullPlan={fullPlan} format={format} onClose={() => setBreakdownModalOpen(false)} />
+        <CostBreakdownModal fullPlan={displayedFullPlan} format={format} onClose={() => setBreakdownModalOpen(false)} />
       )}
     </div>
   )

@@ -47,7 +47,7 @@ export function createPlanFromMaster(token, masterPlanId, planName) {
   return apiRequest(`/api/v1/me/plans/from-master/${masterPlanId}`, {
     method: 'POST',
     token,
-    body: planName ? { masterPlanId, planName } : undefined,
+    body: planName ? { masterPlanId, displayPlanName: planName } : undefined,
   })
 }
 

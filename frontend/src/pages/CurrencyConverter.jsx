@@ -82,6 +82,8 @@ export default function CurrencyConverter() {
             </span>
             <input
               type="number"
+              min="0"
+              max="100000000"
               value={sourceAmount}
               onChange={(e) => queueConversion(() => setSourceAmount(e.target.value))}
               className="mt-2 w-full rounded-xl border border-brand-mid px-4 py-3 outline-none focus:border-brand"

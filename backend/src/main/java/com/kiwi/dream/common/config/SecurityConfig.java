@@ -99,7 +99,10 @@ public class SecurityConfig {
 
             // App settings (non-sensitive public config)
             "/api/v1/settings",
-            "/api/v1/settings/**"
+            "/api/v1/settings/**",
+
+            // Public homepage contact form
+            "/api/v1/contact/messages"
     };
 
     @Bean

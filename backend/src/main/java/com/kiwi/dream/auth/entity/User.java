@@ -67,7 +67,7 @@ public class User extends BaseAuditableEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "preferred_currency", nullable = false, length = 5)
-    private PreferredCurrency preferredCurrency = PreferredCurrency.NZD;
+    private PreferredCurrency preferredCurrency = PreferredCurrency.BDT;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "preferred_language", nullable = false, length = 5)

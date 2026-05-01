@@ -106,7 +106,7 @@ export function FloatingPrefs() {
               <div>
                 <p className="text-[9px] font-bold text-white/40 uppercase tracking-[0.15em] mb-2">Currency</p>
                 <div className="flex gap-1">
-                  {['NZD', 'BDT'].map(c => (
+                  {['BDT', 'NZD'].map(c => (
                     <button
                       key={c}
                       onClick={() => changeCurrency(c)}

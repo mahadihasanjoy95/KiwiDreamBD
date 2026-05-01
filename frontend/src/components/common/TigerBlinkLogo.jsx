@@ -1,13 +1,13 @@
 import { motion } from 'framer-motion'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import tigerOpen from '@/assets/images/logo_tiger_new.png'
-import tigerClosed from '@/assets/images/logo_tiger_new.png'
+import tigerOpen from '@/assets/images/main_logo.png'
+import tigerClosed from '@/assets/images/main_logo.png'
 
 export function TigerBlinkLogo({
   size = 64,
   artSize = 112,
   className = '',
-  alt = 'KiwiDream BD',
+  alt = 'Plan For Abroad',
   interactive = false,
 }) {
   const [closed, setClosed] = useState(false)

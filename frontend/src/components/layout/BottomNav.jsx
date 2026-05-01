@@ -1,7 +1,7 @@
 import { Link, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { Home, BarChart3, LayoutDashboard, Map, Menu } from 'lucide-react'
+import { Home, BarChart3, LayoutDashboard, Map, UserCircle2 } from 'lucide-react'
 import { cn } from '@/utils/cn'
 import useStore from '@/store/useStore'
 
@@ -19,7 +19,7 @@ export function BottomNav() {
 
   const tabs = [
     ...BASE_TABS,
-    { to: '/profile', label: t('nav.more'), Icon: Menu },
+    { to: '/profile', label: t('auth.profile_section_label'), Icon: UserCircle2 },
   ]
 
   return (

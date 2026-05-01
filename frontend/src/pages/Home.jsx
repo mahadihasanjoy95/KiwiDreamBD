@@ -2,9 +2,11 @@ import { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { ArrowRight, CheckCircle, ChevronDown, Heart, X, Mail, Send } from 'lucide-react'
+import { ArrowRight, CheckCircle, ChevronDown, Construction, Heart, X, Mail, Send } from 'lucide-react'
 import useStore from '@/store/useStore'
-import logoTigerNew from '@/assets/images/logo_tiger_new.png'
+import { sendContactMessage } from '@/api/contact'
+import { useToast } from '@/components/common/ToastProvider'
+import logoTigerNew from '@/assets/images/main_logo.png'
 import cloud1 from '@/assets/images/cloud_1.png'
 import cloud3 from '@/assets/images/cloud_3.png'
 import cloud4 from '@/assets/images/cloud_4.png'
@@ -83,6 +85,8 @@ function CloudDrift() {
 
 function HomeActionModal({ type, onClose }) {
   const { t } = useTranslation()
+  const { showToast } = useToast()
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const isContact = type === 'contact'
   const isCoffee = type === 'coffee'
 
@@ -119,12 +123,35 @@ function HomeActionModal({ type, onClose }) {
         {isContact ? (
           <form
             className="mt-5 space-y-3"
-            onSubmit={(event) => {
+            onSubmit={async (event) => {
               event.preventDefault()
-              const formData = new FormData(event.currentTarget)
-              const subject = encodeURIComponent(`KiwiDream BD message from ${formData.get('name') || 'student'}`)
-              const body = encodeURIComponent(`${formData.get('message') || ''}\n\nReply to: ${formData.get('email') || ''}`)
-              window.location.href = `mailto:hello@kiwidreambd.com?subject=${subject}&body=${body}`
+              const form = event.currentTarget
+              const formData = new FormData(form)
+              const payload = {
+                name: String(formData.get('name') || '').trim(),
+                email: String(formData.get('email') || '').trim(),
+                message: String(formData.get('message') || '').trim(),
+              }
+
+              setIsSubmitting(true)
+              try {
+                await sendContactMessage(payload)
+                form.reset()
+                showToast({
+                  tone: 'success',
+                  title: t('home.contact_success_title'),
+                  message: t('home.contact_success_message'),
+                })
+                onClose()
+              } catch (error) {
+                showToast({
+                  tone: 'error',
+                  title: t('home.contact_error_title'),
+                  message: error?.message || t('home.contact_error_message'),
+                })
+              } finally {
+                setIsSubmitting(false)
+              }
             }}
           >
             <div className="grid gap-3 sm:grid-cols-2">
@@ -132,42 +159,39 @@ function HomeActionModal({ type, onClose }) {
                 <span className="mb-1.5 block text-xs font-bold uppercase tracking-[0.12em] text-brand">
                   {t('home.contact_name')}
                 </span>
-                <input name="name" className="home-modal-input" placeholder={t('home.contact_name_placeholder')} />
+                <input name="name" required className="home-modal-input" placeholder={t('home.contact_name_placeholder')} />
               </label>
               <label className="block">
                 <span className="mb-1.5 block text-xs font-bold uppercase tracking-[0.12em] text-brand">
                   {t('home.contact_email')}
                 </span>
-                <input name="email" type="email" className="home-modal-input" placeholder={t('home.contact_email_placeholder')} />
+                <input name="email" type="email" required className="home-modal-input" placeholder={t('home.contact_email_placeholder')} />
               </label>
             </div>
             <label className="block">
               <span className="mb-1.5 block text-xs font-bold uppercase tracking-[0.12em] text-brand">
                 {t('home.contact_message')}
               </span>
-              <textarea name="message" rows="4" className="home-modal-input resize-none" placeholder={t('home.contact_message_placeholder')} />
+              <textarea name="message" rows="4" required className="home-modal-input resize-none" placeholder={t('home.contact_message_placeholder')} />
             </label>
             <button
               type="submit"
-              className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-brand px-5 py-3 text-sm font-bold text-white shadow-[0_16px_36px_rgba(0,149,161,0.22)] hover:bg-brand-deep"
+              disabled={isSubmitting}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-brand px-5 py-3 text-sm font-bold text-white shadow-[0_16px_36px_rgba(0,149,161,0.22)] hover:bg-brand-deep disabled:cursor-not-allowed disabled:opacity-70"
             >
               <Send size={16} />
-              {t('home.contact_cta')}
+              {isSubmitting ? t('home.contact_sending') : t('home.contact_cta')}
             </button>
           </form>
         ) : null}
         {isCoffee ? (
-          <div className="mt-5 grid gap-3 rounded-3xl border border-brand-mid bg-brand-light p-4">
-            <button
-              type="button"
-              onClick={() => window.open('https://www.buymeacoffee.com/', '_blank', 'noopener,noreferrer')}
-              className="inline-flex items-center justify-center gap-2 rounded-full bg-brand px-5 py-3 text-sm font-bold text-white shadow-[0_16px_36px_rgba(0,149,161,0.22)] hover:bg-brand-deep"
-            >
-              <Heart size={16} fill="currentColor" />
-              {t('home.coffee_cta')}
-            </button>
+          <div className="mt-5 grid gap-3 rounded-3xl border border-amber-200 bg-amber-50 p-4">
+            <div className="flex items-center gap-3 rounded-2xl bg-white/70 px-4 py-3 text-amber-800">
+              <Construction size={20} />
+              <p className="text-sm font-bold">{t('home.support_under_development')}</p>
+            </div>
             <a
-              href="mailto:hello@kiwidreambd.com?subject=KiwiDream%20BD%20support"
+              href="mailto:mahadihasanjoy95@gmail.com?subject=Plan%20For%20Abroad%20support"
               className="inline-flex items-center justify-center gap-2 rounded-full border border-brand/30 bg-white/70 px-5 py-3 text-sm font-bold text-brand-deep hover:bg-white"
             >
               <Mail size={16} />
@@ -448,17 +472,14 @@ export default function Home() {
               viewport={{ once: true }}
               transition={{ duration: 0.45, delay: 0.08 }}
             >
-              <div className="flex items-center gap-2">
-                <span className="relative block h-[44px] w-[44px] overflow-hidden shrink-0">
+              <div className="flex items-center">
+                <div className="relative flex items-center h-[44px] w-[180px] overflow-hidden shrink-0 drop-shadow-[0_6px_14px_rgba(0,89,96,0.14)]">
                   <img
                     src={logoTigerNew}
-                    alt="KiwiDream BD"
-                    className="absolute left-1/2 top-1/2 h-[55px] w-auto max-w-none -translate-x-1/2 -translate-y-1/2 drop-shadow-[0_6px_14px_rgba(0,89,96,0.14)]"
+                    alt="Plan For Abroad"
+                    className="absolute left-1/2 top-1/2 w-full h-auto max-w-none -translate-x-1/2 -translate-y-1/2"
                   />
-                </span>
-                <span className="font-logo text-xl font-semibold tracking-[0.22em] text-brand-deep leading-none">
-                  B K W I
-                </span>
+                </div>
               </div>
               <h2 className="mt-3 font-serif text-3xl font-bold text-brand-deep md:text-4xl">
                 {t('home.mascot_title')}

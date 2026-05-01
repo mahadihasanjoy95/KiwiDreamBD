@@ -1,32 +1,29 @@
 import { Link } from 'react-router-dom'
 import useStore from '@/store/useStore'
 import { useTranslation } from 'react-i18next'
-import logoTigerNew from '@/assets/images/logo_tiger_new.png'
+import logoWhite from '@/assets/images/main_logo_white.png'
 
 export function Footer() {
   const { t } = useTranslation()
   const rate = useStore(s => s.exchangeRate)
 
   return (
-    <footer className="hidden md:block bg-[linear-gradient(180deg,#021e20_0%,#032628_100%)] text-white/55 mt-20 relative overflow-hidden">
+    <footer className="block bg-[linear-gradient(180deg,#021e20_0%,#032628_100%)] text-white/55 mt-20 relative overflow-hidden">
       {/* Subtle top glow */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[1px] bg-gradient-to-r from-transparent via-brand/40 to-transparent" />
 
-      <div className="max-w-6xl mx-auto px-6 py-12">
+      <div className="max-w-6xl mx-auto px-6 pt-12 pb-28 md:py-12">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-8">
 
           {/* ── Logo block ── */}
-          <Link to="/" className="flex items-center gap-0 shrink-0 group">
-            <span className="relative block h-[52px] w-[52px] overflow-hidden">
+          <Link to="/" className="flex items-center shrink-0 group">
+            <div className="relative h-[30px] w-[130px] overflow-hidden opacity-90 group-hover:opacity-100 transition-opacity">
               <img
-                src={logoTigerNew}
-                alt="KiwiDream BD"
-                className="absolute left-1/2 top-1/2 h-[65px] w-auto max-w-none -translate-x-1/2 -translate-y-1/2 opacity-90 group-hover:opacity-100 transition-opacity"
+                src={logoWhite}
+                alt="Plan For Abroad"
+                className="absolute w-[200%] h-auto left-1/2 top-1/2 -translate-x-1/2 -translate-y-[42%]"
               />
-            </span>
-            <span className="font-logo text-[1.25rem] font-semibold tracking-[0.25em] text-white/80 group-hover:text-white leading-none transition-colors ml-1">
-              B K W I
-            </span>
+            </div>
           </Link>
 
           {/* ── Nav links ── */}

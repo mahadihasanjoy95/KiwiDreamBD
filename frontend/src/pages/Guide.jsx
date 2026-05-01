@@ -1,112 +1,324 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
-import useStore from '@/store/useStore';
-import { GUIDES_DATA } from '@/data/guides';
+import { useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
+import {
+  ArrowRight,
+  BookOpenText,
+  CheckCircle2,
+  Clock3,
+  FileText,
+  HeartHandshake,
+  Home,
+  Mail,
+  MapPin,
+  MessageSquareText,
+  Send,
+  Share2,
+  Sparkles,
+  WalletCards,
+} from 'lucide-react'
+import useStore from '@/store/useStore'
+import { GUIDES_DATA } from '@/data/guides'
+import { sendContactMessage } from '@/api/contact'
+import { useToast } from '@/components/common/ToastProvider'
+import { sharePageLink } from '@/utils/share'
+import logoTigerNew from '@/assets/images/main_logo.png'
 
-const GuidePage = () => {
-  const [copied, setCopied] = useState(false);
-  const language = useStore(state => state.language);
-  const isBn = language === 'BN';
+const guideTopics = [
+  {
+    icon: WalletCards,
+    titleEn: 'Money and first-month setup',
+    titleBn: 'টাকা ও প্রথম মাসের সেটআপ',
+    copyEn: 'Living fund, rent bond, groceries, transport cards, SIM, and early spending choices.',
+    copyBn: 'Living fund, rent bond, grocery, transport card, SIM এবং শুরুতে কী খরচ হবে।',
+  },
+  {
+    icon: Home,
+    titleEn: 'Flat, suburb, and daily life',
+    titleBn: 'বাসা, suburb এবং daily life',
+    copyEn: 'How students find rooms, what to check before paying bond, and which suburbs feel manageable.',
+    copyBn: 'রুম খোঁজা, bond দেওয়ার আগে কী দেখবেন, কোন suburb manage করা সহজ।',
+  },
+  {
+    icon: FileText,
+    titleEn: 'IRD, bank, work, and paperwork',
+    titleBn: 'IRD, bank, কাজ ও paperwork',
+    copyEn: 'The practical admin tasks that make work, study, and settling easier after landing.',
+    copyBn: 'পৌঁছানোর পর কাজ, পড়াশোনা ও settle করার practical admin কাজগুলো।',
+  },
+]
 
-  // Function to handle the "Manual Mail" Copy-to-Clipboard feature
-  const copyTemplate = () => {
-    const template = `Subject: [GUIDE SUBMISSION] - ${new Date().toLocaleDateString()}\n\nAuthor Name: \nArticle Title: \nArticle Content: \n\n(Please attach images to your email)`;
-    navigator.clipboard.writeText(template);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000); // Reset after 2 seconds
-  };
+const contributionIdeas = [
+  {
+    titleEn: 'Arrival story',
+    titleBn: 'পৌঁছানোর অভিজ্ঞতা',
+    copyEn: 'Airport, first night, temporary stay, SIM, transport, and what surprised you.',
+    copyBn: 'Airport, প্রথম রাত, temporary stay, SIM, transport এবং কোন জিনিস surprise করেছে।',
+  },
+  {
+    titleEn: 'Budget reality',
+    titleBn: 'বাস্তব বাজেট',
+    copyEn: 'Rent, food, setup costs, hidden expenses, and what you would budget differently.',
+    copyBn: 'Rent, food, setup cost, hidden expense এবং এখন হলে কীভাবে budget করতেন।',
+  },
+  {
+    titleEn: 'Flat or suburb review',
+    titleBn: 'Flat বা suburb review',
+    copyEn: 'Area feel, transport, safety, groceries, halal options, and student convenience.',
+    copyBn: 'এলাকার feel, transport, safety, grocery, halal option এবং student convenience।',
+  },
+  {
+    titleEn: 'Part-time work lesson',
+    titleBn: 'Part-time কাজের শিক্ষা',
+    copyEn: 'How you searched, interview tips, rights, CV mistakes, and first-job advice.',
+    copyBn: 'কীভাবে খুঁজেছেন, interview tips, rights, CV mistake এবং first-job advice।',
+  },
+]
+
+function localize(isBn, en, bn) {
+  return isBn ? bn : en
+}
+
+function GuidePage() {
+  const language = useStore(state => state.language)
+  const isBn = language === 'BN'
+  const { showToast } = useToast()
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const articles = useMemo(() => [GUIDES_DATA.featured, ...GUIDES_DATA.articles], [])
+  const featured = GUIDES_DATA.featured
+
+  const handleSubmission = async (event) => {
+    event.preventDefault()
+    const form = event.currentTarget
+    const formData = new FormData(form)
+    const name = String(formData.get('name') || '').trim()
+    const email = String(formData.get('email') || '').trim()
+    const topic = String(formData.get('topic') || '').trim()
+    const message = String(formData.get('message') || '').trim()
+
+    const fullMessage = [
+      'Guide / NZ journey submission',
+      topic ? `Topic: ${topic}` : null,
+      '',
+      message,
+    ].filter(Boolean).join('\n')
+
+    setIsSubmitting(true)
+    try {
+      await sendContactMessage({ name, email, message: fullMessage })
+      form.reset()
+      showToast({
+        tone: 'success',
+        title: localize(isBn, 'Story sent', 'স্টোরি পাঠানো হয়েছে'),
+        message: localize(
+          isBn,
+          'Thanks for sharing. We received your note and can follow up by email.',
+          'ধন্যবাদ। আমরা আপনার লেখা পেয়েছি এবং ইমেইলে follow up করতে পারব।'
+        ),
+      })
+    } catch (error) {
+      showToast({
+        tone: 'error',
+        title: localize(isBn, 'Could not send', 'পাঠানো যায়নি'),
+        message: error?.message || localize(isBn, 'Please try again in a moment.', 'একটু পরে আবার চেষ্টা করুন।'),
+      })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleSharePage = async () => {
+    try {
+      const result = await sharePageLink({
+        title: localize(isBn, 'Plan For Abroad NZ Essentials', 'Plan For Abroad NZ এসেনশিয়ালস'),
+        text: localize(
+          isBn,
+          'Guides for Bangladeshi students planning New Zealand.',
+          'New Zealand planning করা Bangladeshi students-দের জন্য guide.'
+        ),
+      })
+      if (result === 'copied') {
+        showToast({
+          tone: 'success',
+          title: localize(isBn, 'Link copied', 'লিঙ্ক কপি হয়েছে'),
+          message: localize(isBn, 'Paste it into Facebook, Messenger, messages, or anywhere else.', 'Facebook, Messenger বা message-এ paste করতে পারবেন।'),
+        })
+      }
+    } catch {
+      showToast({
+        tone: 'error',
+        title: localize(isBn, 'Could not share', 'শেয়ার করা যায়নি'),
+        message: localize(isBn, 'Please try again in a moment.', 'একটু পরে আবার চেষ্টা করুন।'),
+      })
+    }
+  }
 
   return (
-    <div className="min-h-screen bg-[#D7DBD4] text-[#142334] font-sans selection:bg-[#A2C4C4]/50 pb-20">
+    <div className="min-h-screen overflow-hidden bg-[linear-gradient(180deg,#eaf6f5_0%,#f8f2e8_42%,#eaf6f5_100%)] text-brand-deep">
+      <section className="relative border-b border-white/70 bg-[linear-gradient(135deg,#c7e5e8_0%,#f8f2e8_58%,#b6dadd_100%)]">
+        <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-[#eaf6f5] to-transparent" />
+        <div className="relative mx-auto grid max-w-6xl gap-10 px-6 pb-14 pt-24 md:grid-cols-[1fr_0.82fr] md:items-end md:pb-20 md:pt-28">
+          <div>
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/70 bg-white/45 px-4 py-2 text-xs font-black uppercase tracking-[0.16em] text-brand shadow-sm backdrop-blur">
+              <BookOpenText size={15} />
+              {localize(isBn, 'NZ Essentials', 'NZ এসেনশিয়ালস')}
+            </div>
+            <h1 className="mt-5 max-w-3xl font-serif text-4xl font-bold leading-tight text-brand-deep md:text-6xl">
+              {localize(isBn, 'Clear guides for the Bangladesh to New Zealand journey.', 'বাংলাদেশ থেকে নিউজিল্যান্ড যাত্রার পরিষ্কার গাইড।')}
+            </h1>
+            <p className="mt-5 max-w-2xl text-base font-medium leading-relaxed text-[#334d52] md:text-lg">
+              {localize(
+                isBn,
+                'Read practical articles about money, suburbs, jobs, paperwork, and the first few months after landing.',
+                'টাকা, suburb, job, paperwork এবং পৌঁছানোর পর প্রথম কয়েক মাস নিয়ে practical article পড়ুন।'
+              )}
+            </p>
+            <div className="mt-7 flex flex-col gap-3 sm:flex-row">
+              <a
+                href="#articles"
+                className="inline-flex items-center justify-center gap-2 rounded-full bg-brand px-6 py-3 text-sm font-bold text-white shadow-[0_18px_42px_rgba(0,149,161,0.22)] transition-colors hover:bg-brand-deep"
+              >
+                {localize(isBn, 'Browse articles', 'Article দেখুন')}
+                <ArrowRight size={17} />
+              </a>
+              <a
+                href="#share-story"
+                className="inline-flex items-center justify-center gap-2 rounded-full border border-brand/25 bg-white/70 px-6 py-3 text-sm font-bold text-brand-deep shadow-sm backdrop-blur transition-colors hover:bg-white"
+              >
+                <MessageSquareText size={17} />
+                {localize(isBn, 'Share your NZ journey', 'আপনার NZ journey শেয়ার করুন')}
+              </a>
+              <button
+                type="button"
+                onClick={handleSharePage}
+                className="inline-flex items-center justify-center gap-2 rounded-full border border-brand/25 bg-white/70 px-6 py-3 text-sm font-bold text-brand-deep shadow-sm backdrop-blur transition-colors hover:bg-white"
+              >
+                <Share2 size={17} />
+                {localize(isBn, 'Share this page', 'এই পেজ শেয়ার করুন')}
+              </button>
+            </div>
+          </div>
 
-      {/* 1. BREAKING NEWS TICKER */}
-      <div className="w-full bg-[#142334] border-b border-[#A2C4C4] py-2 overflow-hidden whitespace-nowrap text-white">
-        <div className="inline-block animate-marquee hover:[animation-play-state:paused]">
-          <span className="mx-4 text-sm font-bold text-[#A2C4C4]">NEW:</span>
-          <Link to="/jobs" className="mx-4 text-sm font-medium hover:text-[#A2C4C4] transition-colors hover:underline cursor-pointer">Updated Minimum Wage Rates for 2024 are now available in the Job Guide.</Link>
-          <span className="mx-4 text-sm font-bold text-[#A2C4C4]">ALERT:</span>
-          <a href="mailto:editorial@kiwidreambd.com" className="mx-4 text-sm font-medium hover:text-[#A2C4C4] transition-colors hover:underline cursor-pointer">Join our contributor program and share your NZ journey.</a>
-        </div>
-      </div>
-
-      <main className="max-w-7xl mx-auto px-4 py-12">
-
-        {/* PAGE HEADER */}
-        <div className="mb-10 text-center">
-          <h1 className="text-4xl md:text-6xl font-serif font-bold text-[#0095A1] mb-4">NZ Essentials & Guides</h1>
-          <p className="text-lg text-[#142334]/80 max-w-2xl mx-auto">Discover everything you need to know about moving, living, and thriving in New Zealand as a Bangladeshi student.</p>
-        </div>
-
-        {/* 2. HERO FEATURED ARTICLE */}
-        <section className="mb-16" id="featured-guide">
-          <Link to={`/guide/${GUIDES_DATA.featured.id}`} className="block relative group overflow-hidden rounded-3xl bg-[#142334] aspect-[21/9] shadow-2xl shadow-[#142334]/20">
-            <img
-              src={GUIDES_DATA.featured.image}
-              alt="Featured"
-              className="absolute inset-0 w-full h-full object-cover opacity-50 group-hover:scale-105 transition-transform duration-700 mix-blend-overlay"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-[#142334] via-[#142334]/60 to-transparent"></div>
-
-            <div className="absolute bottom-0 left-0 p-8 md:p-14 max-w-4xl z-10">
-              <span className="inline-block px-4 py-1.5 bg-[#A2C4C4] text-[#142334] text-xs font-bold uppercase tracking-wider rounded-full mb-6 shadow-lg">
-                {isBn ? GUIDES_DATA.featured.tagBn : GUIDES_DATA.featured.tagEn}
-              </span>
-              <h2 className="text-3xl md:text-5xl font-serif font-bold text-white mb-4 leading-tight drop-shadow-md transition-colors group-hover:text-[#A2C4C4]">
-                {isBn ? GUIDES_DATA.featured.titleBn : GUIDES_DATA.featured.titleEn}
-              </h2>
-              <p className="text-white/80 text-lg md:text-xl mb-6 line-clamp-2 max-w-2xl font-medium">
-                {isBn ? GUIDES_DATA.featured.descriptionBn : GUIDES_DATA.featured.descriptionEn}
+          <Link
+            to={`/guide/${featured.id}`}
+            className="group block overflow-hidden rounded-[28px] border border-white/80 bg-white/70 shadow-[0_24px_70px_rgba(0,89,96,0.16)] backdrop-blur"
+          >
+            <div className="aspect-[4/3] overflow-hidden">
+              <img
+                src={featured.image}
+                alt={localize(isBn, featured.titleEn, featured.titleBn)}
+                className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+              />
+            </div>
+            <div className="p-5">
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-brand">
+                {localize(isBn, 'Featured guide', 'Featured guide')}
               </p>
-              <div className="flex items-center text-[#A2C4C4] text-sm gap-4 font-bold tracking-wide uppercase">
-                <span className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-full bg-[#0095A1] flex items-center justify-center text-white text-xs">K</div>
-                  {GUIDES_DATA.featured.author}
+              <h2 className="mt-2 font-serif text-2xl font-bold leading-tight text-brand-deep">
+                {localize(isBn, featured.titleEn, featured.titleBn)}
+              </h2>
+              <div className="mt-4 flex items-center justify-between text-xs font-bold uppercase tracking-[0.12em] text-brand-deep/50">
+                <span>{localize(isBn, featured.readTimeEn, featured.readTimeBn)}</span>
+                <span className="inline-flex items-center gap-1 text-brand">
+                  {localize(isBn, 'Read', 'পড়ুন')}
+                  <ArrowRight size={14} />
                 </span>
-                <span>•</span>
-                <span>{isBn ? GUIDES_DATA.featured.dateBn : GUIDES_DATA.featured.dateEn}</span>
-                <span>•</span>
-                <span>{isBn ? GUIDES_DATA.featured.readTimeBn : GUIDES_DATA.featured.readTimeEn}</span>
               </div>
             </div>
           </Link>
+        </div>
+      </section>
+
+      <section className="border-y border-white/70 bg-brand-deep text-white">
+        <div className="mx-auto flex max-w-6xl items-center gap-4 overflow-hidden px-6 py-3">
+          <span className="inline-flex shrink-0 items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-black uppercase tracking-[0.16em] text-[#d8eeee]">
+            <Sparkles size={13} />
+            {localize(isBn, 'Articles', 'Article')}
+          </span>
+          <div className="min-w-0 flex-1 overflow-hidden">
+            <div className="guide-article-marquee inline-flex gap-6 whitespace-nowrap text-sm font-semibold text-white/78 hover:[animation-play-state:paused]">
+              {[...articles, ...articles].map((article, index) => (
+                <Link key={`${article.id}-${index}`} to={`/guide/${article.id}`} className="inline-flex items-center gap-2 hover:text-white">
+                  <span>{localize(isBn, article.titleEn, article.titleBn)}</span>
+                  <ArrowRight size={13} />
+                </Link>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <main className="mx-auto max-w-6xl px-6 py-12 md:py-16">
+        <section className="grid gap-4 md:grid-cols-3">
+          {guideTopics.map(topic => {
+            const Icon = topic.icon
+            return (
+              <div key={topic.titleEn} className="rounded-[24px] border border-white/80 bg-white/72 p-6 shadow-[0_16px_42px_rgba(0,89,96,0.08)] backdrop-blur">
+                <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-brand-light text-brand">
+                  <Icon size={20} />
+                </span>
+                <h2 className="mt-4 font-serif text-2xl font-bold text-brand-deep">
+                  {localize(isBn, topic.titleEn, topic.titleBn)}
+                </h2>
+                <p className="mt-3 text-sm font-medium leading-relaxed text-[#51666b]">
+                  {localize(isBn, topic.copyEn, topic.copyBn)}
+                </p>
+              </div>
+            )
+          })}
         </section>
 
-        {/* 3. SECONDARY ARTICLE GRID */}
-        <section className="mb-20" id="all-guides">
-          <div className="flex items-center justify-between mb-10 border-b border-[#A2C4C4] pb-4">
-            <h2 className="text-3xl font-serif font-bold text-[#142334]">Latest Articles</h2>
-            <a href="#all-guides" className="text-[#0095A1] font-bold hover:text-[#142334] transition-colors flex items-center gap-1">
-              View All <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" /></svg>
-            </a>
+        <section id="articles" className="pt-14 md:pt-20">
+          <div className="flex flex-col justify-between gap-4 border-b border-brand/15 pb-5 md:flex-row md:items-end">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-brand">
+                {localize(isBn, 'Latest guidance', 'Latest guidance')}
+              </p>
+              <h2 className="mt-2 font-serif text-3xl font-bold text-brand-deep md:text-4xl">
+                {localize(isBn, 'Articles that answer real pre-departure questions', 'Pre-departure প্রশ্নের practical article')}
+              </h2>
+            </div>
+            <Link to="/plan" className="inline-flex items-center gap-2 text-sm font-black text-brand hover:text-brand-deep">
+              {localize(isBn, 'Open planner', 'Planner খুলুন')}
+              <ArrowRight size={16} />
+            </Link>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {GUIDES_DATA.articles.map((article) => (
-              <Link to={`/guide/${article.id}`} key={article.id} className="group cursor-pointer bg-white rounded-[2rem] overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-[#A2C4C4]/50 flex flex-col h-full">
-                <div className="aspect-[4/3] overflow-hidden relative">
-                  <div className="absolute top-4 left-4 z-10">
-                    <span className="px-4 py-1.5 bg-[#D7DBD4]/90 backdrop-blur-md text-[#142334] text-xs font-bold uppercase tracking-wider rounded-full shadow-sm border border-[#A2C4C4]">
-                      {isBn ? article.tagBn : article.tagEn}
-                    </span>
-                  </div>
+          <div className="mt-8 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+            {articles.map(article => (
+              <Link
+                key={article.id}
+                to={`/guide/${article.id}`}
+                className="group flex h-full flex-col overflow-hidden rounded-[24px] border border-white/80 bg-white shadow-[0_14px_38px_rgba(0,89,96,0.08)] transition-all hover:-translate-y-1 hover:shadow-[0_22px_52px_rgba(0,89,96,0.14)]"
+              >
+                <div className="aspect-[16/10] overflow-hidden">
                   <img
                     src={article.image}
-                    alt={article.titleEn}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    alt={localize(isBn, article.titleEn, article.titleBn)}
+                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                   />
                 </div>
-                <div className="p-8 flex flex-col flex-grow">
-                  <h3 className="text-2xl font-serif font-bold text-[#0095A1] mb-3 group-hover:text-[#142334] transition-colors leading-snug">
-                    {isBn ? article.titleBn : article.titleEn}
+                <div className="flex flex-1 flex-col p-5">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="rounded-full bg-brand-light px-3 py-1 text-[11px] font-black uppercase tracking-[0.12em] text-brand">
+                      {localize(isBn, article.tagEn, article.tagBn)}
+                    </span>
+                    <span className="inline-flex items-center gap-1 text-xs font-bold text-brand-deep/45">
+                      <Clock3 size={13} />
+                      {localize(isBn, article.readTimeEn, article.readTimeBn)}
+                    </span>
+                  </div>
+                  <h3 className="mt-4 font-serif text-2xl font-bold leading-tight text-brand-deep group-hover:text-brand">
+                    {localize(isBn, article.titleEn, article.titleBn)}
                   </h3>
-                  <p className="text-[#142334]/70 text-base mb-6 line-clamp-3 leading-relaxed flex-grow">
-                    {isBn ? article.descriptionBn : article.descriptionEn}
+                  <p className="mt-3 line-clamp-3 flex-1 text-sm font-medium leading-relaxed text-[#51666b]">
+                    {localize(isBn, article.descriptionEn, article.descriptionBn)}
                   </p>
-                  <div className="flex justify-between items-center pt-5 border-t border-[#A2C4C4]/50 text-xs text-[#142334]/60 font-bold uppercase tracking-wider">
-                    <span className="text-[#0095A1]">{article.author}</span>
-                    <span className="flex items-center gap-1">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                      {isBn ? article.readTimeBn : article.readTimeEn}
+                  <div className="mt-5 flex items-center justify-between border-t border-brand/10 pt-4 text-xs font-black uppercase tracking-[0.12em] text-brand-deep/45">
+                    <span>{article.author}</span>
+                    <span className="inline-flex items-center gap-1 text-brand">
+                      {localize(isBn, 'Read guide', 'গাইড পড়ুন')}
+                      <ArrowRight size={14} />
                     </span>
                   </div>
                 </div>
@@ -115,150 +327,180 @@ const GuidePage = () => {
           </div>
         </section>
 
-        {/* 4. HELPFUL VIDEOS */}
-        <section className="mb-20" id="helpful-videos">
-          <div className="flex items-center justify-between mb-10 border-b border-[#A2C4C4] pb-4">
-            <h2 className="text-3xl font-serif font-bold text-[#142334]">
-              {isBn ? 'জরুরি ভিডিও' : 'Helpful Videos'}
-            </h2>
-            <a href="https://youtube.com" target="_blank" rel="noreferrer" className="text-[#0095A1] font-bold hover:text-[#142334] transition-colors flex items-center gap-1">
-              {isBn ? 'ইউটিউবে আরও দেখুন' : 'More on YouTube'} <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" /></svg>
-            </a>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {/* Video 1 - Dark Theme */}
-            <div className="bg-[#142334] rounded-[2rem] overflow-hidden shadow-xl border border-[#A2C4C4]/30 flex flex-col">
-              <div className="aspect-video relative w-full bg-[#0a111a]">
-                <iframe
-                  className="absolute inset-0 w-full h-full"
-                  src="https://www.youtube.com/embed/BZEeSSQf0GU" /* Replace with your actual YouTube Video ID */
-                  title="Life in New Zealand"
-                  frameBorder="0"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                ></iframe>
-              </div>
-              <div className="p-8 flex-grow flex flex-col">
-                <span className="inline-block px-3 py-1 bg-[#A2C4C4]/20 text-[#A2C4C4] text-xs font-bold uppercase tracking-wider rounded-full mb-4 w-max">
-                  {isBn ? 'ভিডিও গাইড' : 'Video Guide'}
-                </span>
-                <h3 className="text-2xl font-serif font-bold text-white mb-3 leading-snug">
-                  {isBn ? 'নিউজিল্যান্ডে ছাত্রজীবন: প্রথম মাসের অভিজ্ঞতা' : 'Student Life in NZ: First Month Experience'}
-                </h3>
-                <p className="text-white/70 text-base leading-relaxed line-clamp-2">
-                  {isBn ? 'অকল্যান্ডে পৌঁছানোর পর প্রথম কয়েক সপ্তাহের চ্যালেঞ্জ এবং অভিজ্ঞতা শুনুন।' : 'Hear about the challenges and experiences during the first few weeks after arriving in New Zealand.'}
+        <section id="share-story" className="pt-14 md:pt-20">
+          <div className="overflow-hidden rounded-[30px] border border-white/80 bg-[linear-gradient(135deg,#f8fdfd_0%,#eaf6f5_54%,#f8f2e8_100%)] shadow-[0_24px_70px_rgba(0,89,96,0.14)]">
+            <div className="grid gap-0 lg:grid-cols-[0.9fr_1.1fr]">
+              <div className="border-b border-brand/10 p-6 md:p-9 lg:border-b-0 lg:border-r">
+                <div className="flex items-center gap-3">
+                  <span className="relative block h-[48px] w-[48px] shrink-0 overflow-hidden rounded-2xl bg-white/70">
+                    <img
+                      src={logoTigerNew}
+                      alt="Plan For Abroad"
+                      className="absolute left-1/2 top-1/2 h-[58px] w-auto max-w-none -translate-x-1/2 -translate-y-1/2"
+                    />
+                  </span>
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-[0.18em] text-brand">
+                      {localize(isBn, 'Community stories', 'Community stories')}
+                    </p>
+                    <h2 className="font-serif text-3xl font-bold text-brand-deep">
+                      {localize(isBn, 'Share your NZ journey', 'আপনার NZ journey শেয়ার করুন')}
+                    </h2>
+                  </div>
+                </div>
+                <p className="mt-5 text-sm font-medium leading-relaxed text-[#51666b] md:text-base">
+                  {localize(
+                    isBn,
+                    'Your real experience can help another Bangladeshi student avoid confusion, plan better, and feel less alone before they fly.',
+                    'আপনার real experience আরেকজন Bangladeshi student-কে confusion কমাতে, ভালো plan করতে এবং যাওয়ার আগে confident হতে সাহায্য করতে পারে।'
+                  )}
                 </p>
-              </div>
-            </div>
 
-            {/* Video 2 - Light Theme */}
-            <div className="bg-white rounded-[2rem] overflow-hidden shadow-md border border-[#A2C4C4]/50 flex flex-col hover:shadow-xl transition-all duration-300">
-              <div className="aspect-video relative w-full bg-[#f0f2ef]">
-                <iframe
-                  className="absolute inset-0 w-full h-full"
-                  src="https://www.youtube.com/embed/qgN0nDTNEDc" /* Replace with your actual YouTube Video ID */
-                  title="Cost of Living in NZ"
-                  frameBorder="0"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                ></iframe>
-              </div>
-              <div className="p-8 flex-grow flex flex-col">
-                <span className="inline-block px-3 py-1 bg-[#D7DBD4] text-[#142334] text-xs font-bold uppercase tracking-wider rounded-full mb-4 w-max border border-[#A2C4C4]">
-                  {isBn ? 'বাজেট প্ল্যানিং' : 'Budget Planning'}
-                </span>
-                <h3 className="text-2xl font-serif font-bold text-[#0095A1] mb-3 leading-snug">
-                  {isBn ? 'নিউজিল্যান্ডে থাকার আসল খরচ কত?' : 'What is the Real Cost of Living in NZ?'}
-                </h3>
-                <p className="text-[#142334]/70 text-base leading-relaxed line-clamp-2">
-                  {isBn ? 'বাসা ভাড়া, মুদি বাজার এবং যাতায়াতের বিস্তারিত হিসাব জানুন এই ভিডিওতে।' : 'Get a detailed breakdown of rent, groceries, and transport costs in this video guide.'}
-                </p>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* 5. SUBMISSION SECTION */}
-        <section className="relative bg-[#0095A1] rounded-[2.5rem] overflow-hidden shadow-xl">
-          {/* Decorative background elements */}
-          <div className="absolute top-0 right-0 -mt-20 -mr-20 w-80 h-80 bg-[#A2C4C4] rounded-full blur-[80px] opacity-30"></div>
-          <div className="absolute bottom-0 left-0 -mb-20 -ml-20 w-64 h-64 bg-[#D7DBD4] rounded-full blur-[60px] opacity-20"></div>
-
-          <div className="relative p-10 md:p-20 text-center text-white">
-            <h2 className="text-4xl md:text-5xl font-serif font-bold mb-6">Share Your NZ Journey</h2>
-            <p className="text-white/90 mb-12 text-lg max-w-2xl mx-auto font-medium">
-              Help the Bangladeshi community grow by sharing your experiences. Whether it's finding a flat or landing a job, your story matters.
-            </p>
-
-            <div className="bg-[#142334]/20 backdrop-blur-md rounded-3xl p-8 md:p-12 text-left border border-[#A2C4C4]/30 max-w-3xl mx-auto">
-              <div className="flex items-center gap-4 mb-6">
-                <div className="w-12 h-12 bg-[#A2C4C4] text-[#142334] rounded-full flex items-center justify-center font-bold text-xl shadow-lg">1</div>
-                <div>
-                  <h3 className="font-bold text-2xl text-white">Submit via Email</h3>
-                  <p className="text-white/80 text-sm mt-1">Use our quick template to format your submission</p>
+                <div className="mt-6 grid gap-3">
+                  {contributionIdeas.map(item => (
+                    <div key={item.titleEn} className="rounded-2xl border border-brand/10 bg-white/70 p-4">
+                      <div className="flex items-start gap-3">
+                        <CheckCircle2 className="mt-0.5 shrink-0 text-brand" size={18} />
+                        <div>
+                          <h3 className="text-sm font-black text-brand-deep">
+                            {localize(isBn, item.titleEn, item.titleBn)}
+                          </h3>
+                          <p className="mt-1 text-sm font-medium leading-relaxed text-[#51666b]">
+                            {localize(isBn, item.copyEn, item.copyBn)}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
 
-              {/* The Template Box */}
-              <div className="relative bg-[#142334]/40 border border-[#A2C4C4]/30 rounded-2xl p-6 mb-8 overflow-hidden group">
-                <pre className="text-sm md:text-base text-white/90 whitespace-pre-wrap font-mono leading-relaxed">
-                  {`Subject: [GUIDE SUBMISSION] - {Title}\n\nAuthor Name: \nArticle Title: \nContent: \n\n(Attach any relevant images to email) `}
-                </pre>
+              <form onSubmit={handleSubmission} className="p-6 md:p-9">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <label className="block">
+                    <span className="mb-2 block text-xs font-black uppercase tracking-[0.14em] text-brand">
+                      {localize(isBn, 'Your name', 'আপনার নাম')}
+                    </span>
+                    <input
+                      name="name"
+                      required
+                      className="home-modal-input bg-white"
+                      placeholder={localize(isBn, 'Your name', 'আপনার নাম')}
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="mb-2 block text-xs font-black uppercase tracking-[0.14em] text-brand">
+                      {localize(isBn, 'Reply email', 'Reply email')}
+                    </span>
+                    <input
+                      name="email"
+                      type="email"
+                      required
+                      className="home-modal-input bg-white"
+                      placeholder="you@example.com"
+                    />
+                  </label>
+                </div>
 
-                <div className="absolute inset-y-0 right-0 w-32 bg-gradient-to-l from-[#142334] to-transparent flex items-center justify-end pr-4 opacity-80">
-                  <button
-                    onClick={copyTemplate}
-                    className="bg-[#A2C4C4] hover:bg-white text-[#142334] px-5 py-2.5 rounded-full text-sm font-bold transition-all shadow-lg flex items-center gap-2 transform active:scale-95"
-                  >
-                    {copied ? (
-                      <>
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
-                        Copied!
-                      </>
-                    ) : (
-                      <>
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
-                        Copy
-                      </>
+                <label className="mt-4 block">
+                  <span className="mb-2 block text-xs font-black uppercase tracking-[0.14em] text-brand">
+                    {localize(isBn, 'What are you sharing?', 'আপনি কী শেয়ার করছেন?')}
+                  </span>
+                  <select name="topic" required className="home-modal-input bg-white">
+                    <option value="">{localize(isBn, 'Choose a topic', 'Topic বেছে নিন')}</option>
+                    {contributionIdeas.map(item => (
+                      <option key={item.titleEn} value={item.titleEn}>
+                        {localize(isBn, item.titleEn, item.titleBn)}
+                      </option>
+                    ))}
+                    <option value="Other">{localize(isBn, 'Other helpful experience', 'অন্য helpful experience')}</option>
+                  </select>
+                </label>
+
+                <label className="mt-4 block">
+                  <span className="mb-2 block text-xs font-black uppercase tracking-[0.14em] text-brand">
+                    {localize(isBn, 'Your story or idea', 'আপনার story বা idea')}
+                  </span>
+                  <textarea
+                    name="message"
+                    rows="8"
+                    required
+                    className="home-modal-input resize-none bg-white"
+                    placeholder={localize(
+                      isBn,
+                      'Write the story, advice, costs, mistakes, links, or article idea you want to share with us.',
+                      'আপনার story, advice, cost, mistake, link বা article idea লিখুন।'
                     )}
-                  </button>
-                </div>
-              </div>
+                  />
+                </label>
 
-              <div className="bg-white/10 rounded-2xl p-5 flex flex-col sm:flex-row items-center justify-between gap-4 border border-[#A2C4C4]/30">
-                <div className="text-white/90 text-sm font-medium">
-                  Send your completed draft to our editorial team:
+                <div className="mt-5 rounded-2xl border border-brand/10 bg-white/65 p-4">
+                  <div className="flex items-start gap-3">
+                    <HeartHandshake className="mt-0.5 shrink-0 text-brand" size={19} />
+                    <p className="text-sm font-medium leading-relaxed text-[#51666b]">
+                      {localize(
+                        isBn,
+                        'Please avoid private documents, passport numbers, visa numbers, or anyone else’s personal details. We may email you before publishing anything.',
+                        'Private document, passport number, visa number বা অন্য কারও personal detail দেবেন না। কিছু publish করার আগে আমরা আপনাকে email করতে পারি।'
+                      )}
+                    </p>
+                  </div>
                 </div>
-                <a href="mailto:editorial@kiwidreambd.com" className="font-bold text-[#A2C4C4] hover:text-white transition-colors flex items-center gap-2 bg-[#142334]/50 px-5 py-2.5 rounded-full">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
-                  editorial@kiwidreambd.com
-                </a>
-              </div>
+
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full bg-brand px-6 py-3.5 text-sm font-black text-white shadow-[0_18px_42px_rgba(0,149,161,0.22)] transition-colors hover:bg-brand-deep disabled:cursor-not-allowed disabled:opacity-70"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Mail size={17} />
+                      {localize(isBn, 'Sending...', 'পাঠানো হচ্ছে...')}
+                    </>
+                  ) : (
+                    <>
+                      <Send size={17} />
+                      {localize(isBn, 'Send to Plan For Abroad', 'Plan For Abroad-এ পাঠান')}
+                    </>
+                  )}
+                </button>
+              </form>
             </div>
           </div>
         </section>
 
+        <section className="grid gap-4 pt-12 md:grid-cols-3">
+          <Link to="/compare" className="rounded-[24px] border border-white/80 bg-white/70 p-5 shadow-sm transition-colors hover:bg-white">
+            <MapPin className="text-brand" size={22} />
+            <h3 className="mt-3 font-serif text-2xl font-bold text-brand-deep">
+              {localize(isBn, 'Compare cities', 'City compare করুন')}
+            </h3>
+            <p className="mt-2 text-sm font-medium text-[#51666b]">
+              {localize(isBn, 'See cost and lifestyle differences before choosing a city.', 'City বেছে নেওয়ার আগে cost ও lifestyle পার্থক্য দেখুন।')}
+            </p>
+          </Link>
+          <Link to="/jobs" className="rounded-[24px] border border-white/80 bg-white/70 p-5 shadow-sm transition-colors hover:bg-white">
+            <WalletCards className="text-brand" size={22} />
+            <h3 className="mt-3 font-serif text-2xl font-bold text-brand-deep">
+              {localize(isBn, 'Job guide', 'Job guide')}
+            </h3>
+            <p className="mt-2 text-sm font-medium text-[#51666b]">
+              {localize(isBn, 'Understand student work rights and realistic earning expectations.', 'Student work rights ও realistic earning expectation বুঝুন।')}
+            </p>
+          </Link>
+          <Link to="/checklist" className="rounded-[24px] border border-white/80 bg-white/70 p-5 shadow-sm transition-colors hover:bg-white">
+            <CheckCircle2 className="text-brand" size={22} />
+            <h3 className="mt-3 font-serif text-2xl font-bold text-brand-deep">
+              {localize(isBn, 'Pre-departure checklist', 'Pre-departure checklist')}
+            </h3>
+            <p className="mt-2 text-sm font-medium text-[#51666b]">
+              {localize(isBn, 'Track documents, money, accommodation, health, and communication tasks.', 'Document, money, accommodation, health ও communication task track করুন।')}
+            </p>
+          </Link>
+        </section>
       </main>
-
-      {/* CSS for the Marquee Animation */}
-      <style jsx>{`
-        @keyframes marquee {
-          0% { transform: translateX(100vw); }
-          100% { transform: translateX(-100%); }
-        }
-        .animate-marquee {
-          display: inline-flex;
-          white-space: nowrap;
-          animation: marquee 25s linear infinite;
-        }
-        .pause:hover {
-          animation-play-state: paused;
-        }
-      `}</style>
     </div>
-  );
-};
+  )
+}
 
-export default GuidePage;
-
+export default GuidePage

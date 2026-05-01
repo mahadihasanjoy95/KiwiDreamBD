@@ -246,6 +246,14 @@ export function deleteMasterChecklistItem(accessToken, planId, itemId) {
   })
 }
 
+export function bulkReplaceChecklistItems(accessToken, planId, items) {
+  return apiRequest(`/api/v1/admin/plans/master/${planId}/checklist-items/bulk`, {
+    method: 'PUT',
+    token: accessToken,
+    body: { items },
+  })
+}
+
 // ─── Living Fund (admin) ──────────────────────────────────────────────────────
 
 export function getAdminLivingFund(accessToken, planId) {

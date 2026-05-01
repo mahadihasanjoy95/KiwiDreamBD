@@ -1,13 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { ArrowLeft, CalendarDays, Clock3, Copy, Share2 } from 'lucide-react';
 import useStore from '@/store/useStore';
 import { GUIDES_DATA } from '@/data/guides';
+import { useToast } from '@/components/common/ToastProvider';
+import { sharePageLink } from '@/utils/share';
 
 const ArticleDetail = () => {
   const { id } = useParams();
   const language = useStore(state => state.language);
   const isBn = language === 'BN';
   const [article, setArticle] = useState(null);
+  const { showToast } = useToast();
 
   useEffect(() => {
     // Check if it's the featured article
@@ -24,6 +28,38 @@ const ArticleDetail = () => {
     window.scrollTo(0, 0);
   }, [id]);
 
+  const handleShare = async () => {
+    const title = isBn ? article.titleBn : article.titleEn;
+    try {
+      const result = await sharePageLink({
+        title,
+        text: isBn ? 'Plan For Abroad থেকে এই গাইডটি দেখুন।' : 'Read this Plan For Abroad guide.',
+      });
+      if (result === 'copied') {
+        showToast({
+          tone: 'success',
+          title: isBn ? 'লিঙ্ক কপি হয়েছে' : 'Link copied',
+          message: isBn ? 'এখন Facebook, Messenger বা message-এ paste করতে পারবেন।' : 'Paste it into Facebook, Messenger, messages, or anywhere else.',
+        });
+      }
+    } catch {
+      showToast({
+        tone: 'error',
+        title: isBn ? 'শেয়ার করা যায়নি' : 'Could not share',
+        message: isBn ? 'একটু পরে আবার চেষ্টা করুন।' : 'Please try again in a moment.',
+      });
+    }
+  };
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(window.location.href);
+    showToast({
+      tone: 'success',
+      title: isBn ? 'লিঙ্ক কপি হয়েছে' : 'Link copied',
+      message: isBn ? 'যেখানে দরকার paste করুন।' : 'Paste it wherever you want to share it.',
+    });
+  };
+
   if (!article) {
     return (
       <div className="min-h-screen bg-[#D7DBD4] flex flex-col items-center justify-center p-4">
@@ -36,16 +72,16 @@ const ArticleDetail = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#D7DBD4] text-[#142334] font-sans selection:bg-[#A2C4C4]/50 pb-20">
+    <div className="min-h-screen bg-[linear-gradient(180deg,#eaf6f5_0%,#f8f2e8_45%,#eaf6f5_100%)] text-brand-deep font-sans selection:bg-brand-mid/50 pb-20">
       
       {/* Top Navigation */}
-      <div className="w-full bg-[#D7DBD4]/90 backdrop-blur-md border-b border-[#A2C4C4] sticky top-0 z-50">
+      <div className="w-full bg-[#eaf6f5]/88 backdrop-blur-md border-b border-white/70 sticky top-0 z-50">
         <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
-          <Link to="/guide" className="text-[#0095A1] font-bold hover:text-[#142334] flex items-center gap-2 transition-colors">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+          <Link to="/guide" className="text-brand font-bold hover:text-brand-deep flex items-center gap-2 transition-colors">
+            <ArrowLeft size={18} />
             {isBn ? 'ফিরে যান' : 'Back to Guides'}
           </Link>
-          <div className="text-sm font-bold text-[#142334]/60 uppercase tracking-widest">
+          <div className="text-sm font-bold text-brand-deep/60 uppercase tracking-widest">
             {isBn ? article.tagBn : article.tagEn}
           </div>
         </div>
@@ -55,32 +91,32 @@ const ArticleDetail = () => {
         
         {/* HEADER */}
         <header className="mb-10">
-          <h1 className="text-3xl md:text-5xl lg:text-6xl font-serif font-bold text-[#0095A1] mb-6 leading-tight drop-shadow-sm">
+          <h1 className="text-3xl md:text-5xl lg:text-6xl font-serif font-bold text-brand-deep mb-6 leading-tight drop-shadow-sm">
             {isBn ? article.titleBn : article.titleEn}
           </h1>
           
-          <div className="flex flex-wrap items-center text-[#142334]/60 text-sm md:text-base gap-4 md:gap-6 font-bold uppercase tracking-wider border-b border-[#A2C4C4] pb-8">
+          <div className="flex flex-wrap items-center text-brand-deep/60 text-sm md:text-base gap-4 md:gap-6 font-bold uppercase tracking-wider border-b border-brand/15 pb-8">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-[#142334] flex items-center justify-center text-[#A2C4C4] font-bold shadow-md">
+              <div className="w-10 h-10 rounded-full bg-brand-deep flex items-center justify-center text-brand-mid font-bold shadow-md">
                 {article.author.charAt(0)}
               </div>
-              <span className="text-[#142334]">{article.author}</span>
+              <span className="text-brand-deep">{article.author}</span>
             </div>
-            <span className="hidden md:inline text-[#A2C4C4]">•</span>
+            <span className="hidden md:inline text-brand-mid">•</span>
             <span className="flex items-center gap-1">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+              <CalendarDays size={16} />
               {isBn ? article.dateBn : article.dateEn}
             </span>
-            <span className="hidden md:inline text-[#A2C4C4]">•</span>
+            <span className="hidden md:inline text-brand-mid">•</span>
             <span className="flex items-center gap-1">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+              <Clock3 size={16} />
               {isBn ? article.readTimeBn : article.readTimeEn}
             </span>
           </div>
         </header>
 
         {/* HERO IMAGE */}
-        <div className="w-full aspect-[16/9] md:aspect-[21/9] rounded-[2rem] overflow-hidden shadow-xl mb-12 bg-[#A2C4C4]/20 border border-[#A2C4C4]/50">
+        <div className="w-full aspect-[16/9] md:aspect-[21/9] rounded-[2rem] overflow-hidden shadow-xl mb-12 bg-brand-mid/20 border border-white/80">
           <img 
             src={article.image} 
             alt={isBn ? article.titleBn : article.titleEn} 
@@ -89,7 +125,7 @@ const ArticleDetail = () => {
         </div>
 
         {/* ARTICLE CONTENT */}
-        <article className="prose prose-lg max-w-none prose-headings:font-serif prose-headings:font-bold prose-headings:text-[#0095A1] prose-a:text-[#0095A1] hover:prose-a:text-[#142334] prose-img:rounded-[2rem] prose-p:text-[#142334]/80 prose-li:text-[#142334]/80">
+        <article className="rounded-[28px] border border-white/80 bg-white/75 p-6 shadow-[0_16px_44px_rgba(0,89,96,0.08)] backdrop-blur md:p-9 prose prose-lg max-w-none prose-headings:font-serif prose-headings:font-bold prose-headings:text-brand-deep prose-a:text-brand hover:prose-a:text-brand-deep prose-img:rounded-[2rem] prose-p:text-brand-deep/80 prose-li:text-brand-deep/80">
           <div 
             dangerouslySetInnerHTML={{ __html: isBn ? article.contentBn : article.contentEn }}
             className="leading-relaxed"
@@ -97,16 +133,17 @@ const ArticleDetail = () => {
         </article>
         
         {/* SHARE BOTTOM SECTION */}
-        <div className="mt-16 pt-8 border-t border-[#A2C4C4] flex flex-col md:flex-row items-center justify-between gap-6">
-          <p className="text-[#142334]/60 font-bold uppercase tracking-wider text-sm">
+        <div className="mt-16 pt-8 border-t border-brand/15 flex flex-col md:flex-row items-center justify-between gap-6">
+          <p className="text-brand-deep/60 font-bold uppercase tracking-wider text-sm">
             {isBn ? 'এই গাইডটি আপনার উপকারে এসেছে?' : 'Found this guide helpful?'}
           </p>
           <div className="flex gap-4">
-            <button className="px-6 py-2 bg-[#A2C4C4]/40 text-[#142334] font-bold rounded-full hover:bg-[#A2C4C4]/60 transition-colors flex items-center gap-2">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
+            <button onClick={handleShare} className="px-6 py-2 bg-brand-light text-brand-deep font-bold rounded-full hover:bg-brand-mid/60 transition-colors flex items-center gap-2">
+              <Share2 size={16} />
               {isBn ? 'শেয়ার করুন' : 'Share'}
             </button>
-            <button onClick={() => navigator.clipboard.writeText(window.location.href)} className="px-6 py-2 bg-[#0095A1] text-white font-bold rounded-full hover:bg-[#142334] transition-colors shadow-lg shadow-[#0095A1]/20">
+            <button onClick={handleCopy} className="px-6 py-2 bg-brand text-white font-bold rounded-full hover:bg-brand-deep transition-colors shadow-lg shadow-brand/20 flex items-center gap-2">
+              <Copy size={16} />
               {isBn ? 'লিঙ্ক কপি করুন' : 'Copy Link'}
             </button>
           </div>

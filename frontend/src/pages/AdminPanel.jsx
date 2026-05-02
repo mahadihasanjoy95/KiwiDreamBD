@@ -3722,7 +3722,7 @@ function MasterPlansPanel({
                     <div>
                       <label className="mb-1.5 block text-sm font-bold text-brand-deep/70">Minimum Amount (NZD)</label>
                       <input
-                        type="number" min={0} step={0.01}
+                        type="number" min={0} max={5000000} step={0.01}
                         value={fundForm.minimumAmountNzd || ''}
                         onChange={e => setFundForm(p => ({ ...p, minimumAmountNzd: e.target.value }))}
                         placeholder="e.g. 5000"
@@ -3732,7 +3732,7 @@ function MasterPlansPanel({
                     <div>
                       <label className="mb-1.5 block text-sm font-bold text-brand-deep/70">Recommended Amount (NZD)</label>
                       <input
-                        type="number" min={0} step={0.01}
+                        type="number" min={0} max={5000000} step={0.01}
                         value={fundForm.recommendedAmountNzd || ''}
                         onChange={e => setFundForm(p => ({ ...p, recommendedAmountNzd: e.target.value }))}
                         placeholder="e.g. 8000"
@@ -3793,7 +3793,7 @@ function MasterPlansPanel({
             </div>
             <div>
               <label className="mb-1.5 block text-sm font-bold text-brand-deep/70">Amount (NZD) *</label>
-              <input required type="number" min={0} step={0.01} value={monthlyForm.estimatedAmountNzd || ''} onChange={e => setMonthlyForm(p => ({ ...p, estimatedAmountNzd: e.target.value }))} placeholder="0.00" className="w-full rounded-2xl border border-brand-mid/60 bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-brand" />
+              <input required type="number" min={0} max={5000000} step={0.01} value={monthlyForm.estimatedAmountNzd || ''} onChange={e => setMonthlyForm(p => ({ ...p, estimatedAmountNzd: e.target.value }))} placeholder="0.00" className="w-full rounded-2xl border border-brand-mid/60 bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-brand" />
             </div>
             <div>
               <label className="mb-1.5 block text-sm font-bold text-brand-deep/70">Display Order</label>
@@ -3831,7 +3831,7 @@ function MasterPlansPanel({
             </div>
             <div>
               <label className="mb-1.5 block text-sm font-bold text-brand-deep/70">Amount (NZD) *</label>
-              <input required type="number" min={0} step={0.01} value={movingForm.estimatedAmountNzd || ''} onChange={e => setMovingForm(p => ({ ...p, estimatedAmountNzd: e.target.value }))} placeholder="0.00" className="w-full rounded-2xl border border-brand-mid/60 bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-brand" />
+              <input required type="number" min={0} max={5000000} step={0.01} value={movingForm.estimatedAmountNzd || ''} onChange={e => setMovingForm(p => ({ ...p, estimatedAmountNzd: e.target.value }))} placeholder="0.00" className="w-full rounded-2xl border border-brand-mid/60 bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-brand" />
             </div>
             <div>
               <label className="mb-1.5 block text-sm font-bold text-brand-deep/70">Display Order</label>

@@ -2,7 +2,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router-dom'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { BookmarkPlus, CheckCircle2, Circle, Download, LockKeyhole, Minus, Plus, Trash2 } from 'lucide-react'
+import { BookmarkPlus, CheckCircle2, Circle, Download, LockKeyhole, Minus, Pencil, Plus, Trash2 } from 'lucide-react'
 import useStore from '@/store/useStore'
 import { LifestyleCards } from '@/components/budget/LifestyleCards'
 import { CitySelector } from '@/components/budget/CitySelector'
@@ -27,6 +27,7 @@ import hamiltonSvg from '@/assets/svg/hamilton.svg'
 import dunedinSvg from '@/assets/svg/dunedin.svg'
 
 const TABS = ['monthly', 'moving', 'checklist', 'fund']
+const PENDING_PLAN_SAVE_KEY = 'kiwi_dream_pending_plan_save'
 
 // Canonical category metadata — keys match API ENUM values exactly
 const CATEGORY_META = {
@@ -133,6 +134,16 @@ function PlannerChecklistPanel() {
       : (isBN ? item.textBn : item.textEn)
 
   const setDraft = (id, val) => setDraftTexts(prev => ({ ...prev, [id]: val }))
+
+  const getDisplayText = (item) => {
+    const baseText = getDraft(item)
+    return item.quantity > 1 ? `${baseText} *${item.quantity}` : baseText
+  }
+
+  const startEditing = (item) => {
+    setDraft(item.id, getDraft(item))
+    setEditingId(item.id)
+  }
 
   const commitDraft = (item) => {
     const val = draftTexts[item.id]
@@ -329,15 +340,6 @@ function PlannerChecklistPanel() {
 
                           {/* Content */}
                           <div className="min-w-0">
-                            {/* Badges */}
-                            {item.quantity > 1 && (
-                              <div className="mb-1 flex flex-wrap gap-1">
-                                <span className="rounded-full bg-brand-light px-2 py-0.5 text-[11px] font-bold text-brand-deep ring-1 ring-brand-mid">
-                                  ×{item.quantity}
-                                </span>
-                              </div>
-                            )}
-
                             {isEditing ? (
                               <div className="flex flex-wrap gap-2">
                                 <input
@@ -368,7 +370,7 @@ function PlannerChecklistPanel() {
                               </div>
                             ) : (
                               <p
-                                onClick={() => setEditingId(item.id)}
+                                onClick={() => startEditing(item)}
                                 title={isBN ? 'এডিট করতে ক্লিক করুন' : 'Click to edit'}
                                 className={cn(
                                   'cursor-text text-sm font-medium leading-relaxed',
@@ -378,19 +380,32 @@ function PlannerChecklistPanel() {
                                     : 'text-brand-deep/85'
                                 )}
                               >
-                                {draft}
+                                {getDisplayText(item)}
                               </p>
                             )}
                           </div>
 
-                          {/* Delete */}
-                          <button
-                            type="button"
-                            onClick={() => removeChecklistItem(item.id)}
-                            className="mt-0.5 rounded-xl p-1.5 text-gray-300 transition-colors hover:bg-red-50 hover:text-red-400"
-                          >
-                            <Trash2 size={13} />
-                          </button>
+                          {/* Actions */}
+                          <div className="mt-0.5 flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => startEditing(item)}
+                              aria-label={isBN ? 'আপডেট করুন' : 'Update item'}
+                              title={isBN ? 'আপডেট করুন' : 'Update item'}
+                              className="rounded-xl p-1.5 text-brand/55 transition-colors hover:bg-brand-light hover:text-brand"
+                            >
+                              <Pencil size={13} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => removeChecklistItem(item.id)}
+                              aria-label={isBN ? 'মুছে ফেলুন' : 'Delete item'}
+                              title={isBN ? 'মুছে ফেলুন' : 'Delete item'}
+                              className="rounded-xl p-1.5 text-gray-300 transition-colors hover:bg-red-50 hover:text-red-400"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
                         </motion.div>
                       )
                     })}
@@ -452,8 +467,12 @@ export default function BudgetPlanner() {
   const [savingPlan, setSavingPlan]                 = useState(false)
   const [masterPlanLoading, setMasterPlanLoading]   = useState(false)
   const [checkingExistingPlan, setCheckingExistingPlan] = useState(false)
+  const [pendingAuthSave, setPendingAuthSave] = useState(() =>
+    typeof window !== 'undefined' && sessionStorage.getItem(PENDING_PLAN_SAVE_KEY) === '1'
+  )
   // tracks the last combo we checked so we don't re-check on every render
   const checkedComboRef = useRef(null)
+  const pendingSaveAttemptRef = useRef(false)
 
   // ── API data ──────────────────────────────────────────────────────────────
   const [apiCountry, setApiCountry]   = useState(null)
@@ -504,6 +523,7 @@ export default function BudgetPlanner() {
     if (!isAuthenticated || !accessToken) return
     if (!selectedCity || !selectedLifestyle) return
     if (!apiProfiles.length || !apiCities.length) return
+    if (pendingAuthSave) return
 
     const profile = apiProfiles.find(p => p.code === selectedLifestyle)
     if (!profile) return
@@ -527,7 +547,67 @@ export default function BudgetPlanner() {
     setCheckingExistingPlan(true)
     checkAndLoadExistingPlan(accessToken, selectedCity, profile.id)
       .finally(() => setCheckingExistingPlan(false))
-  }, [wizardStep, isAuthenticated, accessToken, selectedCity, selectedLifestyle, apiProfiles, apiCities, editingPlanId, currentMasterPlan, checkAndLoadExistingPlan])
+  }, [wizardStep, isAuthenticated, accessToken, selectedCity, selectedLifestyle, apiProfiles, apiCities, editingPlanId, currentMasterPlan, checkAndLoadExistingPlan, pendingAuthSave])
+
+  useEffect(() => {
+    if (!pendingAuthSave) return
+    if (pendingSaveAttemptRef.current) return
+    if (!isAuthenticated || !accessToken) return
+    if (wizardStep !== 2) return
+    if (masterPlanLoading || checkingExistingPlan) return
+    if (!currentMasterPlan && !planCategories.length) return
+
+    let cancelled = false
+    pendingSaveAttemptRef.current = true
+    setSavingPlan(true)
+    saveCurrentPlan()
+      .then((result) => {
+        if (cancelled) return
+        sessionStorage.removeItem(PENDING_PLAN_SAVE_KEY)
+        setPendingAuthSave(false)
+        if (result.ok) {
+          showToast({
+            tone: 'success',
+            title: t('auth.save_toast_title'),
+            message: t('auth.save_toast_copy', { plan: result.plan?.displayPlanName || result.plan?.planName || 'Your plan' }),
+          })
+          resetPlan()
+          navigate('/dashboard', { replace: true, state: { selectPlanId: result.plan?.id } })
+        } else if (result.reason === 'DUPLICATE_PLAN') {
+          showToast({ tone: 'warning', title: t('auth.duplicate_plan_title'), message: result.message || t('auth.duplicate_plan_copy') })
+        } else {
+          showToast({ tone: 'error', title: t('auth.save_toast_error_title'), message: t('auth.save_toast_error_copy') })
+        }
+      })
+      .catch(() => {
+        if (cancelled) return
+        sessionStorage.removeItem(PENDING_PLAN_SAVE_KEY)
+        setPendingAuthSave(false)
+        showToast({ tone: 'error', title: t('auth.save_toast_error_title'), message: t('auth.save_toast_error_copy') })
+      })
+      .finally(() => {
+        if (!cancelled) {
+          pendingSaveAttemptRef.current = false
+          setSavingPlan(false)
+        }
+      })
+
+    return () => { cancelled = true }
+  }, [
+    pendingAuthSave,
+    isAuthenticated,
+    accessToken,
+    wizardStep,
+    masterPlanLoading,
+    checkingExistingPlan,
+    currentMasterPlan,
+    planCategories.length,
+    saveCurrentPlan,
+    showToast,
+    t,
+    resetPlan,
+    navigate,
+  ])
 
   useEffect(() => {
     const id = window.setTimeout(() => setPageLoading(false), 700)
@@ -798,6 +878,7 @@ export default function BudgetPlanner() {
                       <Link
                         to="/signin"
                         state={{ next: '/plan' }}
+                        onClick={() => sessionStorage.setItem(PENDING_PLAN_SAVE_KEY, '1')}
                         className="inline-flex items-center justify-center gap-2 rounded-[20px] bg-brand-deep px-5 py-3 font-semibold text-white shadow-[0_16px_34px_rgba(20,35,52,0.20)] transition-transform hover:-translate-y-0.5 hover:bg-[#0d1825]"
                       >
                         <LockKeyhole size={18} />

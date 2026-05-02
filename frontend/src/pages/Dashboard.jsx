@@ -88,6 +88,7 @@ const DEMO_PLANS = [
     survivalMonths: 9.2,
     setupCostNZD: 3780,
     affordability: 'SAFE',
+    readinessScore: 91,
     categories: [
       { id: 'r', categoryName: 'Rent', estimatedAmountNZD: 1280 },
       { id: 'g', categoryName: 'Groceries', estimatedAmountNZD: 240 },
@@ -123,6 +124,7 @@ const DEMO_PLANS = [
     survivalMonths: 7.4,
     setupCostNZD: 4620,
     affordability: 'TIGHT',
+    readinessScore: 74,
     categories: [
       { id: 'r2', categoryName: 'Rent', estimatedAmountNZD: 1500 },
       { id: 'g2', categoryName: 'Groceries', estimatedAmountNZD: 430 },
@@ -166,6 +168,7 @@ function normalizeSummaryPlan(plan) {
       survivalMonths: Number(plan.survivalMonths) || 0,
       setupCostNZD: Number(plan.movingCostTotalNzd) || 0,
       affordability: plan.affordabilityStatus || 'TIGHT',
+      readinessScore: Number(plan.readinessScore) || 0,
       _isApiPlan: true,
     }
   }
@@ -218,7 +221,21 @@ function demoToFullPlan(plan) {
     livingFund: { userSavedAmountBdt: 1400000 },
     survivalMonths: plan.survivalMonths,
     affordabilityStatus: plan.affordability,
+    readinessScore: plan.readinessScore ?? Math.min(100, Math.max(0, Math.round((Number(plan.survivalMonths) || 0) * 8.5))),
   }
+}
+
+function resolveReadinessScore(fullPlan, summaryPlan) {
+  const score = Number(
+    fullPlan?.readinessScore ??
+    fullPlan?.livingFund?.readinessScore ??
+    summaryPlan?.readinessScore
+  )
+  if (Number.isFinite(score) && score >= 0) return Math.min(100, Math.round(score))
+
+  const survivalMonths = Number(fullPlan?.survivalMonths ?? summaryPlan?.survivalMonths ?? 0)
+  if (!Number.isFinite(survivalMonths) || survivalMonths <= 0) return 0
+  return Math.min(100, Math.round(survivalMonths * 8.5))
 }
 
 function groupChecklist(items) {
@@ -1016,7 +1033,7 @@ export default function Dashboard() {
   }, [selectedSummary?.id, accessToken, selectedSummary?._isApiPlan])
 
   const survivalMonths = Number(displayedFullPlan?.survivalMonths ?? selectedSummary?.survivalMonths ?? 0)
-  const readinessScore = Math.min(100, Math.max(10, Math.round(survivalMonths * 8.5)))
+  const readinessScore = resolveReadinessScore(displayedFullPlan, selectedSummary)
   const affordability = displayedFullPlan?.affordabilityStatus || selectedSummary?.affordability || 'TIGHT'
 
   // ── Actions ──────────────────────────────────────────────────────────────────

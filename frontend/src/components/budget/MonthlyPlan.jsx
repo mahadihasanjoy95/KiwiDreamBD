@@ -23,6 +23,8 @@ import { useCurrency } from '@/hooks/useCurrency'
 import { cn } from '@/utils/cn'
 
 const CHART_COLORS = ['#1f5c46', '#c06b47', '#d89a3d', '#3983a8', '#8357c5', '#d95d83', '#2c8f74', '#7d746a']
+const SLIDER_STEP_NZD = 50
+const MONTHLY_SLIDER_MIN_NZD = 1000
 
 const CATEGORY_ICONS = [
   { match: /rent|room|accommodation|flat/i, Icon: Home },
@@ -38,6 +40,64 @@ const CATEGORY_ICONS = [
 
 function findIcon(name) {
   return CATEGORY_ICONS.find(item => item.match.test(name))?.Icon || Coins
+}
+
+function getAdaptiveSliderMax(amounts, minimum = MONTHLY_SLIDER_MIN_NZD) {
+  const highestAmount = Math.max(...amounts.map(amount => Number(amount) || 0), 0)
+  const paddedMax = Math.max(highestAmount * 1.35, minimum)
+  return Math.min(
+    MONEY_LIMITS.monthlyCategoryNZD,
+    Math.ceil(paddedMax / SLIDER_STEP_NZD) * SLIDER_STEP_NZD
+  )
+}
+
+function splitAxisLabel(value, maxChars) {
+  const text = String(value || '').trim()
+  if (text.length <= maxChars) return [text]
+
+  const words = text.split(/\s+/)
+  if (words.length === 1) return [`${text.slice(0, Math.max(maxChars - 1, 1))}…`]
+
+  const lines = []
+  let current = ''
+
+  for (const word of words) {
+    const next = current ? `${current} ${word}` : word
+    if (next.length <= maxChars) {
+      current = next
+      continue
+    }
+
+    if (current) lines.push(current)
+    current = word
+    if (lines.length === 1) break
+  }
+
+  if (current && lines.length < 2) lines.push(current)
+  const joinedLength = lines.join(' ').length
+  if (joinedLength < text.length && lines.length > 0) {
+    lines[lines.length - 1] = `${lines[lines.length - 1].slice(0, Math.max(maxChars - 1, 1))}…`
+  }
+
+  return lines.slice(0, 2)
+}
+
+function CategoryAxisTick({ x, y, payload, maxChars = 12 }) {
+  const label = String(payload?.value || '')
+  const lines = splitAxisLabel(label, maxChars)
+
+  return (
+    <g transform={`translate(${x},${y})`}>
+      <title>{label}</title>
+      <text textAnchor="end" fill="#4E6567" fontSize={10} fontWeight={600}>
+        {lines.map((line, index) => (
+          <tspan key={line + index} x={0} dy={index === 0 && lines.length > 1 ? -2 : index === 0 ? 4 : 12}>
+            {line}
+          </tspan>
+        ))}
+      </text>
+    </g>
+  )
 }
 
 function BreakdownTooltip({ active, payload, format }) {
@@ -67,7 +127,10 @@ export function MonthlyPlan() {
 
   const total = planCategories.reduce((sum, c) => sum + (c.estimatedAmountNZD || 0), 0)
   const displayLimit = MONEY_LIMITS.maxAmount
-  const sliderMax = fromDisplay(MONEY_LIMITS.maxAmount)
+  const sliderMax = useMemo(
+    () => getAdaptiveSliderMax(planCategories.map(c => c.estimatedAmountNZD)),
+    [planCategories]
+  )
   const displayValue = (id, nzd) => {
     if (editingId === id && Number(nzd || 0) === 0) return ''
     return toDisplay(nzd || 0)
@@ -80,13 +143,15 @@ export function MonthlyPlan() {
         .filter(c => c.estimatedAmountNZD > 0)
         .map((c, index) => ({
           ...c,
-          value: c.estimatedAmountNZD,
+          value: Number(c.estimatedAmountNZD) || 0,
           share: total > 0 ? Math.round((c.estimatedAmountNZD / total) * 100) : 0,
           color: CHART_COLORS[index % CHART_COLORS.length],
         }))
         .sort((a, b) => b.value - a.value),
     [planCategories, total]
   )
+  const chartTickMaxChars = chartData.length > 5 ? 7 : 10
+  const chartHeight = Math.min(460, Math.max(300, chartData.length * 54))
 
   const handleAdd = () => {
     if (!newName.trim()) return
@@ -172,14 +237,30 @@ export function MonthlyPlan() {
               </div>
               <p className="text-sm font-semibold text-brand-deep/55">{format(total)}</p>
             </div>
-            <div className="h-[260px]">
+            <div style={{ height: chartHeight }}>
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData} margin={{ top: 8, right: 12, left: 0, bottom: 4 }}>
-                  <CartesianGrid stroke="#DCEDEA" vertical={false} />
-                  <XAxis dataKey="categoryName" tickLine={false} axisLine={false} tick={{ fill: '#4E6567', fontSize: 11 }} />
-                  <YAxis tickLine={false} axisLine={false} tick={{ fill: '#739194', fontSize: 11 }} width={42} />
+                <BarChart data={chartData} layout="vertical" margin={{ top: 8, right: 18, left: 8, bottom: 8 }}>
+                  <CartesianGrid stroke="#DCEDEA" horizontal={false} />
+                  <XAxis
+                    type="number"
+                    tickLine={false}
+                    axisLine={false}
+                    tick={{ fill: '#739194', fontSize: 11 }}
+                    domain={[0, 'dataMax']}
+                    allowDecimals={false}
+                  />
+                  <YAxis
+                    type="category"
+                    dataKey="categoryName"
+                    tickLine={false}
+                    axisLine={false}
+                    interval={0}
+                    width={118}
+                    tickMargin={8}
+                    tick={<CategoryAxisTick maxChars={chartTickMaxChars} />}
+                  />
                   <Tooltip content={<BreakdownTooltip format={format} />} cursor={{ fill: 'rgba(0,149,161,0.06)' }} />
-                  <Bar dataKey="value" radius={[12, 12, 4, 4]} barSize={34}>
+                  <Bar dataKey="value" radius={[0, 12, 12, 0]} barSize={22} minPointSize={4}>
                     {chartData.map((entry, index) => (
                       <Cell key={entry.id} fill={['#8FD3DD', '#B8D69B', '#E5E779', '#6DB1B4', '#9CC8AA', '#C9E4E2'][index % 6]} />
                     ))}
@@ -281,9 +362,9 @@ export function MonthlyPlan() {
                           type="range"
                           min="0"
                           max={sliderMax}
-                          step="50"
+                          step={SLIDER_STEP_NZD}
                           value={category.estimatedAmountNZD}
-                          onChange={(e) => updateCategory(category.id, e.target.value)}
+                          onChange={(e) => updateCategory(category.id, Number(e.target.value))}
                           className="h-2 w-full cursor-pointer appearance-none rounded-full"
                           style={{
                             background: `linear-gradient(90deg, ${accent} 0%, ${accent} ${sliderMax ? (category.estimatedAmountNZD / sliderMax) * 100 : 0}%, #efe4d5 ${sliderMax ? (category.estimatedAmountNZD / sliderMax) * 100 : 0}%, #efe4d5 100%)`,

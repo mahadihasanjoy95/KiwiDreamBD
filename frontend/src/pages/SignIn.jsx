@@ -7,6 +7,8 @@ import { AuthShell } from '@/components/auth/AuthShell'
 import { AppLoader } from '@/components/common/AppLoader'
 import { getGoogleOAuthUrl } from '@/api/auth'
 
+const AUTH_NEXT_PATH_KEY = 'kiwi_dream_auth_next_path'
+
 export default function SignIn() {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -26,7 +28,8 @@ export default function SignIn() {
     setLoading(true)
     try {
       await login({ email, password })
-      navigate(nextPath)
+      sessionStorage.removeItem(AUTH_NEXT_PATH_KEY)
+      navigate(nextPath, { replace: true })
     } catch (err) {
       setError(err.message || 'Unable to sign in. Please check your email and password.')
       setLoading(false)
@@ -34,6 +37,7 @@ export default function SignIn() {
   }
 
   const handleGoogle = () => {
+    sessionStorage.setItem(AUTH_NEXT_PATH_KEY, nextPath)
     window.location.href = getGoogleOAuthUrl()
   }
 

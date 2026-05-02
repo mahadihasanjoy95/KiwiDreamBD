@@ -1,5 +1,8 @@
 package com.kiwi.dream.plan.dto.request;
 
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
+
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
@@ -10,7 +13,11 @@ import java.time.LocalDate;
 public record UpsertLivingFundRequestDto(
 
         // Admin guidance fields
+        @DecimalMin(value = "0.00")
+        @DecimalMax(value = "5000000.00", message = "Minimum fund must not exceed 50 lakh NZD")
         BigDecimal minimumAmountNzd,
+        @DecimalMin(value = "0.00")
+        @DecimalMax(value = "5000000.00", message = "Recommended fund must not exceed 50 lakh NZD")
         BigDecimal recommendedAmountNzd,
         String explanationEn,
         String explanationBn,

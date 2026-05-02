@@ -24,7 +24,6 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -183,33 +182,13 @@ public class ExchangeRateServiceImpl implements ExchangeRateService {
             // Reverse: 1 destCurrency = ? BDT
             BigDecimal destToBdt = usdToBdt.divide(usdToDest, 10, RoundingMode.HALF_UP);
 
-            // Check if an ADMIN_OVERRIDE is currently active — if so, skip it to preserve the override
-            Optional<ExchangeRate> existingBdtToDest =
-                    exchangeRateRepository.findActiveRate(ORIGIN_CURRENCY, destCurrency);
+            upsertLatestRate(ORIGIN_CURRENCY, destCurrency, bdtToDest, today,
+                    syncNote, ExchangeRateSource.AUTO_FETCH);
+            updatedCount++;
 
-            if (existingBdtToDest.isPresent()
-                    && existingBdtToDest.get().getSource() == ExchangeRateSource.ADMIN_OVERRIDE) {
-                log.info("Skipping {} \u2192 {}: active ADMIN_OVERRIDE in place (rate: {}).",
-                        ORIGIN_CURRENCY, destCurrency, existingBdtToDest.get().getRateValue());
-            } else {
-                upsertLatestRate(ORIGIN_CURRENCY, destCurrency, bdtToDest, today,
-                        syncNote, ExchangeRateSource.AUTO_FETCH);
-                updatedCount++;
-            }
-
-            // Same logic for reverse: destCurrency → BDT
-            Optional<ExchangeRate> existingDestToBdt =
-                    exchangeRateRepository.findActiveRate(destCurrency, ORIGIN_CURRENCY);
-
-            if (existingDestToBdt.isPresent()
-                    && existingDestToBdt.get().getSource() == ExchangeRateSource.ADMIN_OVERRIDE) {
-                log.info("Skipping {} \u2192 {}: active ADMIN_OVERRIDE in place (rate: {}).",
-                        destCurrency, ORIGIN_CURRENCY, existingDestToBdt.get().getRateValue());
-            } else {
-                upsertLatestRate(destCurrency, ORIGIN_CURRENCY, destToBdt, today,
-                        syncNote, ExchangeRateSource.AUTO_FETCH);
-                updatedCount++;
-            }
+            upsertLatestRate(destCurrency, ORIGIN_CURRENCY, destToBdt, today,
+                    syncNote, ExchangeRateSource.AUTO_FETCH);
+            updatedCount++;
         }
 
         log.info("Exchange rate sync complete. Updated {} currency pairs.", updatedCount);

@@ -46,8 +46,8 @@ public interface ExchangeRateService {
      * countries table.
      *
      * <p>Called on application startup and by the nightly cron job at midnight.
-     * Skips any pair whose current active row has source = ADMIN_OVERRIDE,
-     * preserving the admin's manual rate until they change it themselves.</p>
+     * Existing rows are updated in-place so production uses the latest
+     * API-fetched rate after each app start.</p>
      *
      * @return number of currency pairs updated
      */

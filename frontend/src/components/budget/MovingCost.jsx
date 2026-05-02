@@ -19,6 +19,8 @@ import { useCurrency } from '@/hooks/useCurrency'
 import { cn } from '@/utils/cn'
 
 const CARD_COLORS = ['#c06b47', '#0095A1', '#d89a3d', '#2c8f74', '#3983a8', '#d95d83', '#7d746a', '#1f5c46']
+const SLIDER_STEP_NZD = 50
+const MOVING_SLIDER_MIN_NZD = 3000
 
 const MOVING_ITEM_ICONS = [
   { match: /flight|air/i, Icon: Plane },
@@ -33,6 +35,15 @@ const MOVING_ITEM_ICONS = [
 
 function findIcon(name) {
   return MOVING_ITEM_ICONS.find(item => item.match.test(name))?.Icon || PackagePlus
+}
+
+function getAdaptiveSliderMax(amounts, minimum = MOVING_SLIDER_MIN_NZD) {
+  const highestAmount = Math.max(...amounts.map(amount => Number(amount) || 0), 0)
+  const paddedMax = Math.max(highestAmount * 1.35, minimum)
+  return Math.min(
+    MONEY_LIMITS.movingItemNZD,
+    Math.ceil(paddedMax / SLIDER_STEP_NZD) * SLIDER_STEP_NZD
+  )
 }
 
 export function MovingCost() {
@@ -50,7 +61,10 @@ export function MovingCost() {
 
   const total = movingItems.reduce((sum, item) => sum + (item.amountNZD || 0), 0)
   const displayLimit = MONEY_LIMITS.maxAmount
-  const sliderMax = fromDisplay(MONEY_LIMITS.maxAmount)
+  const sliderMax = useMemo(
+    () => getAdaptiveSliderMax(movingItems.map(item => item.amountNZD)),
+    [movingItems]
+  )
   const displayValue = (id, nzd) => {
     if (editingId === id && Number(nzd || 0) === 0) return ''
     return toDisplay(nzd || 0)
@@ -190,9 +204,9 @@ export function MovingCost() {
                         type="range"
                         min="0"
                         max={sliderMax}
-                        step="50"
+                        step={SLIDER_STEP_NZD}
                         value={amount}
-                        onChange={(e) => updateMovingItem(item.id, e.target.value)}
+                        onChange={(e) => updateMovingItem(item.id, Number(e.target.value))}
                         className="h-2 w-full cursor-pointer appearance-none rounded-full"
                         style={{
                           background: `linear-gradient(90deg, ${accent} 0%, ${accent} ${sliderMax ? (amount / sliderMax) * 100 : 0}%, #efe4d5 ${sliderMax ? (amount / sliderMax) * 100 : 0}%, #efe4d5 100%)`,

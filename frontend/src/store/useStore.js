@@ -17,9 +17,9 @@ import {
 import { fetchExchangeRate } from '@/api/exchangeRates'
 
 export const MONEY_LIMITS = {
-  maxAmount: 100000000,
-  monthlyCategoryNZD: 100000000,
-  movingItemNZD: 100000000,
+  maxAmount: 5000000,
+  monthlyCategoryNZD: 5000000,
+  movingItemNZD: 5000000,
   livingFundBDT: 100000000,
 }
 

@@ -3,6 +3,8 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import useStore from '@/store/useStore'
 import { AppLoader } from '@/components/common/AppLoader'
 
+const AUTH_NEXT_PATH_KEY = 'kiwi_dream_auth_next_path'
+
 export default function OAuthCallback() {
   const navigate = useNavigate()
   const [params] = useSearchParams()
@@ -31,7 +33,9 @@ export default function OAuthCallback() {
         if (isAdminIntent && isAdmin) {
           navigate('/admin/Joy&Priota', { replace: true })
         } else {
-          navigate('/dashboard', { replace: true })
+          const nextPath = sessionStorage.getItem(AUTH_NEXT_PATH_KEY) || '/dashboard'
+          sessionStorage.removeItem(AUTH_NEXT_PATH_KEY)
+          navigate(nextPath, { replace: true })
         }
       })
       .catch((err) => {

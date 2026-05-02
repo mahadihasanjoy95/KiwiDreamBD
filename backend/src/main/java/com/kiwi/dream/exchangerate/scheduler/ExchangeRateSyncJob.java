@@ -20,8 +20,8 @@ import org.springframework.stereotype.Component;
  *       Keeps BDT ↔ destination rates up to date automatically.</li>
  * </ul>
  *
- * <p>Admin overrides (rows with {@code source = ADMIN_OVERRIDE}) are preserved by the
- * sync logic — they will not be replaced by auto-fetched rates.</p>
+ * <p>Startup and nightly syncs refresh the current rows from the external API so
+ * production always starts with the latest available rates.</p>
  */
 @Component
 @RequiredArgsConstructor
